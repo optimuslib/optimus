@@ -56,18 +56,14 @@ class Source:
             The Dirichlet and Neumann traces.
         """
 
-        wavenumber = medium.wavenumber(self.frequency)
-
         def dirichlet_fun(x, n, domain_index, result):
-            result[0] = self.pressure_field(x, wavenumber)
+            result[0] = self.pressure_field(x, medium)
 
         def neumann_fun(x, n, domain_index, result):
-            result[0] = self.normal_pressure_gradient(x, n, wavenumber)
+            result[0] = self.normal_pressure_gradient(x, medium, n)
 
         space_dirichlet = spaces[0]
-        trace_dirichlet = _bempp.GridFunction(
-            space_dirichlet, fun=dirichlet_fun
-        )
+        trace_dirichlet = _bempp.GridFunction(space_dirichlet, fun=dirichlet_fun)
 
         space_neumann = spaces[0]
         trace_neumann = _bempp.GridFunction(space_neumann, fun=neumann_fun)
