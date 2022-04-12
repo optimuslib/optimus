@@ -91,12 +91,16 @@ class _Piston(_Source):
 
         if source_axis is not None:
             if not isinstance(source_axis, (list, tuple, _np.ndarray)):
-                raise TypeError("Piston source axis needs to be an array type.")
+                raise TypeError(
+                    "Piston source axis needs to be an array type."
+                )
             direction_vector = _np.array(source_axis)
             if direction_vector.ndim == 1 and direction_vector.size == 3:
                 self.source_axis = _convert_to_unit_vector(direction_vector)
             elif direction_vector.ndim == 2 and direction_vector.size == 3:
-                self.source_axis = _convert_to_unit_vector(direction_vector.flatten())
+                self.source_axis = _convert_to_unit_vector(
+                    direction_vector.flatten()
+                )
             else:
                 raise ValueError("Source axis to be a 3D vector.")
         else:
@@ -138,8 +142,8 @@ class _Piston(_Source):
         ----------
         locations : 3 x N array
             Locations on which to evaluate the pressure field.
-        wavenumber : float
-            The wavenumber of the propagating medium of the source.
+        medium : class
+            The exterior medium properties.
         """
 
         points = _convert_to_3n_array(locations)
@@ -157,11 +161,11 @@ class _Piston(_Source):
         ----------
         locations : 3 x N array
             Locations on which to evaluate the pressure field.
+        medium : class
+            The exterior medium properties.
         normals : 3 x N array
             Unit normal vectors at the locations on which to evaluate the
              pressure field.
-        wavenumber : float
-            The wavenumber of the propagating medium of the source.
         """
 
         points = _convert_to_3n_array(locations)
