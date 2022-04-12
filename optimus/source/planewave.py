@@ -38,7 +38,9 @@ class _PlaneWave(_Source):
                 raise TypeError("Wave direction needs to be an array type.")
             direction_vector = _np.array(direction)
             if direction_vector.ndim == 1 and direction_vector.size == 3:
-                self.direction_vector = _convert_to_unit_vector(direction_vector)
+                self.direction_vector = _convert_to_unit_vector(
+                    direction_vector
+                )
             elif direction_vector.ndim == 2 and direction_vector.size == 3:
                 self.direction_vector = _convert_to_unit_vector(
                     direction_vector.flatten()
@@ -53,18 +55,19 @@ class _PlaneWave(_Source):
         else:
             self.amplitude = amplitude
 
-    def pressure_field(self, locations, wavenumber):
+    def pressure_field(self, locations, medium):
         """
         Calculate the pressure field in the specified locations.
         Parameters
         ----------
         locations : 3 x N array
             Locations on which to evaluate the pressure field.
-        wavenumber : float
-            The wavenumber of the propagating medium of the source.
+        medium : class
+            The exterior medium properties.
         """
 
         points = _convert_to_3n_array(locations)
+        wavenumber = medium.wavenumber(self.frequency)
 
         pressure = self.amplitude * _np.exp(
             1j * wavenumber * _np.dot(self.direction_vector, points)
@@ -72,7 +75,7 @@ class _PlaneWave(_Source):
 
         return pressure
 
-    def normal_pressure_gradient(self, locations, normals, wavenumber):
+    def normal_pressure_gradient(self, locations, medium, normals):
         """
         Calculate the normal gradient of the pressure field in the
          specified locations.
@@ -83,11 +86,12 @@ class _PlaneWave(_Source):
         normals : 3 x N array
             Unit normal vectors at the locations on which to evaluate the
              pressure field.
-        wavenumber : float
-            The wavenumber of the propagating medium of the source.
+        medium : class
+            The exterior medium properties.
         """
 
         points = _convert_to_3n_array(locations)
+        wavenumber = medium.wavenumber(self.frequency)
         normals = _convert_to_3n_array(normals)
         unit_normals = _convert_to_unit_vector(normals)
 
