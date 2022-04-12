@@ -6,7 +6,7 @@ from .common import _convert_to_unit_vector as unit_vector
 def theta_phi_point(point):
     """
     Counter-clockwise angle in xy plane (theta) and altitude towards z (phi).
-    i_nputs
+    inputs
     ------
     point : list, `numpy.ndarray`
       a point on a 3D space.
@@ -88,8 +88,16 @@ def rotate(locations, source_axis):
     si_nphi = _np.sin(phi_source)
     R_phi = _np.array(
         [
-            [cosphi + ux**2 * (1 - cosphi), ux * uy * (1 - cosphi), uy * si_nphi],
-            [ux * uy * (1 - cosphi), cosphi + uy**2 * (1 - cosphi), -ux * si_nphi],
+            [
+                cosphi + ux**2 * (1 - cosphi),
+                ux * uy * (1 - cosphi),
+                uy * si_nphi,
+            ],
+            [
+                ux * uy * (1 - cosphi),
+                cosphi + uy**2 * (1 - cosphi),
+                -ux * si_nphi,
+            ],
             [-uy * si_nphi, ux * si_nphi, cosphi],
         ]
     )
