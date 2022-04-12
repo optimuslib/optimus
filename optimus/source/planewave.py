@@ -56,7 +56,7 @@ class _PlaneWave(_Source):
         else:
             self.amplitude = amplitude
 
-    def pressure_field(self, locations, wavenumber):
+    def pressure_field(self, locations, medium):
         """
         Calculate the pressure field in the specified locations.
 
@@ -64,11 +64,12 @@ class _PlaneWave(_Source):
         ----------
         locations : 3 x N array
             Locations on which to evaluate the pressure field.
-        wavenumber : float
-            The wavenumber of the propagating medium of the source.
+        medium : class
+            The exterior medium properties.
         """
 
         points = _convert_to_3n_array(locations)
+        wavenumber = medium.wavenumber(self.frequency)
 
         pressure = self.amplitude * _np.exp(
             1j * wavenumber * _np.dot(self.direction_vector, points)
@@ -76,7 +77,7 @@ class _PlaneWave(_Source):
 
         return pressure
 
-    def normal_pressure_gradient(self, locations, normals, wavenumber):
+    def normal_pressure_gradient(self, locations, medium, normals):
         """
         Calculate the normal gradient of the pressure field in the
          specified locations.
@@ -88,11 +89,12 @@ class _PlaneWave(_Source):
         normals : 3 x N array
             Unit normal vectors at the locations on which to evaluate the
              pressure field.
-        wavenumber : float
-            The wavenumber of the propagating medium of the source.
+        medium : class
+            The exterior medium properties.
         """
 
         points = _convert_to_3n_array(locations)
+        wavenumber = medium.wavenumber(self.frequency)
         normals = _convert_to_3n_array(normals)
         unit_normals = _convert_to_unit_vector(normals)
 
