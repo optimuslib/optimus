@@ -63,7 +63,9 @@ class Source:
             result[0] = self.normal_pressure_gradient(x, medium, n)
 
         space_dirichlet = spaces[0]
-        trace_dirichlet = _bempp.GridFunction(space_dirichlet, fun=dirichlet_fun)
+        trace_dirichlet = _bempp.GridFunction(
+            space_dirichlet, fun=dirichlet_fun
+        )
 
         space_neumann = spaces[0]
         trace_neumann = _bempp.GridFunction(space_neumann, fun=neumann_fun)
