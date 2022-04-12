@@ -9,7 +9,6 @@ from .common import _convert_to_unit_vector
 def create_planewave(frequency, direction=None, amplitude=1.0):
     """
     Create a plane wave source.
-
     Parameters
     ----------
     frequency : float
@@ -57,7 +56,6 @@ class _PlaneWave(_Source):
     def pressure_field(self, locations, wavenumber):
         """
         Calculate the pressure field in the specified locations.
-
         Parameters
         ----------
         locations : 3 x N array
@@ -78,7 +76,6 @@ class _PlaneWave(_Source):
         """
         Calculate the normal gradient of the pressure field in the
          specified locations.
-
         Parameters
         ----------
         locations : 3 x N array

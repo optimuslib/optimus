@@ -1,0 +1,19 @@
+language: python
+dist: bionic
+services:
+  - docker
+
+before_install:
+  - docker-compose up --build -d
+  - |
+    output=$(docker-compose logs --tail=10 notebook | grep -c "Jupyter Notebook is running at");
+    while [ $output -eq 0 ]; do
+      sleep 1;
+      output=$(docker-compose logs --tail=10 notebook | grep -c "Jupyter Notebook is running at");
+    done
+install:
+  - docker-compose exec notebook pip install pytest-instafail
+
+script:
+  - docker-compose exec notebook pytest -v --instafail
+  - travis_wait 120 sleep infinity & docker-compose exec notebook pytest -m "slow" -v --instafail

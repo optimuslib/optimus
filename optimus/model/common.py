@@ -77,9 +77,7 @@ def _check_validity_formulation(formulation, preconditioner):
     """
 
     if formulation not in ["pmchwt"]:
-        raise NotImplementedError(
-            "Unknown boundary integral formulation type."
-        )
+        raise NotImplementedError("Unknown boundary integral formulation type.")
 
     if preconditioner not in ["mass"]:
         raise NotImplementedError("Unknown preconditioner type.")
