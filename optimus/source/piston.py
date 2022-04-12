@@ -5,7 +5,6 @@ from .common import Source as _Source
 from .common import _convert_to_3n_array
 from .common import _convert_to_unit_vector
 
-# from .common import _discretise_piston
 from ..source.transducers import incident_field as _incident_field
 
 
