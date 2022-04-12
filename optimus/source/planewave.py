@@ -39,9 +39,7 @@ class _PlaneWave(_Source):
                 raise TypeError("Wave direction needs to be an array type.")
             direction_vector = _np.array(direction)
             if direction_vector.ndim == 1 and direction_vector.size == 3:
-                self.direction_vector = _convert_to_unit_vector(
-                    direction_vector
-                )
+                self.direction_vector = _convert_to_unit_vector(direction_vector)
             elif direction_vector.ndim == 2 and direction_vector.size == 3:
                 self.direction_vector = _convert_to_unit_vector(
                     direction_vector.flatten()
