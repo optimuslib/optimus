@@ -5,10 +5,30 @@ import pandas as pd
 import os
 
 
-def read_database(file_name="Material_database.xls", sheet="default"):
+def read_excel_file(
+    file_name="Material_database.xls", header_format=[0, 1], index_col=None
+):
+    """
+    Read excel file as a pandas dataframe
+
+    Input
+    ----------
+    file_name: string
+        The excel file to be loaded
+    sheet_name: string
+        The excel sheet to be loaded
+    header_format: list of numbers
+        The header format of data table in the sheet
+
+    Output
+    ----------
+    dataframe: pandas dataframe object
+
+    """
+
     datadir = os.path.dirname(__file__)
     database_file = os.path.join(datadir, file_name)
-    dataframe = pd.read_excel(database_file, sheet_name=sheet, header=[0, 1])
+    dataframe = pd.read_excel(database_file, header=header_format, index_col=index_col)
     return dataframe
 
 
@@ -16,16 +36,19 @@ def get_material_database(*name):
     """
     Load the material database from an xls file.
 
-    Input arguments
+    Input
     ----------
-    None
+    name : string
+        The name of material in the database. If empty, the entire database will be imported.
 
-    Output arguments
+    Output
     ----------
     dataframe: pandas dataframe object
 
     """
-    dataframe = read_database()
+    dataframe_default = read_excel_file()
+    dataframe_user = read_excel_file("Material_database_user-defined.xls")
+    dataframe = pd.concat([dataframe_default, dataframe_user], axis=0, sort=False)
 
     if len(name):
         name = name[0].lower()
@@ -36,45 +59,90 @@ def get_material_database(*name):
             )
         else:
             material = dataframe.loc[data_mask]
-
-        density = material[("Density (kg/m3)", "Average")].get_values()[0]
-        speed_of_sound = material[("Speed of Sound [m/s]", "Average")].get_values()[0]
-        attenuation_coeff_a = material[
-            ("Attenuation Constant", "a [Np/m/MHz]")
-        ].get_values()[0]
-        attenuation_pow_b = material[("Attenuation Constant", "b")].get_values()[0]
-        output = {
-            "name": name,
-            "density": density,
-            "speed_of_sound": speed_of_sound,
-            "attenuation_coeff_a": attenuation_coeff_a,
-            "attenuation_pow_b": attenuation_pow_b,
-        }
+            density = material[("Density (kg/m3)", "Average")].get_values()[0]
+            speed_of_sound = material[("Speed of Sound [m/s]", "Average")].get_values()[
+                0
+            ]
+            attenuation_coeff_a = material[
+                ("Attenuation Constant", "a [Np/m/MHz]")
+            ].get_values()[0]
+            attenuation_pow_b = material[("Attenuation Constant", "b")].get_values()[0]
+            output = {
+                "name": name,
+                "density": density,
+                "speed_of_sound": speed_of_sound,
+                "attenuation_coeff_a": attenuation_coeff_a,
+                "attenuation_pow_b": attenuation_pow_b,
+            }
     else:
-        output = dataframe
+        output = dataframe_default
     return output
 
 
 def write_material_database(properties):
-    dataframe = read_database(
-        file_name="Material_database-user-defined.xls", sheet="user-defined"
-    )
-    dataframe.append(
-        {
-            ("Tissue", "Name"): properties["name"],
-            ("Density (kg/m3)", "Average"): properties["density"],
-            ("Speed of Sound [m/s]", "Average"): properties["speed_of_sound"],
-            ("Attenuation Constant", "a [Np/m/MHz]"): properties["attenuation_coeff_a"],
-            ("Attenuation Constant", "b"): properties["attenuation_pow_b"],
-        },
-        ignore_index=True,
+
+    """
+    Write a pandas dataframe of user-defined properties to an excel file
+
+    Input
+    ----------
+    properties: dict
+        The dictionary of material properties defined by the user
+
+    Output
+    ----------
+    None
+
+    """
+
+    user_database_file = "Material_database_user-defined.xls"
+    dataframe = read_excel_file(
+        file_name=user_database_file, header_format=[0, 1], index_col=0
     )
 
-    datadir = os.path.dirname(__file__)
-    database_file = os.path.join(datadir, "Material_database-user-defined.xls")
-    dataframe.to_excel(
-        database_file, sheet_name="user-defined", startrow=3, header=False
-    )
+    name = properties["name"].lower()
+    data_mask = dataframe[("Tissue", "Name")].str.lower().isin([name])
+    if data_mask.any():
+        raise ValueError(
+            "A material with the name: \033[1m"
+            + name
+            + "\033[0m  already EXISTs in the user-defined database."
+        )
+    else:
+        cols = [
+            ("Tissue", "Name"),
+            ("Density (kg/m3)", "Average"),
+            ("Speed of Sound [m/s]", "Average"),
+            ("Nonlinearity Prameter B/A", "Average"),
+            ("Attenuation Constant", "a [Np/m/MHz]"),
+            ("Attenuation Constant", "b"),
+            ("Heat Capacity (J/kg/°C)", "Average"),
+            ("Thermal Conductivity (W/m/°C)", "Average"),
+            ("Heat Transfer Rate (ml/min/kg)", "Average"),
+            ("Heat Generation Rate (W/kg)", "Average"),
+        ]
+
+        dataframe_tmp = pd.DataFrame(
+            {
+                ("Tissue", "Name"): properties["name"],
+                ("Density (kg/m3)", "Average"): properties["density"],
+                ("Speed of Sound [m/s]", "Average"): properties["speed_of_sound"],
+                ("Attenuation Constant", "a [Np/m/MHz]"): properties[
+                    "attenuation_coeff_a"
+                ],
+                ("Attenuation Constant", "b"): properties["attenuation_pow_b"],
+            },
+            index=[0],
+            columns=cols,
+        )
+
+        datadir = os.path.dirname(__file__)
+        database_file = os.path.join(datadir, user_database_file)
+        writer = pd.ExcelWriter(database_file, engine="xlsxwriter")
+        dataframe.append(dataframe_tmp, ignore_index=True, sort=False).to_excel(
+            writer, sheet_name="user-defined"
+        )
+        writer.save()
 
 
 class Material:
@@ -85,7 +153,7 @@ class Material:
         Input argument
         ----------
         properties : dict
-            A dictionary of the material properties with the keys like parameters below.
+            A dictionary of the material properties with the keys defined below.
 
         Parameters
         ----------
@@ -99,32 +167,71 @@ class Material:
             Attenuation power in power law [dimensionless]
         """
 
-        # name = name.lower()
-        # data_mask = dataframe[("Tissue", "Name")].str.lower().isin([name])
-        # if not data_mask.any():
-        #     raise ValueError(
-        #         "the material: \033[1m" + name + "\033[0m  is not in the database."
-        #     )
-        # else:
-        #     material = dataframe.loc[data_mask]
-
         self.name = properties["name"]
         self.density = properties["density"]
         self.speed_of_sound = properties["speed_of_sound"]
         self.attenuation_coeff_a = properties["attenuation_coeff_a"]
         self.attenuation_pow_b = properties["attenuation_pow_b"]
+        self.properties = properties
 
     def compute_wavenumber(self, frequency):
-        """Calculate the wavenumber for the specified frequency."""
+        """
+        Calculate the wavenumber for the specified frequency.
+
+        Input
+        ----------
+        frequency: float/int
+            The wave frequency
+
+        Output
+        ----------
+        complex wavenumber
+        """
         return (
             2 * _np.pi * frequency / self.speed_of_sound
             + 1j * self.compute_attenuation(frequency)
         )
 
     def compute_wavelength(self, frequency):
-        """Calculate the wave length for the specified frequency."""
+        """
+        Calculate the wave length for the specified frequency.
+
+        Input
+        ----------
+        frequency: float/int
+            The wave frequency
+
+        Output
+        ----------
+        wavelength
+        """
         return self.speed_of_sound / frequency
 
     def compute_attenuation(self, frequency):
-        """Calculate the power law attenuation coefficient (alpha) for the specified frequency."""
+        """
+        Calculate the power law attenuation coefficient (alpha) for the specified frequency.
+
+        Input
+        ----------
+        frequency: float/int
+            The wave frequency
+
+        Output
+        ----------
+        attenuation coefficient
+        """
         return self.attenuation_coeff_a * (frequency * 1e-6) ** self.attenuation_pow_b
+
+    def print(self):
+        cols = [
+            "name",
+            "density",
+            "speed_of_sound",
+            "attenuation_coeff_a",
+            "attenuation_pow_b",
+        ]
+        print(
+            pd.DataFrame(self.properties, columns=cols, index=[0]).to_string(
+                index=False
+            )
+        )
