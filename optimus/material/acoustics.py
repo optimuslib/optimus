@@ -2,6 +2,8 @@
 
 import numpy as _np
 from .common import Material as _Material
+from .common import get_material_database as _get_material_database
+from .common import write_material_database as _write_material_database
 
 
 def load_material(name):
@@ -10,52 +12,57 @@ def load_material(name):
 
     Parameters
     ----------
-    name : string
-        The name of the material
+    name : string or a list of strings
+        The name of the material(s)
     """
 
-    if not isinstance(name, str):
-        raise TypeError("Name of material needs to be specified as a string.")
+    if isinstance(name, str):
+        properties = _get_material_database(name)
+        return _Material(properties)
+    elif isinstance(name, list):
+        if all(isinstance(item, str) for item in name):
+            properties = list(map(_get_material_database, name))
+            return list(map(_Material, properties))
+        else:
+            raise ValueError("All elements of the list must be strings.")
     else:
-        name = name.lower()
-
-    if name == "water":
-        return _Material(name, 1000, 1500)
-    elif name == "fat":
-        return _Material(name, 917, 1412)
-    elif name == "bone":
-        return _Material(name, 1912, 4080)
-    else:
-        raise ValueError("Unknown material type.")
+        raise TypeError(
+            "Name of material must be specified as a string or a list of strings."
+        )
 
 
-def create_material(name, density, wavespeed):
+def create_material(properties):
     """
     Create an acoustic material with the specified parameters.
 
+    Input argument
+    ----------
+    properties : dict
+        A dictionary of the material properties with the keys like parameters below.
+
     Parameters
     ----------
-    name : string
-        The name of the material
     density : float
-        The mass density
-    wavespeed : float
-        The speed of acoustic waves
+        The mass density in [kg/m3]
+    speed_of_sound : float
+        The speed of sound in [m/s]
+    attenuation_coeff_a: float
+        Attenuation coefficient in power law [Np/m/MHz]
+    attenuation_pow_b: float
+        Attenuation power in power law [dimensionless]
     """
 
-    if not isinstance(name, str):
+    keys = list(properties.keys())
+    keys.remove("name")
+
+    if not isinstance(properties["name"], str):
         raise TypeError("Name of material needs to be specified as a string.")
+    elif not all(isinstance(properties[key], (float, int)) for key in keys):
+        raise TypeError("Material properties must be float/integer.")
     else:
-        name = name.lower()
+        properties["name"] = properties["name"].lower()
+        for key in keys:
+            properties[key] = _np.float(properties[key])
+        _write_material_database(properties)
 
-    if not isinstance(density, (float, int)):
-        raise TypeError("The density needs to be specified as a number.")
-    else:
-        density = _np.float(density)
-
-    if not isinstance(wavespeed, (float, int)):
-        raise TypeError("The wavespeed needs to be specified as a number.")
-    else:
-        wavespeed = _np.float(wavespeed)
-
-    return _Material(name, density, wavespeed)
+    return _Material(properties)

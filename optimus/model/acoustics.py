@@ -9,7 +9,7 @@ def create_default_model(source, geometry, exterior, interior):
     """
     Create an acoustics model with default settings.
 
-    Parameters
+    Input arguments
     ----------
     source : optimus.source
         The Optimus representation of a source field.
@@ -22,8 +22,13 @@ def create_default_model(source, geometry, exterior, interior):
     interior : optimus.material
         The Optimus representation of the material for the bounded
          scatterers.
-    """
 
+    Output arguments
+    ----------
+    model: optimus.model
+        The Optimus representation of the the BEM model of acoustic wave propagation in the  interior and exterior domains.
+
+    """
     model = Pmchwt(
         source=source,
         geometry=geometry,
@@ -85,8 +90,8 @@ class Pmchwt(_Model):
     def _create_continuous_operator(self):
 
         freq = self.source.frequency
-        k_ext = self.material_exterior.wavenumber(freq)
-        k_int = self.material_interior.wavenumber(freq)
+        k_ext = self.material_exterior.compute_wavenumber(freq)
+        k_int = self.material_interior.compute_wavenumber(freq)
         rho_ext = self.material_exterior.density
         rho_int = self.material_interior.density
 
@@ -191,9 +196,7 @@ class Pmchwt(_Model):
             self.lhs_discrete_system = (
                 self.discrete_preconditioner * self.discrete_operator
             )
-            self.rhs_discrete_system = (
-                self.discrete_preconditioner * self.rhs_vector
-            )
+            self.rhs_discrete_system = self.discrete_preconditioner * self.rhs_vector
 
         else:
 
