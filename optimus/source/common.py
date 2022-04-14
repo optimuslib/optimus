@@ -22,18 +22,18 @@ class Source:
         self.type = source_type
         self.frequency = frequency
 
-    def pressure_field(self, locations, wavenumber):
+    def pressure_field(self, locations, medium):
         """
         Calculate the pressure field in the specified locations.
-        Needs to be overwritten by specific source type.
+        Needs to be overridden by specific source type.
         """
         raise NotImplementedError
 
-    def normal_pressure_gradient(self, locations, normals, wavenumber):
+    def normal_pressure_gradient(self, locations, normals, medium):
         """
         Calculate the normal gradient of the pressure field in the
          specified locations.
-        Needs to be overwritten by specific source type.
+        Needs to be overridden by specific source type.
         """
         raise NotImplementedError
 
@@ -60,10 +60,12 @@ class Source:
             result[0] = self.pressure_field(x, medium)
 
         def neumann_fun(x, n, domain_index, result):
-            result[0] = self.normal_pressure_gradient(x, medium, n)
+            result[0] = self.normal_pressure_gradient(x, n, medium)
 
         space_dirichlet = spaces[0]
-        trace_dirichlet = _bempp.GridFunction(space_dirichlet, fun=dirichlet_fun)
+        trace_dirichlet = _bempp.GridFunction(
+            space_dirichlet, fun=dirichlet_fun
+        )
 
         space_neumann = spaces[0]
         trace_neumann = _bempp.GridFunction(space_neumann, fun=neumann_fun)

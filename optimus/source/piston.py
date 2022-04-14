@@ -141,8 +141,8 @@ class _Piston(_Source):
         ----------
         locations : 3 x N array
             Locations on which to evaluate the pressure field.
-        medium : class
-            The exterior medium properties.
+        medium : optimus.material.Material
+            The propagating medium.
         """
 
         points = _convert_to_3n_array(locations)
@@ -151,7 +151,7 @@ class _Piston(_Source):
 
         return pressure
 
-    def normal_pressure_gradient(self, locations, medium, normals):
+    def normal_pressure_gradient(self, locations, normals, medium):
         """
         Calculate the normal gradient of the pressure field in the
          specified locations.
@@ -160,11 +160,11 @@ class _Piston(_Source):
         ----------
         locations : 3 x N array
             Locations on which to evaluate the pressure field.
-        medium : class
-            The exterior medium properties.
         normals : 3 x N array
             Unit normal vectors at the locations on which to evaluate the
              pressure field.
+        medium : optimus.material.Material
+            The propagating medium.
         """
 
         points = _convert_to_3n_array(locations)
