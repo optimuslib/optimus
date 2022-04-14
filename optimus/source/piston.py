@@ -1,10 +1,10 @@
 """Piston sources."""
 
 import numpy as _np
-from .common import Source as _Source
-from .common import _convert_to_3n_array
-from .common import _convert_to_unit_vector
 
+from .common import Source as _Source
+from ..utils.linalg import convert_to_3n_array as _convert_to_3n_array
+from ..utils.linalg import convert_to_unit_vector as _convert_to_unit_vector
 from .transducers import incident_field as _incident_field
 
 

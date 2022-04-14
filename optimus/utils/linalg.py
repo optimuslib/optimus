@@ -1,6 +1,54 @@
+"""Utilities for linear algebra."""
+
 import numpy as _np
 
-from .common import _convert_to_unit_vector
+
+def convert_to_3n_array(array):
+    """
+    Convert the input array into a 3xN Numpy array, if possible.
+    """
+
+    if not isinstance(array, (tuple, list, _np.ndarray)):
+        raise TypeError("Variable needs to be a tuple, list, or Numpy array.")
+
+    array_np = _np.array(array)
+
+    if array_np.ndim == 1:
+
+        if array_np.size == 3:
+            return array_np.reshape([3, 1])
+        else:
+            raise ValueError("Location needs to be three dimensional.")
+
+    elif array_np.ndim == 2:
+
+        if array_np.shape[0] == 3:
+            return array_np
+        elif array_np.shape[1] == 3:
+            return array_np.transpose()
+        else:
+            raise ValueError("Locations needs to be three dimensional.")
+
+    else:
+
+        raise ValueError("Locations need to be three dimensional.")
+
+
+def convert_to_unit_vector(vector):
+    """
+    Convert a vector into a unit vector.
+    For 2D input arrays, the columns will be normalized.
+    """
+
+    if not isinstance(vector, _np.ndarray):
+        raise TypeError("Vector needs to be a Numpy array.")
+
+    if vector.ndim == 1:
+        return vector / _np.linalg.norm(vector)
+    elif vector.ndim == 2:
+        return vector / _np.linalg.norm(vector, axis=0)
+    else:
+        raise ValueError("Vector needs to be 1D or 2D.")
 
 
 def theta_phi_point(point):
@@ -63,7 +111,7 @@ def rotate(locations, source_axis):
 
     # Change orientation of source as defined by vector (nx,ny,nz)
     # Compute unit vector collinear to source axis
-    v_source_axis = _convert_to_unit_vector(source_axis)
+    v_source_axis = convert_to_unit_vector(source_axis)
 
     # Obtain counter-clockwise angle in xy plane measured from the
     # positive x-axis

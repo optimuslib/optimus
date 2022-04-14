@@ -1,9 +1,10 @@
 """Plane wave sources."""
 
 import numpy as _np
+
 from .common import Source as _Source
-from .common import _convert_to_3n_array
-from .common import _convert_to_unit_vector
+from ..utils.linalg import convert_to_3n_array as _convert_to_3n_array
+from ..utils.linalg import convert_to_unit_vector as _convert_to_unit_vector
 
 
 def create_planewave(frequency, direction=None, amplitude=1.0):

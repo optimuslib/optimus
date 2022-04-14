@@ -2,8 +2,8 @@
 
 import numpy as _np
 
-from .coordinate_transformations import translate as _translate
-from .coordinate_transformations import rotate as _rotate
+from ..utils.linalg import translate as _translate
+from ..utils.linalg import rotate as _rotate
 
 
 def incident_field(
