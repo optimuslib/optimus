@@ -1,12 +1,9 @@
-"""Transducer incident field solver"""
-from abc import ABCMeta, abstractmethod
-import multiprocessing as mp
-import time as time
-import sys
-import numpy as np
+"""Common functionality for transducer sources."""
 
-# TODO: generalise this to an N piston array
-from .coordinate_transformations import translate, rotate
+import numpy as _np
+
+from .coordinate_transformations import translate as _translate
+from .coordinate_transformations import rotate as _rotate
 
 
 def incident_field(
@@ -22,33 +19,42 @@ def incident_field(
 
     Parameters
     ----------
-    source : Class
+    source : optimus.source.Source
         The type of acoustic source used.
-    medium : Class
-        The acoustic medium.
+    medium : optimus.material.Material
+        The propagating medium.
     locations : 3 by N array
-        The coordinates of the locations at which the incident field is evaluated.
-    normals :  3 by N array
-        The coordinates of the normal vectors for evaluation of the pressure normal gradient on the surface of scatterers.
+        The coordinates of the locations at which the incident field
+        is evaluated.
+    normals : 3 by N array
+        The coordinates of the normal vectors for evaluation of the
+        pressure normal gradient on the surface of scatterers.
     num_cpu : integer
-        The number of cpu cores over which the incident calculation is to be parallelised.
-        TODO: implement this.
-    verbose : verbose
+        The number of cpu cores over which the incident calculation
+        is to be parallelised.
+        Default: None (no custom parallelisation)
+    verbose : boolean
+        Verbosity of output.
+        Default: False
     """
-    solverClass = {
-        "piston": PistonSolver,
-    }
 
-    fieldSolver = solverClass[source.type](
+    if source.type == "piston":
+        solver_class = PistonSolver
+    else:
+        raise NotImplementedError
+
+    field_solver = solver_class(
         source,
         medium,
         locations,
         normals,
-        num_cpu=num_cpu,
-        verbose=verbose,
+        num_cpu,
+        verbose,
     )
-    fieldSolver.main()
-    return fieldSolver
+
+    field_solver.solver()
+
+    return field_solver
 
 
 class FieldSolver:
@@ -56,14 +62,13 @@ class FieldSolver:
         self,
         source,
         medium,
-        locations,
+        field_locations,
         normals,
-        verbose=False,
+        num_cpu,
+        verbose,
         source_locations=None,
-        source_weight=None,
-        num_cpu=None,
+        source_weights=None,
     ):
-
         """
         Calculates the incident field for an OptimUS source.
 
@@ -73,129 +78,133 @@ class FieldSolver:
             The type of acoustic source used.
         medium : Class
             The acoustic medium.
-        locations : 3 by N array
-            The coordinates of the locations at which the incident field is evaluated.
+        field_locations : 3 by N array
+            The coordinates of the locations at which the incident field
+            is evaluated.
         normals :  3 by N array
-            The coordinates of the normal vectors for evaluation of the pressure normal gradient on the surface of scatterers.
+            The coordinates of the normal vectors for evaluation of the
+            pressure normal gradient on the surface of scatterers.
         num_cpu : integer
-            The number of cpu cores over which the incident calculation is to be parallelised.
-            TODO: implement this.
-        verbose : verbose
+            The number of cpu cores over which the incident calculation
+            is to be parallelised.
+            Default: None (no parallelisation)
+        verbose : boolean
+            Verbosity of output.
+            Default: False
+        source_locations : 3 x N array
+            Locations of the point sources on the transducer.
+        source_weights : float
+            Weights of the point sources on the transducer.
         """
 
-        self.num_cpu = mp.cpu_count()  # num_cpu or psutil.cpu_count(logical=False)
-        self.max_RAM = 2e7  # min(2E7, psutil.virtual_memory().available)
         self.source = source
-        # TODO locations needs to be at least 2D - automate change from (3,) or (1,3) to (3,1)
-        self.locations = locations
+        self.field_locations = field_locations
         self.normals = normals
-        # FIXME normals needs to be an array of shape (3,...) - this should fail if not with these dimensions
         self.density = medium.density
         self.wavenumber = medium.wavenumber(source.frequency)
         self.frequency = source.frequency
+        self.num_cpu = num_cpu
         self.verbose = verbose
+
         self.source_locations = source_locations
-        self.source_weight = source_weight
+        self.source_weights = source_weights
 
-    @abstractmethod
+        self.pressure = None
+        self.normal_pressure_gradient = None
+
     def point_source_generator(self):
-        return (self.source_locations, self.source_weight)
+        return self.source_locations, self.source_weights
 
-    @abstractmethod
     def solver(self):
-        pass
-
-    def __sizeof__(self):
-        return object.__sizeof__(self) + sum(
-            sys.getsizeof(v) for v in self.__dict__.values()
-        )
-
-    def main(self):
-
-        self.solver()
+        self.pressure = None
+        self.normal_pressure_gradient = None
 
 
 class SourceSolver(FieldSolver):
     def calculate_field(
-        self, source_locations, field_locations, source_weight, normals
+        self, source_locations, source_weights, field_locations, normals
     ):
         """
-        Returns weighted sum of pressures and normal pressure derivatives resulting from
-        source_locations locations at field_locations locations.
+        Returns weighted sum of pressures and normal pressure derivatives
+        resulting from source_locations locations at field_locations locations.
+
         Parameters
         ----------
-        source_locations : 3 x N array
-            The coordinates of the locations of the point sources used to discretise the acoustic source.
+        source_locations : 3 by M array
+            The coordinates of the locations of the point sources used to
+            discretise the acoustic source.
+        source_weights : 1D array of size M
+            The weighting assigned to each point source.
         field_locations : 3 by N array
-            The coordinates of the locations at which the incident field is evaluated.
-        source_weight : 1D array
-            The weigthing assigned to each point source.
-        normals :  3 by N array
-            The coordinates of the normal vectors for evaluation of the pressure normal gradient on the surface of scatterers.
+            The coordinates of the locations at which the incident field
+            is evaluated.
+        normals : 3 by N array
+            The coordinates of the normal vectors for evaluation of the
+            pressure normal gradient on the surface of scatterers.
         """
 
-        def calculate_pressure(phi):
-            return 1j * phi * 2 * np.pi * self.frequency * self.density
+        def calculate_pressure(phi_val):
+            return 1j * phi_val * 2 * _np.pi * self.frequency * self.density
 
-        # Compute distances between all source and receiver locations
         source_field_distances_diff = (
-            field_locations[:, np.newaxis, :] - source_locations[:, :, np.newaxis]
+            field_locations[:, _np.newaxis, :]
+            - source_locations[:, :, _np.newaxis]
         )
-        R = np.sqrt(((source_field_distances_diff) ** 2).sum(axis=0))
+        dist = _np.linalg.norm(source_field_distances_diff, axis=0)
 
-        kR = self.wavenumber * R
-
-        if not isinstance(source_weight, np.ndarray):
-            source_weight = np.array(
-                [source_weight] * source_locations.shape[1]
-            ).reshape(1, source_locations.shape[1])
+        kr = self.wavenumber * dist
 
         # Compute Green's function
         if source_locations.shape[1] > 1:
-            phi = np.sum(
-                np.divide(source_weight[:, np.newaxis] * np.exp(1j * kR), R),
+            phi = _np.sum(
+                _np.divide(
+                    source_weights[:, _np.newaxis] * _np.exp(1j * kr), dist
+                ),
                 axis=0,
-                dtype=np.complex,
-            ) / (2 * np.pi)
+                dtype=_np.complex,
+            ) / (2 * _np.pi)
         else:
-            phi = np.sum(
-                np.divide(source_weight * np.exp(1j * kR), R), axis=0, dtype=np.complex
-            ) / (2 * np.pi)
+            phi = _np.sum(
+                _np.divide(source_weights * _np.exp(1j * kr), dist),
+                axis=0,
+                dtype=_np.complex,
+            ) / (2 * _np.pi)
 
-        # Compute acoustics pressure
         pressure = calculate_pressure(phi)
 
         # Compute grad of Green's function
         # Compute grad of velocity potential quantity
         if source_locations.shape[1] > 1:
-            H = (
+            h = (
                 1j
-                * np.divide(
-                    source_weight[:, np.newaxis] * np.exp(1j * kR) * (kR + 1j), R**3
+                * _np.divide(
+                    source_weights[:, _np.newaxis]
+                    * _np.exp(1j * kr)
+                    * (kr + 1j),
+                    dist**3,
                 )
-                / 2
-                / np.pi
+                / (2 * _np.pi)
             )
-            grad_phi = (source_field_distances_diff * H[np.newaxis, :, :]).sum(
-                axis=1, dtype=np.complex
+            grad_phi = _np.sum(
+                source_field_distances_diff * h[_np.newaxis, :, :],
+                axis=1,
+                dtype=_np.complex,
             )
         else:
-            H = (
+            h = (
                 1j
-                * np.divide(source_weight * np.exp(1j * kR) * (kR + 1j), R**3)
-                / 2
-                / np.pi
+                * _np.divide(
+                    source_weights * _np.exp(1j * kr) * (kr + 1j), dist**3
+                )
+                / (2 * _np.pi)
             )
-            grad_phi = (field_locations - source_locations) * np.tile(H, (3, 1))
+            diff_locations = field_locations - source_locations
+            grad_phi = diff_locations * _np.tile(h, (3, 1))
 
-        # Compute grad of acoustic pressure
         grad_pressure = calculate_pressure(grad_phi)
-        self.grad_pressure = grad_pressure
 
         if normals is not None:
-            # Obtain normal derivative of acoustic pressure
             normal_pressure_gradient = (grad_pressure * normals).sum(axis=0)
-
         else:
             normal_pressure_gradient = 0
 
@@ -203,163 +212,170 @@ class SourceSolver(FieldSolver):
 
     def solver(self):
         """
-        Returns the pressure and normal pressure gradient of the incident field of the source.
-        Parameters
-        ----------
+        Calculates the pressure and normal pressure gradient of the incident
+        field of the source.
         """
-        # Generate point sources associated with source_type
-        (
-            source_locations_init,
-            self.source_weight,
-        ) = self.point_source_generator()  # FIXME source_locations is an attribute...
 
-        # Rotate source locations according to source axis
-        source_locations_rotated = rotate(
-            source_locations_init, self.source.source_axis
-        )
-        # translate source locations according to source axis
-        self.source_locations = translate(
-            source_locations_rotated, self.source.location
-        )
+        if None in [self.source_locations, self.source_weights]:
+
+            source_locs, self.source_weights = self.point_source_generator()
+
+            source_locations_rotated = _rotate(
+                source_locs, self.source.source_axis
+            )
+
+            self.source_locations = _translate(
+                source_locations_rotated, self.source.location
+            )
+
         self.pressure, self.normal_pressure_gradient = self.calculate_field(
-            self.source_locations, self.locations, self.source_weight, self.normals
+            self.source_locations,
+            self.source_weights,
+            self.field_locations,
+            self.normals,
         )
 
 
 class ArrayPistonSolver(SourceSolver):
-    @abstractmethod
-    def add_radius_of_curvature(self, location):
-        return location
+    def add_radius_of_curvature(self, location, radius=None):
+        """
+        Apply the radius of curvature to the points.
+        """
+        if radius is None:
+            return location
+        else:
+            raise NotImplementedError
 
-    @abstractmethod
     def get_source_no_range(self):
-        # indices of the Number of HIFU array elements
+        """
+        Return the range of indices of piston elements in multi-element
+        transducer sources.
+        """
         if self.source.type == "piston":
             source_no_range = range(1)
         else:
             source_no_range = range(self.source.centroid_location.shape[1])
         return source_no_range
-        # TODO: implement array type source
 
-    @abstractmethod
     def get_transformation_matrix(self, i):
+        """
+        Get the transformation matrix for the piston element.
+
+        The transducer object needs to following attributes:
+         - centroid_location: 3 x N array
+           The locations of the centroids of the N piston elements.
+         - radius_of_curvature: float
+           The radius of curvature of the bowl transducer.
+        """
         x, y = self.source.centroid_location[:2, i]
-        beta = np.arcsin(-x / self.source.radius_of_curvature)
-        alpha = np.arcsin(y / (self.source.radius_of_curvature * np.cos(beta)))
-        m = alpha.size
-        Mx = np.array(
+        beta = _np.arcsin(-x / self.source.radius_of_curvature)
+        alpha = _np.arcsin(
+            y / (self.source.radius_of_curvature * _np.cos(beta))
+        )
+
+        mx = _np.array(
             [
                 [1, 0, 0],
-                [0, np.cos(alpha), -np.sin(alpha)],
-                [0, np.sin(alpha), np.cos(alpha)],
+                [0, _np.cos(alpha), -_np.sin(alpha)],
+                [0, _np.sin(alpha), _np.cos(alpha)],
             ]
         )
 
-        My = np.array(
+        my = _np.array(
             [
-                [np.cos(beta), 0, np.sin(beta)],
+                [_np.cos(beta), 0, _np.sin(beta)],
                 [0, 1, 0],
-                [-np.sin(beta), 0, np.cos(beta)],
+                [-_np.sin(beta), 0, _np.cos(beta)],
             ]
         )
 
-        return Mx @ My
-
-    @abstractmethod
-    def get_z0_source(self, number_of_point_sources):
-        return np.zeros(number_of_point_sources**2)
+        return mx @ my
 
     def point_source_generator(self):
         """
-        Returns the coordinates of the point sources used to discretise a piston type source
-        based on the piston radius and the number of elements per wavelength, and the weighting
-        for each point source
-        Parameters
+        Returns the coordinates of the point sources used to discretise a
+        transducer source that consists on piston elements.
+
+        Returns
         ----------
+        locations : 3 x N array
+            The locations of all point sources.
+        weights : 1 x N array
+            The weights of all point sources.
         """
 
-        # In case of 0 grid points per wavelength, default to centroid of piston(s)
-        source_locations_inside_element = np.array(self.source.location).reshape((3, 1))
+        if self.source.number_of_point_sources_per_wavelength == 0:
 
-        if self.source.number_of_point_sources_per_wavelength != 0:
+            source_locations_inside_element = _np.zeros((3, 1))
 
-            # FIXME this is out by 2 * pi
-            number_of_point_sources = 1 + int(
-                (
-                    self.wavenumber.real
-                    * self.source.radius
-                    * self.source.number_of_point_sources_per_wavelength
+        else:
+
+            wavelength = 2 * _np.pi / self.wavenumber.real
+            distance_between_points = (
+                wavelength / self.source.number_of_point_sources_per_wavelength
+            )
+            n_points_per_diameter = (
+                2 * self.source.radius / distance_between_points
+            )
+            n_point_sources = int(_np.ceil(n_points_per_diameter))
+
+            if self.verbose:
+                print(
+                    "Number of point sources across element diameter:",
+                    n_point_sources,
                 )
-                / np.pi
-            )
-            print(
-                "Number of point sources across element diameter:",
-                number_of_point_sources,
-            )
 
-            x0 = np.linspace(
+            coords = _np.linspace(
                 -self.source.radius,
                 self.source.radius,
-                number_of_point_sources,
+                n_point_sources,
             )
 
-            source_vector = np.array(
-                [
-                    np.repeat(x0, number_of_point_sources),  # x0_source
-                    np.tile(x0, number_of_point_sources),  # y0_source
-                    self.get_z0_source(number_of_point_sources),  # z0_source
-                ]
+            source_vector = _np.vstack(
+                (
+                    _np.repeat(coords, n_point_sources),
+                    _np.tile(coords, n_point_sources),
+                    _np.zeros(n_point_sources**2),
+                )
             )
-            square_grid = np.sqrt((source_vector[:2, :] ** 2).sum(axis=0))
-            inside = square_grid <= self.source.radius
-            if any(inside):
-                source_locations_inside_element = source_vector[:, inside]
+            distance = _np.linalg.norm(source_vector[:2, :], axis=0)
+            inside = distance <= self.source.radius
+            source_locations_inside_element = source_vector[:, inside]
 
-        number_of_sources_per_element = source_locations_inside_element.shape[1]
+        n_sources_per_element = source_locations_inside_element.shape[1]
 
         if self.verbose:
-            print("\n", 70 * "*")
             print(
-                "\n Number of point sources per element: ",
-                number_of_sources_per_element,
-            )
-            print("\n", 70 * "*")
-
-        source_no_range = self.get_source_no_range()
-
-        velocity_weighting, source_locations = tuple(), tuple()
-
-        for source_no in source_no_range:
-
-            # Compute rotation grad_pressurerices
-            MxMy = self.get_transformation_matrix(source_no)
-
-            # Carry out coordinate transfornation
-            locations_transformed = MxMy @ source_locations_inside_element
-
-            # Generate array of point source locations for each element
-            source_locations += (locations_transformed,)
-
-            # Generate velocity weighting for each point source
-            velocity_weighting += (
-                self.source.velocity[source_no]
-                * np.ones(number_of_sources_per_element),
+                "Number of point sources per element:",
+                n_sources_per_element,
             )
 
-        # Stack data in tuples to arrays
-        source_locations_array = np.hstack(source_locations)
-        velocity_weighting_array = np.hstack(velocity_weighting)
+        source_locations = []
+        for source_no in self.get_source_no_range():
+            transformation = self.get_transformation_matrix(source_no)
+            locations_transformed = (
+                transformation @ source_locations_inside_element
+            )
+            source_locations.append(locations_transformed)
+        source_locations_array = _np.hstack(source_locations)
 
-        source_locations_array = self.add_radius_of_curvature(source_locations_array)
+        source_locations = self.add_radius_of_curvature(source_locations_array)
 
-        # surface area weighting associated with each point source
-        delta_S = np.pi * self.source.radius**2 / number_of_sources_per_element
-        # Combined source weighting involving velocity and surface area
-        source_weight = delta_S * velocity_weighting_array
+        velocity_weighting = _np.repeat(
+            self.source.velocity, n_sources_per_element
+        )
+        surface_area_weighting = (
+            _np.pi * self.source.radius**2 / n_sources_per_element
+        )
+        source_weights = surface_area_weighting * velocity_weighting
 
-        return (source_locations_array, source_weight)
+        return source_locations, source_weights
 
 
 class PistonSolver(ArrayPistonSolver):
     def get_transformation_matrix(self, i):
-        return np.identity(3)
+        """
+        Get the transformation matrix for the piston element.
+        For a single piston source, this is the identity.
+        """
+        return _np.identity(3)
