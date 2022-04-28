@@ -2,7 +2,7 @@
 
 import numpy as _np
 from .common import Material as _Material
-from .common import get_material_database as _get_material_database
+from .common import get_material_properties as _get_material_properties
 from .common import write_material_database as _write_material_database
 
 
@@ -17,11 +17,11 @@ def load_material(name):
     """
 
     if isinstance(name, str):
-        properties = _get_material_database(name)
+        properties = _get_material_properties(name)
         return _Material(properties)
     elif isinstance(name, list):
         if all(isinstance(item, str) for item in name):
-            properties = list(map(_get_material_database, name))
+            properties = list(map(_get_material_properties, name))
             return list(map(_Material, properties))
         else:
             raise ValueError("All elements of the list must be strings.")
@@ -31,7 +31,7 @@ def load_material(name):
         )
 
 
-def create_material(properties):
+def create_material(properties, save_to_file=False):
     """
     Create an acoustic material with the specified parameters.
 
@@ -63,6 +63,7 @@ def create_material(properties):
         properties["name"] = properties["name"].lower()
         for key in keys:
             properties[key] = _np.float(properties[key])
-        _write_material_database(properties)
+        if save_to_file:
+            _write_material_database(properties)
 
     return _Material(properties)

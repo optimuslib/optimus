@@ -5,16 +5,16 @@ import pandas as pd
 import os
 
 
-def read_excel_file(
-    file_name="Material_database.xls", header_format=[0, 1], index_col=None
-):
+def get_excel_databse(database="default", header_format=[0, 1], index_col=None):
     """
     Read excel file as a pandas dataframe
 
     Input
     ----------
-    file_name: string
-        The excel file to be loaded
+    database: string
+        The name of the database to be loaded:
+        'default': to load default database,
+        'user-defined': to load user-defined database.
     sheet_name: string
         The excel sheet to be loaded
     header_format: list of numbers
@@ -25,6 +25,12 @@ def read_excel_file(
     dataframe: pandas dataframe object
 
     """
+    if database.lower() == "default":
+        file_name = "Material_database.xls"
+    elif database.lower() == "user-defined":
+        file_name = "Material_database_user-defined.xls"
+    else:
+        raise ValueError("undefined databse.")
 
     datadir = os.path.dirname(__file__)
     database_file = os.path.join(datadir, file_name)
@@ -32,7 +38,7 @@ def read_excel_file(
     return dataframe
 
 
-def get_material_database(*name):
+def get_material_properties(*name):
     """
     Load the material database from an xls file.
 
@@ -46,8 +52,8 @@ def get_material_database(*name):
     dataframe: pandas dataframe object
 
     """
-    dataframe_default = read_excel_file()
-    dataframe_user = read_excel_file("Material_database_user-defined.xls")
+    dataframe_default = get_excel_databse(database="default")
+    dataframe_user = get_excel_databse(database="user-defined")
     dataframe = pd.concat([dataframe_default, dataframe_user], axis=0, sort=False)
 
     if len(name):
@@ -74,8 +80,6 @@ def get_material_database(*name):
                 "attenuation_coeff_a": attenuation_coeff_a,
                 "attenuation_pow_b": attenuation_pow_b,
             }
-    else:
-        output = dataframe_default
     return output
 
 
@@ -96,17 +100,19 @@ def write_material_database(properties):
     """
 
     user_database_file = "Material_database_user-defined.xls"
-    dataframe = read_excel_file(
+    dataframe_default = get_excel_databse()
+    dataframe_user = get_excel_databse(
         file_name=user_database_file, header_format=[0, 1], index_col=0
     )
+    dataframe_both = pd.concat([dataframe_default, dataframe_user], axis=0, sort=False)
 
     name = properties["name"].lower()
-    data_mask = dataframe[("Tissue", "Name")].str.lower().isin([name])
+    data_mask = dataframe_both[("Tissue", "Name")].str.lower().isin([name])
     if data_mask.any():
         raise ValueError(
             "A material with the name: \033[1m"
             + name
-            + "\033[0m  already EXISTs in the user-defined database."
+            + "\033[0m  already EXISTs in the database (either default or user-defined)."
         )
     else:
         cols = [
@@ -139,7 +145,7 @@ def write_material_database(properties):
         datadir = os.path.dirname(__file__)
         database_file = os.path.join(datadir, user_database_file)
         writer = pd.ExcelWriter(database_file, engine="xlsxwriter")
-        dataframe.append(dataframe_tmp, ignore_index=True, sort=False).to_excel(
+        dataframe_user.append(dataframe_tmp, ignore_index=True, sort=False).to_excel(
             writer, sheet_name="user-defined"
         )
         writer.save()
