@@ -56,7 +56,7 @@ class Source:
             The Dirichlet and Neumann traces.
         """
 
-        wavenumber = medium.wavenumber(self.frequency)
+        wavenumber = medium.compute_wavenumber(self.frequency)
 
         def dirichlet_fun(x, n, domain_index, result):
             result[0] = self.pressure_field(x, wavenumber)
