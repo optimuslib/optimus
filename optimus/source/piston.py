@@ -5,7 +5,7 @@ import numpy as _np
 from .common import Source as _Source
 from ..utils.linalg import convert_to_3n_array as _convert_to_3n_array
 from ..utils.linalg import convert_to_unit_vector as _convert_to_unit_vector
-from .transducers import incident_field as _transducer_field
+from .transducers import transducer_field as _transducer_field
 
 
 def create_piston(
@@ -15,7 +15,6 @@ def create_piston(
     number_of_point_sources_per_wavelength=6,
     location=(0, 0, 0),
     velocity=1.0,
-    amplitude=1.0,
 ):
     """
     Create a plane circular piston source.
@@ -30,7 +29,8 @@ def create_piston(
         The axis of the piston.
         Default: positive x direction
     number_of_point_sources_per_wavelength : integer
-        The number of point sources per wavelength used to discretise the piston.
+        The number of point sources per wavelength used to discretise
+        the piston source.
         Default: 6
     location : array like
         The location of the centroid of the piston.
@@ -38,9 +38,6 @@ def create_piston(
     velocity : complex
         Normal velocity of the piston.
         Default : 1 m/s
-    amplitude : float
-        The amplitude of the plane wave.
-        Default: 1 Pa
     """
     return _Piston(
         frequency,
@@ -49,7 +46,6 @@ def create_piston(
         number_of_point_sources_per_wavelength,
         location,
         velocity,
-        amplitude,
     )
 
 
@@ -62,7 +58,6 @@ class _Piston(_Source):
         number_of_point_sources_per_wavelength,
         location,
         velocity,
-        amplitude,
     ):
 
         super().__init__("piston", frequency)
@@ -109,8 +104,6 @@ class _Piston(_Source):
 
         self.velocity = _np.atleast_1d(complex(velocity))
 
-        self.amplitude = float(amplitude)
-
     def pressure_field(self, medium, locations):
         """
         Calculate the pressure field in the specified locations.
@@ -130,7 +123,7 @@ class _Piston(_Source):
 
         points = _convert_to_3n_array(locations)
         incident_field = _transducer_field(self, medium, points)
-        pressure = self.amplitude * incident_field.pressure
+        pressure = incident_field.pressure
 
         return pressure
 
@@ -160,7 +153,7 @@ class _Piston(_Source):
         unit_normals = _convert_to_unit_vector(normals)
 
         incident_field = _transducer_field(self, medium, points, unit_normals)
-        gradient = self.amplitude * incident_field.normal_pressure_gradient
+        gradient = incident_field.normal_pressure_gradient
 
         return gradient
 
@@ -192,8 +185,8 @@ class _Piston(_Source):
         unit_normals = _convert_to_unit_vector(normals)
 
         incident_field = _transducer_field(self, medium, points, unit_normals)
-        pressure = self.amplitude * incident_field.pressure
-        gradient = self.amplitude * incident_field.normal_pressure_gradient
+        pressure = incident_field.pressure
+        gradient = incident_field.normal_pressure_gradient
 
         return pressure, gradient
 

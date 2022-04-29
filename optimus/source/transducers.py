@@ -6,16 +6,15 @@ from ..utils.linalg import translate as _translate
 from ..utils.linalg import rotate as _rotate
 
 
-def incident_field(
+def transducer_field(
     source,
     medium,
-    locations,
+    field_locations,
     normals=None,
-    num_cpu=None,
     verbose=False,
 ):
     """
-    Calculates the incident field for an OptimUS source.
+    Calculate the field emitted by a transducer source.
 
     Parameters
     ----------
@@ -23,285 +22,112 @@ def incident_field(
         The type of acoustic source used.
     medium : optimus.material.Material
         The propagating medium.
-    locations : 3 by N array
+    field_locations : np.ndarray of size 3 x N
         The coordinates of the locations at which the incident field
         is evaluated.
-    normals : 3 by N array
-        The coordinates of the normal vectors for evaluation of the
+    normals : np.ndarray of size 3 x N
+        The coordinates of the unit normal vectors for evaluation of the
         pressure normal gradient on the surface of scatterers.
-    num_cpu : integer
-        The number of cpu cores over which the incident calculation
-        is to be parallelised.
-        Default: None (no custom parallelisation)
     verbose : boolean
         Verbosity of output.
         Default: False
+
+    Returns
+    ----------
+    An object with the attributes 'pressure' and 'normal_pressure_gradient'.
     """
 
     if source.type == "piston":
-        solver_class = PistonSolver
+        transducer = _Transducer(
+            source,
+            medium,
+            field_locations,
+            normals,
+            verbose,
+        )
     else:
         raise NotImplementedError
 
-    field_solver = solver_class(
-        source,
-        medium,
-        locations,
-        normals,
-        num_cpu,
-        verbose,
-    )
+    transducer.generate_source_points()
 
-    field_solver.solver()
+    transducer.calc_pressure_field()
 
-    return field_solver
+    return transducer
 
 
-class FieldSolver:
-    def __init__(
-        self,
-        source,
-        medium,
-        field_locations,
-        normals,
-        num_cpu,
-        verbose,
-        source_locations=None,
-        source_weights=None,
-    ):
+class _Transducer:
+    def __init__(self, source, medium, field_locations, normals, verbose):
         """
-        Calculates the incident field for an OptimUS source.
-
-        Parameters
-        ----------
-        source : Class
-            The type of acoustic source used.
-        medium : Class
-            The acoustic medium.
-        field_locations : 3 by N array
-            The coordinates of the locations at which the incident field
-            is evaluated.
-        normals :  3 by N array
-            The coordinates of the normal vectors for evaluation of the
-            pressure normal gradient on the surface of scatterers.
-        num_cpu : integer
-            The number of cpu cores over which the incident calculation
-            is to be parallelised.
-            Default: None (no parallelisation)
-        verbose : boolean
-            Verbosity of output.
-            Default: False
-        source_locations : 3 x N array
-            Locations of the point sources on the transducer.
-        source_weights : float
-            Weights of the point sources on the transducer.
+        Functionality to create different types of transducer sources
+        and calculate the pressure field emitted from them.
         """
-
         self.source = source
         self.field_locations = field_locations
         self.normals = normals
         self.density = medium.density
         self.wavenumber = medium.wavenumber(source.frequency)
         self.frequency = source.frequency
-        self.num_cpu = num_cpu
         self.verbose = verbose
 
-        self.source_locations = source_locations
-        self.source_weights = source_weights
+        self.source_locations = None
+        self.source_weights = None
 
         self.pressure = None
         self.normal_pressure_gradient = None
 
-    def point_source_generator(self):
-        return self.source_locations, self.source_weights
-
-    def solver(self):
-        self.pressure = None
-        self.normal_pressure_gradient = None
-
-
-class SourceSolver(FieldSolver):
-    def calculate_field(
-        self, source_locations, source_weights, field_locations, normals
-    ):
+    def generate_source_points(self):
         """
-        Returns weighted sum of pressures and normal pressure derivatives
-        resulting from source_locations locations at field_locations locations.
+        Generate the source points of the transducer. The field emitted from
+        any transducer is modelled by a collection of point sources, each
+        with weighting for its amplitude.
 
-        Parameters
-        ----------
-        source_locations : 3 by M array
-            The coordinates of the locations of the point sources used to
-            discretise the acoustic source.
-        source_weights : 1D array of size M
-            The weighting assigned to each point source.
-        field_locations : 3 by N array
-            The coordinates of the locations at which the incident field
-            is evaluated.
-        normals : 3 by N array
-            The coordinates of the normal vectors for evaluation of the
-            pressure normal gradient on the surface of scatterers.
+        Sets the following class attributes.
+            source_locations : np.ndarray of size 3 X N_sourcepoints
+                The 3D location of each point source.
+            source_weights : np.ndarray of size N_sourcepoints
+                The weighting of each point source.
         """
 
-        def calculate_pressure(phi_val):
-            return 1j * phi_val * 2 * _np.pi * self.frequency * self.density
-
-        source_field_distances_diff = (
-            field_locations[:, _np.newaxis, :]
-            - source_locations[:, :, _np.newaxis]
-        )
-        dist = _np.linalg.norm(source_field_distances_diff, axis=0)
-
-        kr = self.wavenumber * dist
-
-        # Compute Green's function
-        if source_locations.shape[1] > 1:
-            phi = _np.sum(
-                _np.divide(
-                    source_weights[:, _np.newaxis] * _np.exp(1j * kr), dist
-                ),
-                axis=0,
-                dtype=_np.complex,
-            ) / (2 * _np.pi)
-        else:
-            phi = _np.sum(
-                _np.divide(source_weights * _np.exp(1j * kr), dist),
-                axis=0,
-                dtype=_np.complex,
-            ) / (2 * _np.pi)
-
-        pressure = calculate_pressure(phi)
-
-        # Compute grad of Green's function
-        # Compute grad of velocity potential quantity
-        if source_locations.shape[1] > 1:
-            h = (
-                1j
-                * _np.divide(
-                    source_weights[:, _np.newaxis]
-                    * _np.exp(1j * kr)
-                    * (kr + 1j),
-                    dist**3,
-                )
-                / (2 * _np.pi)
-            )
-            grad_phi = _np.sum(
-                source_field_distances_diff * h[_np.newaxis, :, :],
-                axis=1,
-                dtype=_np.complex,
-            )
-        else:
-            h = (
-                1j
-                * _np.divide(
-                    source_weights * _np.exp(1j * kr) * (kr + 1j), dist**3
-                )
-                / (2 * _np.pi)
-            )
-            diff_locations = field_locations - source_locations
-            grad_phi = diff_locations * _np.tile(h, (3, 1))
-
-        grad_pressure = calculate_pressure(grad_phi)
-
-        if normals is not None:
-            normal_pressure_gradient = (grad_pressure * normals).sum(axis=0)
-        else:
-            normal_pressure_gradient = 0
-
-        return pressure, normal_pressure_gradient
-
-    def solver(self):
-        """
-        Calculates the pressure and normal pressure gradient of the incident
-        field of the source.
-        """
-
-        if None in [self.source_locations, self.source_weights]:
-
-            source_locs, self.source_weights = self.point_source_generator()
-
-            source_locations_rotated = _rotate(
-                source_locs, self.source.source_axis
-            )
-
-            self.source_locations = _translate(
-                source_locations_rotated, self.source.location
-            )
-
-        self.pressure, self.normal_pressure_gradient = self.calculate_field(
-            self.source_locations,
-            self.source_weights,
-            self.field_locations,
-            self.normals,
+        source_locations_inside_element = (
+            self.define_source_points_in_unit_transducer_element()
         )
 
+        n_sources_per_element = source_locations_inside_element.shape[1]
 
-class ArrayPistonSolver(SourceSolver):
-    def add_radius_of_curvature(self, location, radius=None):
-        """
-        Apply the radius of curvature to the points.
-        """
-        if radius is None:
-            return location
-        else:
-            raise NotImplementedError
+        if self.verbose:
+            print(
+                "Number of point sources per element:",
+                n_sources_per_element,
+            )
 
-    def get_source_no_range(self):
-        """
-        Return the range of indices of piston elements in multi-element
-        transducer sources.
-        """
-        if self.source.type == "piston":
-            source_no_range = range(1)
-        else:
-            source_no_range = range(self.source.centroid_location.shape[1])
-        return source_no_range
-
-    def get_transformation_matrix(self, i):
-        """
-        Get the transformation matrix for the piston element.
-
-        The transducer object needs to following attributes:
-         - centroid_location: 3 x N array
-           The locations of the centroids of the N piston elements.
-         - radius_of_curvature: float
-           The radius of curvature of the bowl transducer.
-        """
-        x, y = self.source.centroid_location[:2, i]
-        beta = _np.arcsin(-x / self.source.radius_of_curvature)
-        alpha = _np.arcsin(
-            y / (self.source.radius_of_curvature * _np.cos(beta))
+        self.source_locations = self.transform_source_points(
+            source_locations_inside_element
         )
 
-        mx = _np.array(
-            [
-                [1, 0, 0],
-                [0, _np.cos(alpha), -_np.sin(alpha)],
-                [0, _np.sin(alpha), _np.cos(alpha)],
-            ]
+        n_sources = self.source_locations.shape[1]
+
+        velocity_weighting = _np.full(n_sources, self.source.velocity)
+
+        surface_area_weighting = (
+            _np.pi * self.source.radius**2 / n_sources_per_element
         )
 
-        my = _np.array(
-            [
-                [_np.cos(beta), 0, _np.sin(beta)],
-                [0, 1, 0],
-                [-_np.sin(beta), 0, _np.cos(beta)],
-            ]
-        )
+        self.source_weights = surface_area_weighting * velocity_weighting
 
-        return mx @ my
-
-    def point_source_generator(self):
+    def define_source_points_in_unit_transducer_element(self):
         """
-        Returns the coordinates of the point sources used to discretise a
-        transducer source that consists on piston elements.
+        Define the source points for a unit transducer element,
+        that is, the source points on a rectangular grid, located
+        in the plane z=0, centered at the origin, and inside a
+        disk of the specified radius. The resolution of the points
+        is determined by the specified number of point sources per
+        wavelength. If zero points per wavelength is specified,
+        return the center of the disk as the only source point.
 
         Returns
-        ----------
-        locations : 3 x N array
-            The locations of all point sources.
-        weights : 1 x N array
-            The weights of all point sources.
+        -------
+        source_locations_inside_element : np.ndarray of size 3 x N_points
+            The locations of the point source inside the element.
         """
 
         if self.source.number_of_point_sources_per_wavelength == 0:
@@ -342,40 +168,258 @@ class ArrayPistonSolver(SourceSolver):
             inside = distance <= self.source.radius
             source_locations_inside_element = source_vector[:, inside]
 
-        n_sources_per_element = source_locations_inside_element.shape[1]
+        return source_locations_inside_element
 
-        if self.verbose:
-            print(
-                "Number of point sources per element:",
-                n_sources_per_element,
+    def transform_source_points(
+        self, source_locations_on_unit_disk, element_range=None
+    ):
+        """
+        Transform the source points from the unit disk to the actual
+        location of the transducer source. For multi-element arrays,
+        the transformation is applied to the specified range of elements.
+
+        Parameters
+        ----------
+        source_locations_on_unit_disk : np.ndarray of size 3 x N_sourcepoints
+            The locations of the source points on the unit disk, located
+            in the plane z=0, centered at the origin and with the
+            specified radius.
+        element_range : list
+            The range of transducer elements in the multi-element array.
+
+        Returns
+        -------
+        source_locations_transformed : np.ndarray of size 3 x N_sourcepoints
+            The locations of the source points on the transducer.
+        """
+
+        source_locations_directed = _rotate(
+            source_locations_on_unit_disk, self.source.source_axis
+        )
+
+        source_locations_translated = _translate(
+            source_locations_directed, self.source.location
+        )
+
+        source_locations_curved = self.apply_curvature(
+            source_locations_translated
+        )
+
+        if element_range is None:
+            transformation = self.get_transformation_matrix()
+            source_locations_transformed = (
+                transformation @ source_locations_curved
+            )
+        else:
+            raise NotImplementedError
+
+        return source_locations_transformed
+
+    def get_transformation_matrix(self, transducer_element=None):
+        """
+        Calculate the transformation matrix of the transducer.
+
+        Parameters
+        ----------
+        transducer_element : int (default: None)
+            The element in the transducer array. For a single transducer
+            element, specify None.
+
+        Returns
+        -------
+        transformation : np.ndarray of size 3 x 3
+            The 3D transformation matrix.
+        """
+        if self.source.type == "piston" and transducer_element is None:
+
+            return _np.identity(3)
+
+        elif self.source.type == "bowl" and transducer_element is not None:
+
+            x, y = self.source.centroid_location[:2, transducer_element]
+            beta = _np.arcsin(-x / self.source.radius_of_curvature)
+            alpha = _np.arcsin(
+                y / (self.source.radius_of_curvature * _np.cos(beta))
             )
 
-        source_locations = []
-        for source_no in self.get_source_no_range():
-            transformation = self.get_transformation_matrix(source_no)
-            locations_transformed = (
-                transformation @ source_locations_inside_element
+            mx = _np.array(
+                [
+                    [1, 0, 0],
+                    [0, _np.cos(alpha), -_np.sin(alpha)],
+                    [0, _np.sin(alpha), _np.cos(alpha)],
+                ]
             )
-            source_locations.append(locations_transformed)
-        source_locations_array = _np.hstack(source_locations)
 
-        source_locations = self.add_radius_of_curvature(source_locations_array)
+            my = _np.array(
+                [
+                    [_np.cos(beta), 0, _np.sin(beta)],
+                    [0, 1, 0],
+                    [-_np.sin(beta), 0, _np.cos(beta)],
+                ]
+            )
 
-        velocity_weighting = _np.repeat(
-            self.source.velocity, n_sources_per_element
-        )
-        surface_area_weighting = (
-            _np.pi * self.source.radius**2 / n_sources_per_element
-        )
-        source_weights = surface_area_weighting * velocity_weighting
+            return mx @ my
 
-        return source_locations, source_weights
+        else:
 
+            raise NotImplementedError
 
-class PistonSolver(ArrayPistonSolver):
-    def get_transformation_matrix(self, i):
+    def apply_curvature(
+        self,
+        locations,
+        radius_of_curvature=None,
+        origin_of_curvature=(0, 0, 0),
+    ):
         """
-        Get the transformation matrix for the piston element.
-        For a single piston source, this is the identity.
+        Apply the radius of curvature to the points.
+
+        Parameters
+        ----------
+        locations : np.ndarray of size 3 x N_points
+            The locations of the points to be transformed.
+        radius_of_curvature : float
+            The radius of curvature.
+        origin_of_curvature : array like
+            The origin of the curvature.
+
+        Returns
+        -------
+        locations_curved : np.ndarray of size 3 x N_points
+            The transformed locations of the points.
+
         """
-        return _np.identity(3)
+        if None in [radius_of_curvature, origin_of_curvature]:
+            return locations
+        else:
+            raise NotImplementedError
+
+    def calc_pressure_field(self):
+        """
+        Calculate the pressure field and the normal gradient of the
+        transducer, in a collection of 3D observation points.
+
+        Uses the following class attributes
+        ----------
+        source_locations : np.ndarray of size 3 x N_sourcepoints
+            The coordinates of the locations of the point sources used to
+            discretise the acoustic source.
+        source_weights : np.ndarray of size N_sourcepoints
+            The weighting assigned to each point source.
+        field_locations : np.ndarray of size 3 x N_observationpoints
+            The coordinates of the locations at which the incident field
+            is evaluated.
+        normals : np.ndarray of size 3 x N_observationpoints
+            The coordinates of the normal vectors for evaluation of the
+            pressure normal gradient on the surface of scatterers.
+
+        Sets the following class attributes.
+        ----------
+        pressure: np.ndarray of size N_observationpoints
+            The pressure in the observation points.
+        normal_pressure_gradient: np.ndarray of size 3 x N_observationpoints
+            The normal gradient of the pressure in the observation points.
+        """
+
+        pressure_value, pressure_gradient = calc_field_from_point_sources(
+            self.source_locations,
+            self.field_locations,
+            self.frequency,
+            self.density,
+            self.wavenumber,
+            self.source_weights,
+        )
+
+        if self.normals is not None:
+            normal_pressure_gradient = _np.sum(
+                pressure_gradient * self.normals, axis=0
+            )
+        else:
+            normal_pressure_gradient = None
+
+        self.pressure = pressure_value
+        self.normal_pressure_gradient = normal_pressure_gradient
+
+
+def calc_field_from_point_sources(
+    locations_source,
+    locations_observation,
+    frequency,
+    density,
+    wavenumber,
+    source_weights,
+):
+    """
+    Calculate the pressure field and its gradient of a point source,
+    according to the Rayleigh integral formula.
+
+    Parameters
+    ----------
+    locations_source : np.ndarray of size 3 x N_sourcepoints
+        The locations of the source points.
+    locations_observation : np.ndarray of size 3 x N_observationpoints
+        The locations of the observation points.
+    frequency : float
+        The frequency of the wave field.
+    density : float
+        The density of the propagating medium.
+    wavenumber : complex
+        The wavenumber of the wave field.
+    source_weights : np.ndarray of size N_sourcepoints
+        Weights of each source element.
+
+    Returns
+    -------
+    pressure : np.ndarray of size N_observationpoints
+        The pressure of the wave field in the observation points.
+    gradient : np.ndarray of size 3 x N_observationpoints
+        The gradient of the pressure field in the observation points.
+    """
+
+    if locations_source.ndim == 1:
+        locations_source.reshape((3, 1))
+    if locations_observation.ndim == 1:
+        locations_source.reshape((3, 1))
+
+    def apply_amplitude(values):
+        return (2j * _np.pi * frequency * density) * values
+
+    differences_between_all_points = (
+        locations_source[:, _np.newaxis, :]
+        - locations_observation[:, :, _np.newaxis]
+    )
+    distances_between_all_points = _np.linalg.norm(
+        differences_between_all_points, axis=0
+    )
+
+    greens_function_scaled = _np.divide(
+        _np.exp((1j * wavenumber) * distances_between_all_points),
+        distances_between_all_points,
+    )
+    greens_function_in_observation_points_scaled = _np.dot(
+        greens_function_scaled, source_weights
+    )
+    greens_function_in_observation_points = (
+        greens_function_in_observation_points_scaled / (2 * _np.pi)
+    )
+
+    pressure = apply_amplitude(greens_function_in_observation_points)
+
+    greens_gradient_amplitude_scaled = _np.divide(
+        greens_function_scaled
+        * (wavenumber * distances_between_all_points + 1j),
+        distances_between_all_points**2,
+    )
+    greens_gradient_scaled = (
+        differences_between_all_points
+        * greens_gradient_amplitude_scaled[_np.newaxis, :, :]
+    )
+    greens_gradient_in_observation_points_scaled = _np.dot(
+        greens_gradient_scaled, source_weights
+    )
+    greens_gradient_in_observation_points = (
+        -1j / (2 * _np.pi)
+    ) * greens_gradient_in_observation_points_scaled
+
+    gradient = apply_amplitude(greens_gradient_in_observation_points)
+
+    return pressure, gradient
