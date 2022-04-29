@@ -8,12 +8,15 @@ from .common import write_material_database as _write_material_database
 
 def load_material(name):
     """
-    Load an acoustic material with default parameters.
+    Load the physical properties of the specified material.
 
-    Parameters
+    Input
     ----------
     name : string or a list of strings
         The name of the material(s)
+    Output
+    ----------
+    Material object: an(list of) optimus material object(s)
     """
 
     if isinstance(name, str):
@@ -31,16 +34,19 @@ def load_material(name):
         )
 
 
-def create_material(properties, save_to_file=False):
+def create_material(
+    name,
+    density=0,
+    speed_of_sound=0,
+    attenuation_coeff_a=0,
+    attenuation_pow_b=0,
+    save_to_file=False,
+    **properties_user
+):
     """
-    Create an acoustic material with the specified parameters.
+    Create an optimus material object with the specified parameters.
 
     Input argument
-    ----------
-    properties : dict
-        A dictionary of the material properties with the keys like parameters below.
-
-    Parameters
     ----------
     density : float
         The mass density in [kg/m3]
@@ -50,7 +56,31 @@ def create_material(properties, save_to_file=False):
         Attenuation coefficient in power law [Np/m/MHz]
     attenuation_pow_b: float
         Attenuation power in power law [dimensionless]
+    save_to_file: boolean
+        to write the user-defined material to the user-defined database file or not.
+    **properties_user : dict
+        A dictionary of the material properties with the keys like input arguments, see below.
+
+    Output
+    ----------
+    Material object: optimus material object
     """
+    if not len(properties_user):
+        list_args = [
+            "name",
+            "density",
+            "speed_of_sound",
+            "attenuation_coeff_a",
+            "attenuation_pow_b",
+        ]
+        args_val = [
+            name,
+            density,
+            speed_of_sound,
+            attenuation_coeff_a,
+            attenuation_pow_b,
+        ]
+        properties = dict((key, val) for key, val in zip(list_args, args_val))
 
     keys = list(properties.keys())
     keys.remove("name")

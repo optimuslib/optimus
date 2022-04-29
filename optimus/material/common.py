@@ -5,14 +5,14 @@ import pandas as pd
 import os
 
 
-def get_excel_databse(database="default", header_format=[0, 1], index_col=None):
+def get_excel_database(database="default", header_format=[0, 1], index_col=None):
     """
-    Read excel file as a pandas dataframe
+    Read excel database file as a pandas dataframe
 
     Input
     ----------
     database: string
-        The name of the database to be loaded:
+        The type of the database to be loaded. Accepted values are:
         'default': to load default database,
         'user-defined': to load user-defined database.
     sheet_name: string
@@ -30,7 +30,7 @@ def get_excel_databse(database="default", header_format=[0, 1], index_col=None):
     elif database.lower() == "user-defined":
         file_name = "Material_database_user-defined.xls"
     else:
-        raise ValueError("undefined databse.")
+        raise ValueError("undefined database.")
 
     datadir = os.path.dirname(__file__)
     database_file = os.path.join(datadir, file_name)
@@ -40,7 +40,7 @@ def get_excel_databse(database="default", header_format=[0, 1], index_col=None):
 
 def get_material_properties(*name):
     """
-    Load the material database from an xls file.
+    Extract material properties from all databases.
 
     Input
     ----------
@@ -52,8 +52,8 @@ def get_material_properties(*name):
     dataframe: pandas dataframe object
 
     """
-    dataframe_default = get_excel_databse(database="default")
-    dataframe_user = get_excel_databse(database="user-defined")
+    dataframe_default = get_excel_database(database="default")
+    dataframe_user = get_excel_database(database="user-defined")
     dataframe = pd.concat([dataframe_default, dataframe_user], axis=0, sort=False)
 
     if len(name):
@@ -86,7 +86,7 @@ def get_material_properties(*name):
 def write_material_database(properties):
 
     """
-    Write a pandas dataframe of user-defined properties to an excel file
+    Write a pandas dataframe of user-defined properties to the user-defined material database excel file
 
     Input
     ----------
@@ -100,9 +100,9 @@ def write_material_database(properties):
     """
 
     user_database_file = "Material_database_user-defined.xls"
-    dataframe_default = get_excel_databse()
-    dataframe_user = get_excel_databse(
-        file_name=user_database_file, header_format=[0, 1], index_col=0
+    dataframe_default = get_excel_database(database="default")
+    dataframe_user = get_excel_database(
+        database="user-defined", header_format=[0, 1], index_col=0
     )
     dataframe_both = pd.concat([dataframe_default, dataframe_user], axis=0, sort=False)
 
@@ -112,7 +112,7 @@ def write_material_database(properties):
         raise ValueError(
             "A material with the name: \033[1m"
             + name
-            + "\033[0m  already EXISTs in the database (either default or user-defined)."
+            + "\033[0m  already EXISTs in the database files (either default or user-defined)."
         )
     else:
         cols = [
@@ -154,7 +154,7 @@ def write_material_database(properties):
 class Material:
     def __init__(self, properties):
         """
-        Physical properties of a material.
+        Object for the physical properties of a material.
 
         Input argument
         ----------
