@@ -173,13 +173,16 @@ class Pmchwt(_Model):
 
     def _create_rhs_vector(self):
 
-        inc_traces = self.source.calc_surface_traces(
+        trace_dir, trace_neu = self.source.calc_surface_traces(
             medium=self.material_exterior,
-            spaces=self.surface_spaces,
+            space_dirichlet=self.surface_spaces[0],
+            space_neumann=self.surface_spaces[1],
+            dirichlet_trace=True,
+            neumann_trace=True,
         )
 
         self.rhs_vector = _np.concatenate(
-            (inc_traces[0].projections(), inc_traces[1].projections())
+            (trace_dir.projections(), trace_neu.projections())
         )
 
     def _create_discrete_system(self):
