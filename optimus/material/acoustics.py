@@ -31,7 +31,8 @@ def load_material(name):
             raise ValueError("All elements of the list must be strings.")
     else:
         raise TypeError(
-            "Name of material must be specified as a string or a list of strings."
+            "Name of material must be specified as a string or a list "
+            "of strings."
         )
 
 
