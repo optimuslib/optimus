@@ -14,9 +14,10 @@ def load_material(name):
     ----------
     name : string or a list of strings
         The name of the material(s)
+
     Output
     ----------
-    Material object: an(list of) optimus material object(s)
+    Material object: an (list of) optimus material object(s)
     """
 
     if isinstance(name, str):
@@ -36,8 +37,8 @@ def load_material(name):
 
 def create_material(
     name,
-    density=0,
-    speed_of_sound=0,
+    density,
+    speed_of_sound,
     attenuation_coeff_a=0,
     attenuation_pow_b=0,
     save_to_file=False,
@@ -52,35 +53,34 @@ def create_material(
         The mass density in [kg/m3]
     speed_of_sound : float
         The speed of sound in [m/s]
-    attenuation_coeff_a: float
+    attenuation_coeff_a: float (default: 0)
         Attenuation coefficient in power law [Np/m/MHz]
-    attenuation_pow_b: float
+    attenuation_pow_b: float (default: 0)
         Attenuation power in power law [dimensionless]
     save_to_file: boolean
-        to write the user-defined material to the user-defined database file or not.
+        Write the material to the user-defined database.
     **properties_user : dict
-        A dictionary of the material properties with the keys like input arguments, see below.
+        A dictionary of additional material properties.
 
     Output
     ----------
     Material object: optimus material object
     """
-    if not len(properties_user):
-        list_args = [
-            "name",
-            "density",
-            "speed_of_sound",
-            "attenuation_coeff_a",
-            "attenuation_pow_b",
-        ]
-        args_val = [
-            name,
-            density,
-            speed_of_sound,
-            attenuation_coeff_a,
-            attenuation_pow_b,
-        ]
-        properties = dict((key, val) for key, val in zip(list_args, args_val))
+    list_args = [
+        "name",
+        "density",
+        "speed_of_sound",
+        "attenuation_coeff_a",
+        "attenuation_pow_b",
+    ]
+    args_val = [
+        name,
+        density,
+        speed_of_sound,
+        attenuation_coeff_a,
+        attenuation_pow_b,
+    ]
+    properties = dict((key, val) for key, val in zip(list_args, args_val))
 
     keys = list(properties.keys())
     keys.remove("name")
@@ -95,5 +95,8 @@ def create_material(
             properties[key] = _np.float(properties[key])
         if save_to_file:
             _write_material_database(properties)
+
+    if properties_user:
+        print("Ignored material properties", list(properties_user.keys()))
 
     return _Material(properties)

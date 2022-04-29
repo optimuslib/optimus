@@ -5,7 +5,7 @@ import pandas as pd
 import os
 
 
-def get_excel_database(database="default", header_format=[0, 1], index_col=None):
+def get_excel_database(database="default", header_format=(0, 1), index_col=None):
     """
     Read excel database file as a pandas dataframe
 
@@ -17,7 +17,7 @@ def get_excel_database(database="default", header_format=[0, 1], index_col=None)
         'user-defined': to load user-defined database.
     sheet_name: string
         The excel sheet to be loaded
-    header_format: list of numbers
+    header_format: tuple of numbers
         The header format of data table in the sheet
 
     Output
@@ -38,55 +38,59 @@ def get_excel_database(database="default", header_format=[0, 1], index_col=None)
     return dataframe
 
 
-def get_material_properties(*name):
+def get_material_properties(name):
     """
     Extract material properties from all databases.
 
     Input
     ----------
     name : string
-        The name of material in the database. If empty, the entire database will be imported.
+        The name of material in the database.
 
     Output
     ----------
-    dataframe: pandas dataframe object
+    dictionary of material properties
 
     """
+    if not isinstance(name, str):
+        raise TypeError("Name of material should be a string.")
+    else:
+        name = name.lower()
+
     dataframe_default = get_excel_database(database="default")
     dataframe_user = get_excel_database(database="user-defined")
     dataframe = pd.concat([dataframe_default, dataframe_user], axis=0, sort=False)
 
-    if len(name):
-        name = name[0].lower()
-        data_mask = dataframe[("Tissue", "Name")].str.lower().isin([name])
-        if not data_mask.any():
-            raise ValueError(
-                "the material: \033[1m" + name + "\033[0m  is not in the database."
-            )
-        else:
-            material = dataframe.loc[data_mask]
-            density = material[("Density (kg/m3)", "Average")].get_values()[0]
-            speed_of_sound = material[("Speed of Sound [m/s]", "Average")].get_values()[
-                0
-            ]
-            attenuation_coeff_a = material[
-                ("Attenuation Constant", "a [Np/m/MHz]")
-            ].get_values()[0]
-            attenuation_pow_b = material[("Attenuation Constant", "b")].get_values()[0]
-            output = {
-                "name": name,
-                "density": density,
-                "speed_of_sound": speed_of_sound,
-                "attenuation_coeff_a": attenuation_coeff_a,
-                "attenuation_pow_b": attenuation_pow_b,
-            }
-    return output
+    data_mask = dataframe[("Tissue", "Name")].str.lower().isin([name])
+    if not data_mask.any():
+        raise ValueError(
+            "the material: \033[1m" + name + "\033[0m  is not in the database."
+        )
+    else:
+        material = dataframe.loc[data_mask]
+        density = material[("Density (kg/m3)", "Average")].get_values()[0]
+        speed_of_sound = material[("Speed of Sound [m/s]", "Average")].get_values()[
+            0
+        ]
+        attenuation_coeff_a = material[
+            ("Attenuation Constant", "a [Np/m/MHz]")
+        ].get_values()[0]
+        attenuation_pow_b = material[("Attenuation Constant", "b")].get_values()[0]
+        output = {
+            "name": name,
+            "density": density,
+            "speed_of_sound": speed_of_sound,
+            "attenuation_coeff_a": attenuation_coeff_a,
+            "attenuation_pow_b": attenuation_pow_b,
+        }
+        return output
 
 
 def write_material_database(properties):
 
     """
-    Write a pandas dataframe of user-defined properties to the user-defined material database excel file
+    Write a pandas dataframe of user-defined properties to the user-defined
+    material database Excel file.
 
     Input
     ----------
