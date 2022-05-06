@@ -22,10 +22,10 @@ def transducer_field(
         The type of acoustic source used.
     medium : optimus.material.Material
         The propagating medium.
-    field_locations : np.ndarray of size 3 x N
+    field_locations : _np.ndarray of size 3 x N
         The coordinates of the locations at which the incident field
         is evaluated.
-    normals : np.ndarray of size 3 x N
+    normals : _np.ndarray of size 3 x N
         The coordinates of the unit normal vectors for evaluation of the
         pressure normal gradient on the surface of scatterers.
     verbose : boolean
@@ -37,7 +37,7 @@ def transducer_field(
     An object with the attributes 'pressure' and 'normal_pressure_gradient'.
     """
 
-    if source.type == "piston":
+    if source.type == "piston" or source.type == "bowl":
         transducer = _Transducer(
             source,
             medium,
@@ -71,6 +71,7 @@ class _Transducer:
 
         self.source_locations = None
         self.source_weights = None
+        self.surface_area_weighting = None
 
         self.pressure = None
         self.normal_pressure_gradient = None
@@ -82,15 +83,20 @@ class _Transducer:
         with weighting for its amplitude.
 
         Sets the following class attributes.
-            source_locations : np.ndarray of size 3 X N_sourcepoints
+            source_locations : _np.ndarray of size 3 X N_sourcepoints
                 The 3D location of each point source.
-            source_weights : np.ndarray of size N_sourcepoints
+            source_weights : _np.ndarray of size N_sourcepoints
                 The weighting of each point source.
         """
 
-        source_locations_inside_element = (
-            self.define_source_points_in_unit_transducer_element()
-        )
+        if self.source.type == "piston":
+            source_locations_inside_element = (
+                self.define_source_points_in_reference_piston()
+            )
+        elif self.source.type == "bowl":
+            source_locations_inside_element = (
+                self.define_source_points_in_reference_bowl()
+            )
 
         n_sources_per_element = source_locations_inside_element.shape[1]
 
@@ -108,13 +114,13 @@ class _Transducer:
 
         velocity_weighting = _np.full(n_sources, self.source.velocity)
 
-        surface_area_weighting = (
-            _np.pi * self.source.radius**2 / n_sources_per_element
-        )
+        # surface_area_weighting = (
+        #         _np.pi * self.source.radius**2 / n_sources_per_element
+        #     )
 
-        self.source_weights = surface_area_weighting * velocity_weighting
+        self.source_weights = self.surface_area_weighting * velocity_weighting
 
-    def define_source_points_in_unit_transducer_element(self):
+    def define_source_points_in_reference_piston(self):
         """
         Define the source points for a unit transducer element,
         that is, the source points on a rectangular grid, located
@@ -126,7 +132,7 @@ class _Transducer:
 
         Returns
         -------
-        source_locations_inside_element : np.ndarray of size 3 x N_points
+        source_locations_inside_element : _np.ndarray of size 3 x N_points
             The locations of the point source inside the element.
         """
 
@@ -167,6 +173,152 @@ class _Transducer:
             distance = _np.linalg.norm(source_vector[:2, :], axis=0)
             inside = distance <= self.source.radius
             source_locations_inside_element = source_vector[:, inside]
+            n_sources = source_locations_inside_element.shape[1]
+
+            self.surface_area_weighting = (
+                _np.pi * self.source.radius**2 / n_sources
+            )
+
+        return source_locations_inside_element
+
+    def define_source_points_in_reference_bowl(self):
+        """
+        Define the source points for a reference spherical section
+        bowl transducer, that is, the source points on a spherical
+        section bowl whose apex is in contact with the z=0 plane,
+        at the global origin and whose axis is the Cartesian x-axis.
+        The bowl is defined by its outer radius and radius of
+        curvature. A circular aperture may be defined by specifying
+        an inner radius. The resolution of the points is determined
+        by the specified number of point sources per wavelength which
+        must be strictly positive.
+
+        Returns
+        -------
+        source_locations_inside_element : _np.ndarray of size 3 x N_points
+            The locations of the point source inside the element.
+        """
+
+        bowl_mesh_parameter_init = (
+            2
+            * _np.pi
+            / (
+                self.wavenumber.real
+                * _np.abs(self.source.number_of_point_sources_per_wavelength)
+                * self.source.radius_of_curvature
+            )
+        )
+
+        number_of_points_on_sphere = int(
+            _np.round(4 * _np.pi / bowl_mesh_parameter_init**2)
+        )
+        bowl_mesh_parameter = _np.sqrt(4 * _np.pi / number_of_points_on_sphere)
+        elevation_angle_discretisation_param = int(
+            _np.round(_np.pi / bowl_mesh_parameter)
+        )
+
+        azimuthal_angle_increment = (
+            4
+            * elevation_angle_discretisation_param
+            / number_of_points_on_sphere
+        )
+        elevation_angle = (
+            _np.pi * (_np.arange(elevation_angle_discretisation_param) + 1.5)
+        ) / elevation_angle_discretisation_param
+        azimuthal_angle_discretisation_param = _np.round(
+            2 * _np.pi * _np.sin(elevation_angle) / azimuthal_angle_increment
+        ).astype(int)
+        azimuthal_angle_mesh_param = azimuthal_angle_discretisation_param[
+            azimuthal_angle_discretisation_param > 0
+        ].sum()
+        self.surface_area_weighting = (
+            4
+            * _np.pi
+            * self.source.radius_of_curvature**2
+            / azimuthal_angle_mesh_param
+        )
+
+        outer_radius_angle = _np.arcsin(
+            self.source.outer_radius / self.source.radius_of_curvature
+        )
+        outer_radius_threshold = self.source.radius_of_curvature * _np.cos(
+            _np.pi - outer_radius_angle
+        )
+
+        if self.source.inner_radius is not None:
+            if self.source.inner_radius == 0:
+                inner_radius_threshold = -self.source.radius_of_curvature
+            else:
+                inner_radius_angle = _np.arcsin(
+                    self.source.inner_radius / self.source.radius_of_curvature
+                )
+                inner_radius_threshold = (
+                    self.source.radius_of_curvature
+                    * _np.cos(_np.pi - inner_radius_angle)
+                )
+        else:
+            inner_radius_threshold = -_np.inf
+
+        x_source = list()
+        y_source = list()
+        z_source = list()
+
+        for m in range(elevation_angle_discretisation_param):
+            z = self.source.radius_of_curvature * _np.cos(elevation_angle[m])
+            if inner_radius_threshold <= z <= outer_radius_threshold:
+                sintheta = self.source.radius_of_curvature * _np.sin(
+                    elevation_angle[m]
+                )
+                phi = [
+                    2
+                    * _np.pi
+                    * (n + 1)
+                    / azimuthal_angle_discretisation_param[m]
+                    for n in range(azimuthal_angle_discretisation_param[m])
+                ]
+                for phi_i in phi:
+                    x_source.append(sintheta * _np.cos(phi_i))
+                    y_source.append(sintheta * _np.sin(phi_i))
+                    z_source.append(z)
+
+        x_source = _np.array(x_source) + self.source.radius_of_curvature
+        y_source = _np.array(y_source)
+        z_source = _np.array(z_source)
+
+        source_locations_inside_element = _np.vstack(
+            (x_source, y_source, z_source)
+        )
+
+        if self.verbose:
+
+            if self.source.inner_radius is None:
+                radius_section = self.source.radius_of_curvature - _np.sqrt(
+                    self.source.radius_of_curvature**2
+                    - self.source.outer_radius**2
+                )
+            else:
+                radius_section = _np.sqrt(
+                    self.source.radius_of_curvature**2
+                    - self.source.inner_radius**2
+                ) - _np.sqrt(
+                    self.source.radius_of_curvature**2
+                    - self.source.outer_radius**2
+                )
+
+            actual_area = (
+                2 * _np.pi * self.source.radius_of_curvature * radius_section
+            )
+            estimated_area = (
+                source_locations_inside_element.shape[1]
+                * self.surface_area_weighting
+            )
+
+            print("Actual transducer area (m^2): {:.14f}".format(actual_area))
+            print(
+                "Approximated transducer area (m^2): {:.14f}".format(
+                    estimated_area
+                )
+            )
 
         return source_locations_inside_element
 
@@ -180,7 +332,7 @@ class _Transducer:
 
         Parameters
         ----------
-        source_locations_on_unit_disk : np.ndarray of size 3 x N_sourcepoints
+        source_locations_on_unit_disk : _np.ndarray of size 3 x N_sourcepoints
             The locations of the source points on the unit disk, located
             in the plane z=0, centered at the origin and with the
             specified radius.
@@ -189,7 +341,7 @@ class _Transducer:
 
         Returns
         -------
-        source_locations_transformed : np.ndarray of size 3 x N_sourcepoints
+        source_locations_transformed : _np.ndarray of size 3 x N_sourcepoints
             The locations of the source points on the transducer.
         """
 
@@ -227,14 +379,14 @@ class _Transducer:
 
         Returns
         -------
-        transformation : np.ndarray of size 3 x 3
+        transformation : _np.ndarray of size 3 x 3
             The 3D transformation matrix.
         """
-        if self.source.type == "piston" and transducer_element is None:
+        if self.source.type != "array" and transducer_element is None:
 
             return _np.identity(3)
 
-        elif self.source.type == "bowl" and transducer_element is not None:
+        elif self.source.type == "array" and transducer_element is not None:
 
             x, y = self.source.centroid_location[:2, transducer_element]
             beta = _np.arcsin(-x / self.source.radius_of_curvature)
@@ -275,7 +427,7 @@ class _Transducer:
 
         Parameters
         ----------
-        locations : np.ndarray of size 3 x N_points
+        locations : _np.ndarray of size 3 x N_points
             The locations of the points to be transformed.
         radius_of_curvature : float
             The radius of curvature.
@@ -284,7 +436,7 @@ class _Transducer:
 
         Returns
         -------
-        locations_curved : np.ndarray of size 3 x N_points
+        locations_curved : _np.ndarray of size 3 x N_points
             The transformed locations of the points.
 
         """
@@ -300,23 +452,23 @@ class _Transducer:
 
         Uses the following class attributes
         ----------
-        source_locations : np.ndarray of size 3 x N_sourcepoints
+        source_locations : _np.ndarray of size 3 x N_sourcepoints
             The coordinates of the locations of the point sources used to
             discretise the acoustic source.
-        source_weights : np.ndarray of size N_sourcepoints
+        source_weights : _np.ndarray of size N_sourcepoints
             The weighting assigned to each point source.
-        field_locations : np.ndarray of size 3 x N_observationpoints
+        field_locations : _np.ndarray of size 3 x N_observationpoints
             The coordinates of the locations at which the incident field
             is evaluated.
-        normals : np.ndarray of size 3 x N_observationpoints
+        normals : _np.ndarray of size 3 x N_observationpoints
             The coordinates of the normal vectors for evaluation of the
             pressure normal gradient on the surface of scatterers.
 
         Sets the following class attributes.
         ----------
-        pressure: np.ndarray of size N_observationpoints
+        pressure: _np.ndarray of size N_observationpoints
             The pressure in the observation points.
-        normal_pressure_gradient: np.ndarray of size 3 x N_observationpoints
+        normal_pressure_gradient: _np.ndarray of size 3 x N_observationpoints
             The normal gradient of the pressure in the observation points.
         """
 
@@ -354,9 +506,9 @@ def calc_field_from_point_sources(
 
     Parameters
     ----------
-    locations_source : np.ndarray of size 3 x N_sourcepoints
+    locations_source : _np.ndarray of size 3 x N_sourcepoints
         The locations of the source points.
-    locations_observation : np.ndarray of size 3 x N_observationpoints
+    locations_observation : _np.ndarray of size 3 x N_observationpoints
         The locations of the observation points.
     frequency : float
         The frequency of the wave field.
@@ -364,14 +516,14 @@ def calc_field_from_point_sources(
         The density of the propagating medium.
     wavenumber : complex
         The wavenumber of the wave field.
-    source_weights : np.ndarray of size N_sourcepoints
+    source_weights : _np.ndarray of size N_sourcepoints
         Weights of each source element.
 
     Returns
     -------
-    pressure : np.ndarray of size N_observationpoints
+    pressure : _np.ndarray of size N_observationpoints
         The pressure of the wave field in the observation points.
-    gradient : np.ndarray of size 3 x N_observationpoints
+    gradient : _np.ndarray of size 3 x N_observationpoints
         The gradient of the pressure field in the observation points.
     """
 
