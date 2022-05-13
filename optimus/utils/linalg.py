@@ -3,41 +3,20 @@
 import numpy as _np
 
 
-def convert_to_3n_array(array):
-    """
-    Convert the input array into a 3xN Numpy array, if possible.
-    """
-
-    if not isinstance(array, (tuple, list, _np.ndarray)):
-        raise TypeError("Variable needs to be a tuple, list, or Numpy array.")
-
-    array_np = _np.array(array)
-
-    if array_np.ndim == 1:
-
-        if array_np.size == 3:
-            return array_np.reshape([3, 1])
-        else:
-            raise ValueError("Location needs to be three dimensional.")
-
-    elif array_np.ndim == 2:
-
-        if array_np.shape[0] == 3:
-            return array_np
-        elif array_np.shape[1] == 3:
-            return array_np.transpose()
-        else:
-            raise ValueError("Locations needs to be three dimensional.")
-
-    else:
-
-        raise ValueError("Locations need to be three dimensional.")
-
-
-def convert_to_unit_vector(vector):
+def normalize_vector(vector):
     """
     Convert a vector into a unit vector.
     For 2D input arrays, the columns will be normalized.
+
+    Parameters
+    ------
+    vector : np.ndarray of size (n,) or (n,m)
+        The input vectors of dimension n.
+
+    Returns
+    -------
+    unit_vector : np.ndarray of size (n,) or (n,m)
+        The vectors scaled to unit Euclidean length.
     """
 
     if not isinstance(vector, _np.ndarray):
@@ -111,7 +90,7 @@ def rotate(locations, source_axis):
 
     # Change orientation of source as defined by vector (nx,ny,nz)
     # Compute unit vector collinear to source axis
-    v_source_axis = convert_to_unit_vector(source_axis)
+    v_source_axis = normalize_vector(source_axis)
 
     # Obtain counter-clockwise angle in xy plane measured from the
     # positive x-axis
@@ -168,9 +147,9 @@ def translate(locations, translation):
 
     Parameters
     ------
-    locations : 3 x N array
+    locations : np.ndarray of size (3, N)
       The point locations to be translated.
-    translation: 3 x 1 array
+    translation: np.ndarray of size (3, 1)
       The displacement desired to perform.
 
     Returns

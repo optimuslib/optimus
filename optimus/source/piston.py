@@ -3,8 +3,11 @@
 import numpy as _np
 
 from .common import Source as _Source
-from ..utils.linalg import convert_to_3n_array as _convert_to_3n_array
-from ..utils.linalg import convert_to_unit_vector as _convert_to_unit_vector
+from ..utils.conversions import convert_to_positive_int as _convert_to_positive_int
+from ..utils.conversions import convert_to_float as _convert_to_float
+from ..utils.conversions import convert_to_array as _convert_to_array
+from ..utils.conversions import convert_to_3n_array as _convert_to_3n_array
+from ..utils.linalg import normalize_vector as _normalize_vector
 from .transducers import transducer_field as _transducer_field
 
 
@@ -62,45 +65,19 @@ class _Piston(_Source):
 
         super().__init__("piston", frequency)
 
-        if not isinstance(source_axis, (list, tuple, _np.ndarray)):
-            raise TypeError("Piston source axis needs to be an array type.")
-        direction_vector = _np.array(source_axis, dtype=float)
-        if direction_vector.ndim == 1 and direction_vector.size == 3:
-            self.source_axis = _convert_to_unit_vector(direction_vector)
-        elif direction_vector.ndim == 2 and direction_vector.size == 3:
-            self.source_axis = _convert_to_unit_vector(
-                direction_vector.flatten()
-            )
-        else:
-            raise ValueError("Source axis needs to be a 3D vector.")
+        source_axis_vector = _convert_to_array(
+            source_axis, shape=(3,), label="piston source axis"
+        )
+        self.source_axis = _normalize_vector(source_axis_vector)
 
-        if not isinstance(number_of_point_sources_per_wavelength, int):
-            raise TypeError(
-                "Number of point sources per wavelength needs to be "
-                "an integer."
-            )
-        else:
-            if number_of_point_sources_per_wavelength < 0:
-                raise ValueError(
-                    "Number of point sources per wavelength needs to be a "
-                    "positive integer."
-                )
-            else:
-                self.number_of_point_sources_per_wavelength = (
-                    number_of_point_sources_per_wavelength
-                )
+        self.number_of_point_sources_per_wavelength = _convert_to_positive_int(
+            number_of_point_sources_per_wavelength,
+            label="number of point sources per wavelength",
+        )
 
-        if not isinstance(location, (list, tuple, _np.ndarray)):
-            raise TypeError("Piston location needs to be an array type.")
-        location_vector = _np.array(location)
-        if location_vector.ndim == 1 and location_vector.size == 3:
-            self.location = location_vector
-        elif location_vector.ndim == 2 and location_vector.size == 3:
-            self.location = location_vector.flatten()
-        else:
-            raise ValueError("Piston location needs to be a 3D vector.")
+        self.location = _convert_to_array(location, shape=(3,), label="piston location")
 
-        self.radius = float(radius)
+        self.radius = _convert_to_float(radius, label="piston radius")
 
         self.velocity = _np.atleast_1d(complex(velocity))
 
@@ -112,12 +89,12 @@ class _Piston(_Source):
         ----------
         medium : optimus.material.Material
             The propagating medium.
-        locations : 3 x N array
+        locations : np.ndarray of size (3, N)
             Locations on which to evaluate the pressure field.
 
         Returns
         ----------
-        pressure : N array
+        pressure : np.ndarray of size (N,)
             The pressure in the locations.
         """
 
@@ -136,21 +113,21 @@ class _Piston(_Source):
         ----------
         medium : optimus.material.Material
             The propagating medium.
-        locations : 3 x N array
+        locations : np.ndarray of size (3, N)
             Locations on which to evaluate the pressure field.
-        normals : 3 x N array
+        normals : np.ndarray of size (3, N)
             Unit normal vectors at the locations on which to evaluate the
-             pressure field.
+            pressure field.
 
         Returns
         ----------
-        gradient : 3 x N array
+        gradient : np.ndarray of size (3, N)
             The normal gradient of the pressure in the locations.
         """
 
         points = _convert_to_3n_array(locations)
         normals = _convert_to_3n_array(normals)
-        unit_normals = _convert_to_unit_vector(normals)
+        unit_normals = _normalize_vector(normals)
 
         incident_field = _transducer_field(self, medium, points, unit_normals)
         gradient = incident_field.normal_pressure_gradient
@@ -166,23 +143,23 @@ class _Piston(_Source):
         ----------
         medium : optimus.material.Material
             The propagating medium.
-        locations : 3 x N array
+        locations : np.ndarray of size (3, N)
             Locations on which to evaluate the pressure field.
-        normals : 3 x N array
+        normals : np.ndarray of size (3, N)
             Unit normal vectors at the locations on which to evaluate the
              pressure field.
 
         Returns
         ----------
-        pressure : N array
+        pressure : np.ndarray of size (N,)
             The pressure in the locations.
-        gradient : 3 x N array
+        gradient : np.ndarray of size (3, N)
             The normal gradient of the pressure in the locations.
         """
 
         points = _convert_to_3n_array(locations)
         normals = _convert_to_3n_array(normals)
-        unit_normals = _convert_to_unit_vector(normals)
+        unit_normals = _normalize_vector(normals)
 
         incident_field = _transducer_field(self, medium, points, unit_normals)
         pressure = incident_field.pressure

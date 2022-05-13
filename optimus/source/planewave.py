@@ -3,8 +3,10 @@
 import numpy as _np
 
 from .common import Source as _Source
-from ..utils.linalg import convert_to_3n_array as _convert_to_3n_array
-from ..utils.linalg import convert_to_unit_vector as _convert_to_unit_vector
+from ..utils.conversions import convert_to_float as _convert_to_float
+from ..utils.conversions import convert_to_array as _convert_to_array
+from ..utils.conversions import convert_to_3n_array as _convert_to_3n_array
+from ..utils.linalg import normalize_vector as _normalize_vector
 
 
 def create_planewave(frequency, direction=(1, 0, 0), amplitude=1.0):
@@ -35,22 +37,12 @@ class _PlaneWave(_Source):
 
         super().__init__("planewave", frequency)
 
-        if not isinstance(direction, (list, tuple, _np.ndarray)):
-            raise TypeError("Wave direction needs to be an array type.")
-        direction_vector = _np.array(direction, dtype=float)
-        if direction_vector.ndim == 1 and direction_vector.size == 3:
-            self.direction_vector = _convert_to_unit_vector(direction_vector)
-        elif direction_vector.ndim == 2 and direction_vector.size == 3:
-            self.direction_vector = _convert_to_unit_vector(
-                direction_vector.flatten()
-            )
-        else:
-            raise ValueError("Wave direction needs to be a 3D vector.")
+        direction_vector = _convert_to_array(
+            direction, shape=(3,), label="wave direction"
+        )
+        self.direction_vector = _normalize_vector(direction_vector)
 
-        if not isinstance(amplitude, (int, float)):
-            raise TypeError("Wave amplitude should be a number.")
-        else:
-            self.amplitude = float(amplitude)
+        self.amplitude = _convert_to_float(amplitude, label="wave amplitude")
 
     def pressure_field(self, medium, locations):
         """
@@ -101,7 +93,7 @@ class _PlaneWave(_Source):
 
         points = _convert_to_3n_array(locations)
         normals = _convert_to_3n_array(normals)
-        unit_normals = _convert_to_unit_vector(normals)
+        unit_normals = _normalize_vector(normals)
         wavenumber = medium.wavenumber(self.frequency)
 
         normals = _np.dot(self.direction_vector, unit_normals)
