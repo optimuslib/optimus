@@ -41,9 +41,7 @@ class _PlaneWave(_Source):
         if direction_vector.ndim == 1 and direction_vector.size == 3:
             self.direction_vector = _convert_to_unit_vector(direction_vector)
         elif direction_vector.ndim == 2 and direction_vector.size == 3:
-            self.direction_vector = _convert_to_unit_vector(
-                direction_vector.flatten()
-            )
+            self.direction_vector = _convert_to_unit_vector(direction_vector.flatten())
         else:
             raise ValueError("Wave direction needs to be a 3D vector.")
 
