@@ -76,42 +76,6 @@ class _Bowl(_Source):
 
         super().__init__("bowl", frequency)
 
-<<<<<<< HEAD
-        if not isinstance(source_axis, (list, tuple, _np.ndarray)):
-            raise TypeError("Bowl source axis needs to be an array type.")
-        direction_vector = _np.array(source_axis, dtype=float)
-        if direction_vector.ndim == 1 and direction_vector.size == 3:
-            self.source_axis = _convert_to_unit_vector(direction_vector)
-        elif direction_vector.ndim == 2 and direction_vector.size == 3:
-            self.source_axis = _convert_to_unit_vector(direction_vector.flatten())
-        else:
-            raise ValueError("Source axis needs to be a 3D vector.")
-
-        if not isinstance(number_of_point_sources_per_wavelength, int):
-            raise TypeError(
-                "Number of point sources per wavelength needs to be " "an integer."
-            )
-        else:
-            if number_of_point_sources_per_wavelength <= 0:
-                raise ValueError(
-                    "Number of point sources per wavelength needs to be a "
-                    "strictly positive integer."
-                )
-            else:
-                self.number_of_point_sources_per_wavelength = (
-                    number_of_point_sources_per_wavelength
-                )
-
-        if not isinstance(location, (list, tuple, _np.ndarray)):
-            raise TypeError("Bowl location needs to be an array type.")
-        location_vector = _np.array(location)
-        if location_vector.ndim == 1 and location_vector.size == 3:
-            self.location = location_vector
-        elif location_vector.ndim == 2 and location_vector.size == 3:
-            self.location = location_vector.flatten()
-        else:
-            raise ValueError("Bowl location needs to be a 3D vector.")
-=======
         source_axis_vector = _convert_to_array(
             source_axis, shape=(3,), label="bowl source axis"
         )
@@ -123,7 +87,6 @@ class _Bowl(_Source):
         )
 
         self.location = _convert_to_array(location, shape=(3,), label="bowl location")
->>>>>>> c4bbc8d2c97338cc86a63a2efde5f76ba07a00c0
 
         if inner_radius:
             self.inner_radius = _convert_to_float(inner_radius, "inner radius")

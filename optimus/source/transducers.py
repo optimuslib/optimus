@@ -94,9 +94,10 @@ class _Transducer:
                 surface_area_weighting,
             ) = self.define_source_points_in_reference_piston()
         elif self.source.type == "bowl":
-            source_locations_inside_element = (
-                self.define_source_points_in_reference_bowl()
-            )
+            (
+                source_locations_inside_element,
+                surface_area_weighting,
+            ) = self.define_source_points_in_reference_bowl()
         else:
             raise NotImplementedError
 
@@ -279,9 +280,9 @@ class _Transducer:
                     y_source.append(sintheta * _np.sin(azimuthal_angle_idx))
                     z_source.append(z)
 
-        x_source = _np.array(x_source) + self.source.radius_of_curvature
+        x_source = _np.array(x_source)
         y_source = _np.array(y_source)
-        z_source = _np.array(z_source) 
+        z_source = _np.array(z_source) + self.source.radius_of_curvature
 
         source_locations_inside_element = _np.vstack((x_source, y_source, z_source))
 
