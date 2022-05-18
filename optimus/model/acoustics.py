@@ -194,9 +194,7 @@ class Pmchwt(_Model):
             self.lhs_discrete_system = (
                 self.discrete_preconditioner * self.discrete_operator
             )
-            self.rhs_discrete_system = (
-                self.discrete_preconditioner * self.rhs_vector
-            )
+            self.rhs_discrete_system = self.discrete_preconditioner * self.rhs_vector
 
         else:
 
