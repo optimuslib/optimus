@@ -89,9 +89,10 @@ class _Transducer:
         """
 
         if self.source.type == "piston":
-            source_locations_inside_element = (
-                self.define_source_points_in_reference_piston()
-            )
+            (
+                source_locations_inside_element,
+                surface_area_weighting,
+            ) = self.define_source_points_in_reference_piston()
         elif self.source.type == "bowl":
             source_locations_inside_element = (
                 self.define_source_points_in_reference_bowl()
@@ -115,7 +116,7 @@ class _Transducer:
 
         velocity_weighting = _np.full(n_sources, self.source.velocity)
 
-        self.source_weights = self.surface_area_weighting * velocity_weighting
+        self.source_weights = surface_area_weighting * velocity_weighting
 
     def define_source_points_in_reference_piston(self):
         """
@@ -127,7 +128,9 @@ class _Transducer:
         number of point sources per wavelength. If zero points per
         wavelength is specified, return the center of the disk as
         the only source point.
+
         The surface area weighting is uniform.
+
         Returns
         -------
         source_locations_inside_element : np.ndarray of size (3, N_points)
@@ -172,9 +175,9 @@ class _Transducer:
             inside = distance <= self.source.radius
             source_locations_inside_element = source_vector[:, inside]
 
-            n_sources = source_locations_inside_element.shape[1]
+        n_sources = source_locations_inside_element.shape[1]
 
-            surface_area_weighting = _np.pi * self.source.radius**2 / n_sources
+        surface_area_weighting = _np.pi * self.source.radius**2 / n_sources
 
         return source_locations_inside_element, surface_area_weighting
 
@@ -187,10 +190,13 @@ class _Transducer:
         The bowl is defined by its outer radius and radius of
         curvature. A circular aperture may be defined by specifying
         an inner radius.
+
         The resolution of the points is determined by the specified
         number of point sources per wavelength which must be strictly
         positive.
+
         The surface area weighting is uniform.
+
         Returns
         -------
         source_locations_inside_element : np.ndarray of size (3, N_points)
@@ -273,9 +279,9 @@ class _Transducer:
                     y_source.append(sintheta * _np.sin(azimuthal_angle_idx))
                     z_source.append(z)
 
-        x_source = _np.array(x_source)
+        x_source = _np.array(x_source) + self.source.radius_of_curvature
         y_source = _np.array(y_source)
-        z_source = _np.array(z_source) + self.source.radius_of_curvature
+        z_source = _np.array(z_source) 
 
         source_locations_inside_element = _np.vstack((x_source, y_source, z_source))
 
@@ -312,16 +318,15 @@ class _Transducer:
 
         Parameters
         ----------
-        source_locations_on_unit_disk : _np.ndarray of size 3 x N_sourcepoints
-            The locations of the source points on the unit disk, located
-            in the plane z=0, centered at the origin and with the
-            specified radius.
+        source_locations_on_unit_disk : np.ndarray of size (3, N_sourcepoints)
+            The locations of the source points on the reference
+            element of the transducer type.
         element_range : list
             The range of transducer elements in the multi-element array.
 
         Returns
         -------
-        source_locations_transformed : _np.ndarray of size 3 x N_sourcepoints
+        source_locations_transformed : np.ndarray of size (3, N_sourcepoints)
             The locations of the source points on the transducer.
         """
 
@@ -355,7 +360,7 @@ class _Transducer:
 
         Returns
         -------
-        transformation : _np.ndarray of size 3 x 3
+        transformation : np.ndarray of size (3, 3)
             The 3D transformation matrix.
         """
         if self.source.type != "array" and transducer_element is None:
@@ -401,7 +406,7 @@ class _Transducer:
 
         Parameters
         ----------
-        locations : _np.ndarray of size 3 x N_points
+        locations : np.ndarray of size (3, N_points)
             The locations of the points to be transformed.
         radius_of_curvature : float
             The radius of curvature.
@@ -410,7 +415,7 @@ class _Transducer:
 
         Returns
         -------
-        locations_curved : _np.ndarray of size 3 x N_points
+        locations_curved : np.ndarray of size (3, N_points)
             The transformed locations of the points.
 
         """
@@ -426,23 +431,23 @@ class _Transducer:
 
         Uses the following class attributes
         ----------
-        source_locations : _np.ndarray of size 3 x N_sourcepoints
+        source_locations : np.ndarray of size (3, N_sourcepoints)
             The coordinates of the locations of the point sources used to
             discretise the acoustic source.
-        source_weights : _np.ndarray of size N_sourcepoints
+        source_weights : np.ndarray of size (N_sourcepoints,)
             The weighting assigned to each point source.
-        field_locations : _np.ndarray of size 3 x N_observationpoints
+        field_locations : np.ndarray of size (3, N_observationpoints)
             The coordinates of the locations at which the incident field
             is evaluated.
-        normals : _np.ndarray of size 3 x N_observationpoints
+        normals : np.ndarray of size (3, N_observationpoints)
             The coordinates of the normal vectors for evaluation of the
             pressure normal gradient on the surface of scatterers.
 
         Sets the following class attributes.
         ----------
-        pressure: _np.ndarray of size N_observationpoints
+        pressure: np.ndarray of size (N_observationpoints,)
             The pressure in the observation points.
-        normal_pressure_gradient: _np.ndarray of size 3 x N_observationpoints
+        normal_pressure_gradient: np.ndarray of size (3, N_observationpoints)
             The normal gradient of the pressure in the observation points.
         """
 
@@ -465,36 +470,35 @@ class _Transducer:
 
 
 @_njit(parallel=True)
-def calculate_field_from_point_sources_numba(
+def calc_greens_functions_in_observation_points_numba(
     locations_source, locations_observation, wavenumber, source_weights
 ):
     """
-    Calculate the scaled pressure field and its gradient for a
+    Calculate the pressure field and its gradient for a
     summation of point sources describing a transducer,
-    according to the Rayleigh integral formula. Use Numba
-    njit for parallelisation.
+    according to the Rayleigh integral formula.
+
+    Use Numba for acceleration and parallelisation.
 
     Parameters
     ----------
-    locations_source : _np.ndarray of size 3 x N_sourcepoints
+    locations_source : np.ndarray of size (3, N_sourcepoints)
         The locations of the source points.
-    locations_observation : _np.ndarray of size 3 x N_observationpoints
+    locations_observation : np.ndarray of size (3, N_observationpoints)
         The locations of the observation points.
     wavenumber : complex
         The wavenumber of the wave field.
-    source_weights : _np.ndarray of size N_sourcepoints
+    source_weights : np.ndarray of size (N_sourcepoints,)
         Weights of each source element.
 
     Returns
     -------
-    greens_function_in_observation_points_scaled : _np.ndarray of
-        size N_observationpoints.
-        The scaled Green's function of the wave field at the
+    greens_function_in_observation_points : np.ndarray of size (N_observationpoints,)
+        The Green's function of the wave field at the observation points
+        with contribution of all source locations.
+    greens_gradient_in_observation_points : np.ndarray of size (3, N_observationpoints)
+        The gradient of Green's function of the wave field at the
         observation points with contribution of all source locations.
-    greens_gradient_in_observation_points_scaled : _np.ndarray of
-        size 3 x N_observationpoints
-        The scaled gradient of Green's function of the wave field at
-        the observation points with contribution of all source locations.
     """
     greens_function_in_observation_points_scaled = _np.zeros_like(
         locations_observation[0], dtype=_np.complex128
@@ -502,21 +506,6 @@ def calculate_field_from_point_sources_numba(
     greens_gradient_in_observation_points_scaled = _np.zeros_like(
         locations_observation, dtype=_np.complex128
     )
-
-    # outer_loop = "for i in prange(locations_observation.shape[1]):"
-    # inner_loop = "for j in range(locations_source.shape[1]):"
-    # if locations_observation.shape[1] > locations_source.shape[1]:
-    #     parallelisation_over_observation_points = True
-    #     outer_loop_range = prange(locations_observation.shape[1])
-    #     inner_loop_range = range(locations_source.shape[1])
-    #     outer_loop_index = "i"
-    #     inner_loop_index = "j"
-    # else:
-    # parallelisation_over_observation_points = False
-    # outer_loop_range = prange(locations_source.shape[1])
-    # inner_loop_range = prange(locations_observation.shape[1])
-    # outer_loop_index = "j"
-    # inner_loop_index = "i"
 
     for i in _prange(locations_observation.shape[1]):
         temp_greens_function_in_observation_points_scaled = 0.0
@@ -543,9 +532,10 @@ def calculate_field_from_point_sources_numba(
                 differences_between_all_points
             )
 
-            greens_function_scaled = _np.exp(
-                1j * wavenumber * distances_between_all_points
-            ) / (distances_between_all_points)
+            greens_function_scaled = (
+                _np.exp(1j * wavenumber * distances_between_all_points)
+                / distances_between_all_points
+            )
             temp_greens_function_in_observation_points_scaled += (
                 greens_function_scaled * source_weights[j]
             )
@@ -569,9 +559,17 @@ def calculate_field_from_point_sources_numba(
             :, i
         ] = temp_greens_gradient_in_observation_points_scaled
 
+    greens_function_in_observation_points = (
+        greens_function_in_observation_points_scaled / (2 * _np.pi)
+    )
+
+    greens_gradient_in_observation_points = (
+        -1j / (2 * _np.pi)
+    ) * greens_gradient_in_observation_points_scaled
+
     return (
-        greens_function_in_observation_points_scaled,
-        greens_gradient_in_observation_points_scaled,
+        greens_function_in_observation_points,
+        greens_gradient_in_observation_points,
     )
 
 
@@ -587,11 +585,13 @@ def calc_field_from_point_sources(
     Calculate the pressure field and its gradient of a point source,
     according to the Rayleigh integral formula.
 
+    Use Numba acceleration.
+
     Parameters
     ----------
-    locations_source : _np.ndarray of size 3 x N_sourcepoints
+    locations_source : np.ndarray of size (3, N_sourcepoints)
         The locations of the source points.
-    locations_observation : _np.ndarray of size 3 x N_observationpoints
+    locations_observation : np.ndarray of size (3, N_observationpoints)
         The locations of the observation points.
     frequency : float
         The frequency of the wave field.
@@ -599,18 +599,16 @@ def calc_field_from_point_sources(
         The density of the propagating medium.
     wavenumber : complex
         The wavenumber of the wave field.
-    source_weights : _np.ndarray of size N_sourcepoints
+    source_weights : np.ndarray of size (N_sourcepoints,)
         Weights of each source element.
 
     Returns
     -------
-    pressure : _np.ndarray of size N_observationpoints
+    pressure : np.ndarray of size (N_observationpoints,)
         The pressure of the wave field in the observation points.
-    gradient : _np.ndarray of size 3 x N_observationpoints
+    gradient : np.ndarray of size (3, N_observationpoints)
         The gradient of the pressure field in the observation points.
     """
-    # TODO: currently, both pressure and pressure gradient are evaluated
-    # twice in piston.py and bowl.py. Make code more efficient.
 
     if locations_source.ndim == 1:
         locations_source.reshape((3, 1))
@@ -620,27 +618,76 @@ def calc_field_from_point_sources(
     def apply_amplitude(values):
         return (2j * _np.pi * frequency * density) * values
 
-    # differences_between_all_points = (
-    #     locations_source[:, _np.newaxis, :]
-    #     - locations_observation[:, :, _np.newaxis]
-    # )
-    # distances_between_all_points = _np.linalg.norm(
-    #     differences_between_all_points, axis=0
-    # )
-    # greens_function_scaled = _np.divide(
-    #     _np.exp((1j * wavenumber) * distances_between_all_points),
-    #     distances_between_all_points,
-    # )
-
-    # greens_function_in_observation_points_scaled = _np.dot(
-    #     greens_function_scaled, source_weights
-    # )
-
     (
-        greens_function_in_observation_points_scaled,
-        greens_gradient_in_observation_points_scaled,
-    ) = calculate_field_from_point_sources_numba(
+        greens_function_in_observation_points,
+        greens_gradient_in_observation_points,
+    ) = calc_greens_functions_in_observation_points_numba(
         locations_source, locations_observation, wavenumber, source_weights
+    )
+
+    pressure = apply_amplitude(greens_function_in_observation_points)
+
+    gradient = apply_amplitude(greens_gradient_in_observation_points)
+
+    return pressure, gradient
+
+
+def calc_field_from_point_sources_numpy(
+    locations_source,
+    locations_observation,
+    frequency,
+    density,
+    wavenumber,
+    source_weights,
+):
+    """
+    Calculate the pressure field and its gradient of a point source,
+    according to the Rayleigh integral formula.
+
+    Parameters
+    ----------
+    locations_source : np.ndarray of size (3, N_sourcepoints)
+        The locations of the source points.
+    locations_observation : np.ndarray of size (3, N_observationpoints)
+        The locations of the observation points.
+    frequency : float
+        The frequency of the wave field.
+    density : float
+        The density of the propagating medium.
+    wavenumber : complex
+        The wavenumber of the wave field.
+    source_weights : np.ndarray of (size N_sourcepoints,)
+        Weights of each source element.
+
+    Returns
+    -------
+    pressure : np.ndarray of size (N_observationpoints,)
+        The pressure of the wave field in the observation points.
+    gradient : np.ndarray of size (3, N_observationpoints)
+        The gradient of the pressure field in the observation points.
+    """
+
+    if locations_source.ndim == 1:
+        locations_source.reshape((3, 1))
+    if locations_observation.ndim == 1:
+        locations_source.reshape((3, 1))
+
+    def apply_amplitude(values):
+        return (2j * _np.pi * frequency * density) * values
+
+    differences_between_all_points = (
+        locations_source[:, _np.newaxis, :] - locations_observation[:, :, _np.newaxis]
+    )
+    distances_between_all_points = _np.linalg.norm(
+        differences_between_all_points, axis=0
+    )
+
+    greens_function_scaled = _np.divide(
+        _np.exp((1j * wavenumber) * distances_between_all_points),
+        distances_between_all_points,
+    )
+    greens_function_in_observation_points_scaled = _np.dot(
+        greens_function_scaled, source_weights
     )
     greens_function_in_observation_points = (
         greens_function_in_observation_points_scaled / (2 * _np.pi)
@@ -648,18 +695,17 @@ def calc_field_from_point_sources(
 
     pressure = apply_amplitude(greens_function_in_observation_points)
 
-    # greens_gradient_amplitude_scaled = _np.divide(
-    #     greens_function_scaled
-    #     * (wavenumber * distances_between_all_points + 1j),
-    #     distances_between_all_points**2,
-    # )
-    # greens_gradient_scaled = (
-    #     differences_between_all_points
-    #     * greens_gradient_amplitude_scaled[_np.newaxis, :, :]
-    # )
-    # greens_gradient_in_observation_points_scaled = _np.dot(
-    #     greens_gradient_scaled, source_weights
-    # )
+    greens_gradient_amplitude_scaled = _np.divide(
+        greens_function_scaled * (wavenumber * distances_between_all_points + 1j),
+        distances_between_all_points**2,
+    )
+    greens_gradient_scaled = (
+        differences_between_all_points
+        * greens_gradient_amplitude_scaled[_np.newaxis, :, :]
+    )
+    greens_gradient_in_observation_points_scaled = _np.dot(
+        greens_gradient_scaled, source_weights
+    )
     greens_gradient_in_observation_points = (
         -1j / (2 * _np.pi)
     ) * greens_gradient_in_observation_points_scaled
