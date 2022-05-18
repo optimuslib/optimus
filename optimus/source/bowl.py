@@ -79,16 +79,13 @@ class _Bowl(_Source):
         if direction_vector.ndim == 1 and direction_vector.size == 3:
             self.source_axis = _convert_to_unit_vector(direction_vector)
         elif direction_vector.ndim == 2 and direction_vector.size == 3:
-            self.source_axis = _convert_to_unit_vector(
-                direction_vector.flatten()
-            )
+            self.source_axis = _convert_to_unit_vector(direction_vector.flatten())
         else:
             raise ValueError("Source axis needs to be a 3D vector.")
 
         if not isinstance(number_of_point_sources_per_wavelength, int):
             raise TypeError(
-                "Number of point sources per wavelength needs to be "
-                "an integer."
+                "Number of point sources per wavelength needs to be " "an integer."
             )
         else:
             if number_of_point_sources_per_wavelength <= 0:
