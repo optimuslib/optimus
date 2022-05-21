@@ -23,7 +23,7 @@ def load_material(name):
     if isinstance(name, str):
         properties = _get_material_properties(name)
         return _Material(properties)
-    elif isinstance(name, list):
+    elif isinstance(name, (list, tuple)):
         if all(isinstance(item, str) for item in name):
             properties = list(map(_get_material_properties, name))
             return list(map(_Material, properties))
@@ -31,8 +31,7 @@ def load_material(name):
             raise ValueError("All elements of the list must be strings.")
     else:
         raise TypeError(
-            "Name of material must be specified as a string or a list "
-            "of strings."
+            "Name of material must be specified as a string or a list of strings."
         )
 
 

@@ -22,10 +22,11 @@ class Model:
         self.geometry = geometry
         self.material_exterior = material_exterior
         self.material_interior = material_interior
+        self.n_subdomains = self._preprocess_domains()
+
+        _check_validity_formulation(formulation, preconditioner)
         self.formulation = formulation
         self.preconditioner = preconditioner
-
-        _check_validity_formulation(self.formulation, self.preconditioner)
 
     def solve(self):
         """
@@ -33,6 +34,43 @@ class Model:
         Needs to be overwritten by specific model.
         """
         raise NotImplementedError
+
+    def _preprocess_domains(self):
+        """
+        Preprocess the input variables for the geometry and materials.
+
+        Returns
+        ----------
+        n_bounded_domains : int
+            The number of bounded subdomains.
+        """
+
+        from optimus.geometry.common import Geometry
+        from optimus.material.common import Material
+
+        if not isinstance(self.geometry, (list, tuple)):
+            self.geometry = (self.geometry,)
+        for subdomain in self.geometry:
+            if not isinstance(subdomain, Geometry):
+                raise TypeError(
+                    "The subdomain needs to be specified as an "
+                    "Optimus Geometry object."
+                )
+        n_bounded_domains = len(self.geometry)
+
+        if not isinstance(self.material_interior, (list, tuple)):
+            self.material_interior = (self.material_interior,)
+        for material in self.material_interior:
+            if not isinstance(material, Material):
+                raise TypeError(
+                    "The material needs to be specified as an Optimus Material object."
+                )
+        if len(self.material_interior) != n_bounded_domains:
+            raise ValueError(
+                "The number of geometries and interior materials should be the same."
+            )
+
+        return n_bounded_domains
 
 
 def _vector_to_gridfunction(vector, spaces):
@@ -77,9 +115,7 @@ def _check_validity_formulation(formulation, preconditioner):
     """
 
     if formulation not in ["pmchwt"]:
-        raise NotImplementedError(
-            "Unknown boundary integral formulation type."
-        )
+        raise NotImplementedError("Unknown boundary integral formulation type.")
 
     if preconditioner not in ["mass"]:
         raise NotImplementedError("Unknown preconditioner type.")
