@@ -42,6 +42,72 @@ def create_default_model(source, geometry, exterior, interior):
     return model
 
 
+def create_acoustic_model(
+    source,
+    geometry,
+    exterior,
+    interior,
+    formulation="pmchwt",
+    formulation_parameters=None,
+    preconditioner="mass",
+    preconditioner_parameters=None,
+):
+    """
+    Create a preconditioned boundary integral equation for acoustic wave propagation.
+
+    For multiple domains, a list of geometries and interior materials need
+    to be specified, with equal length. They are matched by order.
+
+    Parameters
+    ----------
+    source : optimus.source
+        The Optimus representation of a source field.
+    geometry : optimus.geometry
+        The Optimus representation of the geometry, with the grid of
+        the scatterers. For multiple domains, provide a list of geometries.
+    exterior : optimus.material
+        The Optimus representation of the material for the unbounded
+        exterior region.
+    interior : optimus.material
+        The Optimus representation of the material for the bounded
+        scatterer. For multiple domains, provide a list of materials.
+    formulation : str
+        The type of boundary integral formulation.
+    formulation_parameters : dict
+        The parameters for the boundary integral formulation.
+    preconditioner : str
+        The type of operator preconditioner.
+    preconditioner_parameters : dict
+        The parameters for the operator preconditioner.
+
+    Returns
+    ----------
+    model : optimus.model
+        The Optimus representation of the the BEM model of acoustic wave
+        propagation in the interior and exterior domains.
+    """
+
+    from .common import _check_validity_formulation
+
+    form_name, prec_name, model_params = _check_validity_formulation(
+        formulation, formulation_parameters, preconditioner, preconditioner_parameters
+    )
+
+    if form_name == "pmchwt":
+        model = Pmchwt(
+            source=source,
+            geometry=geometry,
+            material_exterior=exterior,
+            material_interior=interior,
+            preconditioner=prec_name,
+            parameters=model_params,
+        )
+    else:
+        raise NotImplementedError
+
+    return model
+
+
 class Pmchwt(_Model):
     def __init__(
         self,
@@ -75,6 +141,8 @@ class Pmchwt(_Model):
         self.rhs_discrete_system = None
         self.solution_vector = None
         self.solution = None
+
+        self.iteration_count = None
 
     def solve(self):
         """
@@ -151,21 +219,21 @@ class Pmchwt(_Model):
         Assemble the operator preconditioner for the linear system.
         """
 
-        if self.preconditioner == "mass":
+        if self.preconditioner == "none":
+
+            self.discrete_preconditioner = None
+
+        elif self.preconditioner == "mass":
+
+            mass_matrices = [create_inverse_mass_matrix(space) for space in self.space]
 
             preconditioner_list = []
             for row in range(2 * self.n_subdomains):
                 ran = row // 2
                 row_list = []
                 for col in range(2 * self.n_subdomains):
-                    dom = col // 2
                     if row == col:
-                        id_op = _bempp.operators.boundary.sparse.identity(
-                            self.space[dom], self.space[ran], self.space[ran]
-                        )
-                        id_wf = id_op.weak_form()
-                        id_inv = _bempp.InverseSparseDiscreteBoundaryOperator(id_wf)
-                        row_list.append(id_inv)
+                        row_list.append(mass_matrices[ran])
                     else:
                         row_list.append(None)
                 preconditioner_list.append(row_list)
@@ -174,9 +242,57 @@ class Pmchwt(_Model):
                 preconditioner_list
             )
 
-        else:
+        elif self.preconditioner == "osrc":
 
-            self.discrete_preconditioner = None
+            if self.parameters["osrc_wavenumber"] == "ext":
+                k_osrc = [
+                    self.material_exterior.compute_wavenumber(self.source.frequency)
+                ] * self.n_subdomains
+            elif self.parameters["osrc_wavenumber"] == "int":
+                k_osrc = [
+                    material.compute_wavenumber(self.source.frequency)
+                    for material in self.material_interior
+                ]
+            else:
+                k_osrc = [self.parameters["osrc_wavenumber"]] * self.n_subdomains
+
+            osrc_ops = [
+                create_osrc_operators(
+                    self.space[dom], k_osrc[dom], self.parameters, dtn=True, ntd=True
+                )
+                for dom in range(self.n_subdomains)
+            ]
+
+            dtn_matrices = [op[0].weak_form() for op in osrc_ops]
+            ntd_matrices = [op[1].weak_form() for op in osrc_ops]
+
+            mass_matrices = [create_inverse_mass_matrix(space) for space in self.space]
+
+            preconditioner_list = []
+            for row in range(2 * self.n_subdomains):
+                ran = row // 2
+                row_list = []
+                for col in range(2 * self.n_subdomains):
+                    dom = col // 2
+                    if ran == dom:
+                        mass_op = mass_matrices[ran]
+                        if row == col + 1:
+                            prec_op = mass_op * dtn_matrices[ran] * mass_op
+                        elif col == row + 1:
+                            prec_op = mass_op * ntd_matrices[ran] * mass_op
+                        else:
+                            prec_op = None
+                    else:
+                        prec_op = None
+                    row_list.append(prec_op)
+                preconditioner_list.append(row_list)
+
+            self.discrete_preconditioner = _bempp.BlockedDiscreteOperator(
+                preconditioner_list
+            )
+
+        else:
+            raise NotImplementedError
 
     def _create_rhs_vector(self):
         """
@@ -220,9 +336,10 @@ class Pmchwt(_Model):
 
         from .linalg import linear_solve
 
-        self.solution_vector = linear_solve(
+        self.solution_vector, self.iteration_count = linear_solve(
             self.lhs_discrete_system,
             self.rhs_discrete_system,
+            return_iteration_count=True,
         )
 
     def _solution_vector_to_gridfunction(self):
@@ -315,5 +432,86 @@ def create_boundary_integral_operators(
             use_projection_spaces=False,
         )
         operators.append(hs_op)
+
+    return operators
+
+
+def create_inverse_mass_matrix(space):
+    """
+    Create the inverse mass matrix of the function space.
+
+    Parameters
+    ----------
+    space : bempp.api.FunctionSpace
+        The function space for the domain and range of the Galerkin discretisation.
+
+    Returns
+    -------
+    matrix : linear operator
+        The linear operator with the sparse LU factorisation of the inverse
+        mass matrix.
+    """
+
+    id_op = _bempp.operators.boundary.sparse.identity(
+        space,
+        space,
+        space,
+    )
+    id_wf = id_op.weak_form()
+    id_inv = _bempp.InverseSparseDiscreteBoundaryOperator(id_wf)
+
+    return id_inv
+
+
+def create_osrc_operators(
+    space,
+    wavenumber,
+    parameters,
+    dtn=False,
+    ntd=False,
+):
+    """
+    Create OSRC operators of the Helmholtz equation.
+
+    Parameters
+    ----------
+    space : bempp.api.FunctionSpace
+        The function space for the domain and range of the Galerkin discretisation.
+    wavenumber : complex
+        The wavenumber of the Green's function.
+    parameters : dict
+        The parameters of the OSRC operators.
+    dtn : bool
+        Return the OSRC approximated DtN map.
+    ntd : bool
+        Return the OSRC approximated NtD map.
+
+    Returns
+    -------
+    operators : bempp.api.operators.boundary.helmholtz
+        A list of OSRC operators of the Helmholtz equation
+    """
+
+    operators = []
+
+    if dtn:
+        dtn_op = _bempp.operators.boundary.helmholtz.osrc_dtn(
+            space,
+            wavenumber,
+            npade=parameters["osrc_npade"],
+            theta=parameters["osrc_theta"],
+            damped_wavenumber=parameters["osrc_damped_wavenumber"],
+        )
+        operators.append(dtn_op)
+
+    if ntd:
+        ntd_op = _bempp.operators.boundary.helmholtz.osrc_ntd(
+            space,
+            wavenumber,
+            npade=parameters["osrc_npade"],
+            theta=parameters["osrc_theta"],
+            damped_wavenumber=parameters["osrc_damped_wavenumber"],
+        )
+        operators.append(ntd_op)
 
     return operators

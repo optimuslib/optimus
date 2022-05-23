@@ -14,11 +14,8 @@ class Geometry:
 
         self.grid = grid
 
-    def subdomain_count(self):
+    def number_of_vertices(self):
         """
-        The number of subdomains in the geometry.
+        The number of vertices in the surface mesh of the geometry.
         """
-        if isinstance(self.grid, list):
-            return len(self.grid)
-        else:
-            return 1
+        return self.grid.leaf_view.vertices.shape[1]
