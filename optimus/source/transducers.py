@@ -469,115 +469,9 @@ class _Transducer:
         self.normal_pressure_gradient = normal_pressure_gradient
 
 
-# @_njit(parallel=True)
-# def calc_greens_functions_in_observation_points_numba(
-#     locations_source, locations_observation, wavenumber, source_weights):
-#     """
-#     Calculate the pressure field and its gradient for a
-#     summation of point sources describing a transducer,
-#     according to the Rayleigh integral formula.
-
-#     Use Numba for acceleration and parallelisation.
-
-#     Parameters
-#     ----------
-#     locations_source : np.ndarray of size (3, N_sourcepoints)
-#         The locations of the source points.
-#     locations_observation : np.ndarray of size (3, N_observationpoints)
-#         The locations of the observation points.
-#     wavenumber : complex
-#         The wavenumber of the wave field.
-#     source_weights : np.ndarray of size (N_sourcepoints,)
-#         Weights of each source element.
-
-#     Returns
-#     -------
-#     greens_function_in_observation_points : np.ndarray of size (N_observationpoints,)
-#         The Green's function of the wave field at the observation points
-#         with contribution of all source locations.
-#     greens_gradient_in_observation_points : np.ndarray of size (3, N_observationpoints)
-#         The gradient of Green's function of the wave field at the
-#         observation points with contribution of all source locations.
-#         When normals is None, gradient related quantities are not evaluated.
-#     """
-#     greens_function_in_observation_points_scaled = _np.zeros_like(
-#         locations_observation[0], dtype=_np.complex128
-#     )
-#     greens_gradient_in_observation_points_scaled = _np.zeros_like(
-#         locations_observation, dtype=_np.complex128
-#     )
-#     for i in _prange(locations_observation.shape[1]):
-#         temp_greens_function_in_observation_points_scaled = 0.0
-#         temp_greens_gradient_in_observation_points_scaled = _np.zeros(
-#             3, dtype=_np.complex128
-#         )
-#         differences_between_all_points = _np.zeros(3, dtype=_np.float64)
-#         for j in range(locations_source.shape[1]):
-#             # TODO: find out if differences_between_all_points can be
-#             # calculated more neatly. It seems that Numba has an issue
-#             # when subtracting numpy arrays. np.subtract does not work
-#             # either
-#             differences_between_all_points[0] = (
-#                 locations_source[0, j] - locations_observation[0, i]
-#             )
-#             differences_between_all_points[1] = (
-#                 locations_source[1, j] - locations_observation[1, i]
-#             )
-#             differences_between_all_points[2] = (
-#                 locations_source[2, j] - locations_observation[2, i]
-#             )
-
-#             distances_between_all_points = _np.linalg.norm(
-#                 differences_between_all_points
-#             )
-
-#             greens_function_scaled = (
-#                 _np.exp(1j * wavenumber * distances_between_all_points)
-#                 / distances_between_all_points
-#             )
-#             temp_greens_function_in_observation_points_scaled += (
-#                 greens_function_scaled * source_weights[j]
-#             )
-
-#             greens_gradient_amplitude_scaled = _np.divide(
-#                 greens_function_scaled
-#                 * (wavenumber * distances_between_all_points + 1j),
-#                 distances_between_all_points**2,
-#             )
-#             greens_gradient_scaled = (
-#                 differences_between_all_points * greens_gradient_amplitude_scaled
-#             )
-#             temp_greens_gradient_in_observation_points_scaled += (
-#                 greens_gradient_scaled * source_weights[j]
-#             )
-
-#         greens_function_in_observation_points_scaled[
-#             i
-#         ] = temp_greens_function_in_observation_points_scaled
-
-#         greens_gradient_in_observation_points_scaled[
-#             :, i
-#         ] = temp_greens_gradient_in_observation_points_scaled
-
-#     greens_function_in_observation_points = (
-#         greens_function_in_observation_points_scaled / (2 * _np.pi)
-#     )
-
-#     greens_gradient_in_observation_points = (
-#         -1j / (2 * _np.pi)
-#     ) * greens_gradient_in_observation_points_scaled
-#     return (
-#         greens_function_in_observation_points,
-#         greens_gradient_in_observation_points,
-#     )
-
-
 @_njit(parallel=True)
 def calc_greens_functions_in_observation_points_numba(
-    locations_source,
-    locations_observation,
-    wavenumber,
-    source_weights,
+    locations_source, locations_observation, wavenumber, source_weights
 ):
     """
     Calculate the pressure field and its gradient for a
@@ -596,9 +490,6 @@ def calc_greens_functions_in_observation_points_numba(
         The wavenumber of the wave field.
     source_weights : np.ndarray of size (N_sourcepoints,)
         Weights of each source element.
-    normals : np.ndarray of size (3, N_sourcepoints)
-        The coordinates of the unit normal vectors for evaluation of the
-        pressure normal gradient on the surface of scatterers.
 
     Returns
     -------
@@ -608,6 +499,7 @@ def calc_greens_functions_in_observation_points_numba(
     greens_gradient_in_observation_points : np.ndarray of size (3, N_observationpoints)
         The gradient of Green's function of the wave field at the
         observation points with contribution of all source locations.
+        When normals is None, gradient related quantities are not evaluated.
     """
     greens_function_in_observation_points_scaled = _np.zeros_like(
         locations_observation[0], dtype=_np.complex128
@@ -615,54 +507,58 @@ def calc_greens_functions_in_observation_points_numba(
     greens_gradient_in_observation_points_scaled = _np.zeros_like(
         locations_observation, dtype=_np.complex128
     )
-
-    if locations_observation.shape[1] >= locations_source.shape[1]:
-        for i in _prange(locations_observation.shape[1]):
-            temp_greens_function_in_observation_points_scaled = 0.0
-            temp_greens_gradient_in_observation_points_scaled = _np.zeros(
-                3, dtype=_np.complex128
+    for i in _prange(locations_observation.shape[1]):
+        temp_greens_function_in_observation_points_scaled = 0.0
+        temp_greens_gradient_in_observation_points_scaled = _np.zeros(
+            3, dtype=_np.complex128
+        )
+        differences_between_all_points = _np.zeros(3, dtype=_np.float64)
+        for j in range(locations_source.shape[1]):
+            # TODO: find out if differences_between_all_points can be
+            # calculated more neatly. It seems that Numba has an issue
+            # when subtracting numpy arrays. np.subtract does not work
+            # either
+            differences_between_all_points[0] = (
+                locations_source[0, j] - locations_observation[0, i]
             )
-            for j in range(locations_source.shape[1]):
+            differences_between_all_points[1] = (
+                locations_source[1, j] - locations_observation[1, i]
+            )
+            differences_between_all_points[2] = (
+                locations_source[2, j] - locations_observation[2, i]
+            )
 
-                (
-                    differences_between_all_points,
-                    distances_between_all_points,
-                ) = difference_and_distance_between_points(
-                    locations_source[:, j], locations_observation[:, i]
-                )
-                greens_function_scaled_times_source_weight = (
-                    calc_greens_function_in_observation_point_scaled_numba(
-                        distances_between_all_points,
-                        source_weights[j],
-                        wavenumber,
-                    )
-                )
+            distances_between_all_points = _np.linalg.norm(
+                differences_between_all_points
+            )
 
-                temp_greens_function_in_observation_points_scaled += (
-                    greens_function_scaled_times_source_weight
-                )
+            greens_function_scaled = (
+                _np.exp(1j * wavenumber * distances_between_all_points)
+                / distances_between_all_points
+            )
+            temp_greens_function_in_observation_points_scaled += (
+                greens_function_scaled * source_weights[j]
+            )
 
-                greens_gradient_scaled_times_source_weight = (
-                    calc_greens_gradient_in_observation_point_scaled_numba(
-                        differences_between_all_points,
-                        distances_between_all_points,
-                        greens_function_scaled_times_source_weight,
-                        wavenumber,
-                    )
-                )
+            greens_gradient_amplitude_scaled = _np.divide(
+                greens_function_scaled
+                * (wavenumber * distances_between_all_points + 1j),
+                distances_between_all_points**2,
+            )
+            greens_gradient_scaled = (
+                differences_between_all_points * greens_gradient_amplitude_scaled
+            )
+            temp_greens_gradient_in_observation_points_scaled += (
+                greens_gradient_scaled * source_weights[j]
+            )
 
-                temp_greens_gradient_in_observation_points_scaled += (
-                    greens_gradient_scaled_times_source_weight
-                )
-            greens_function_in_observation_points_scaled[
-                i
-            ] = temp_greens_function_in_observation_points_scaled
+        greens_function_in_observation_points_scaled[
+            i
+        ] = temp_greens_function_in_observation_points_scaled
 
-            greens_gradient_in_observation_points_scaled[
-                :, i
-            ] = temp_greens_gradient_in_observation_points_scaled
-    else:
-        raise NotImplementedError
+        greens_gradient_in_observation_points_scaled[
+            :, i
+        ] = temp_greens_gradient_in_observation_points_scaled
 
     greens_function_in_observation_points = (
         greens_function_in_observation_points_scaled / (2 * _np.pi)
@@ -671,117 +567,10 @@ def calc_greens_functions_in_observation_points_numba(
     greens_gradient_in_observation_points = (
         -1j / (2 * _np.pi)
     ) * greens_gradient_in_observation_points_scaled
-
     return (
         greens_function_in_observation_points,
         greens_gradient_in_observation_points,
     )
-
-
-@_njit
-def calc_greens_function_in_observation_point_scaled_numba(
-    distance_between_points,
-    source_weight,
-    wavenumber,
-):
-    """
-    Calculate the scaled Green's function for a point source describing a transducer
-    subset, according to the Rayleigh integral formula.
-
-    Use Numba for acceleration and parallelisation.
-
-    Parameters
-    ----------
-    distance_between_points : float
-        The distance between source and observer points.
-    source_weight : complex
-        Weight of source element.
-    wavenumber : complex
-        The wavenumber of the wave field.
-
-    Returns
-    -------
-    greens_function_in_observation_point_scaled : complex
-        The Green's function of the wave field at the observation points
-        with contribution of all source locations.
-    """
-
-    greens_function_scaled = (
-        _np.exp(1j * wavenumber * distance_between_points) / distance_between_points
-    )
-
-    greens_function_in_observation_point_scaled = greens_function_scaled * source_weight
-    return greens_function_in_observation_point_scaled
-
-
-@_njit
-def calc_greens_gradient_in_observation_point_scaled_numba(
-    difference_between_points,
-    distance_between_points,
-    greens_function_in_observation_point_scaled,
-    wavenumber,
-):
-    """
-    Calculate the scaled Green's function gradient for a point source describing a
-    transducer subset, according to the Rayleigh integral formula.
-
-    Use Numba for acceleration and parallelisation.
-
-    Parameters
-    ----------
-    difference_between_points : np.ndarray of size (3, )
-        The difference between source and observer locations.
-    distance_between_points : float
-        The distance between source and observer points.
-    greens_function_in_observation_point_scaled : np.ndarray of size (3, )
-        The scaled Green's function at the observation point.
-    wavenumber : complex
-        The wavenumber of the wave field.
-
-    Returns
-    -------
-    greens_gradient_in_observation_point_scaled : np.ndarray of size (3, )
-        The scaled gradient of Green's function of the wave field at the
-        observation point with contribution from specific source location.
-    """
-
-    greens_gradient_amplitude_scaled_weighted = _np.divide(
-        greens_function_in_observation_point_scaled
-        * (wavenumber * distance_between_points + 1j),
-        distance_between_points**2,
-    )
-    greens_gradient_scaled = (
-        difference_between_points * greens_gradient_amplitude_scaled_weighted
-    )
-    greens_gradient_in_observation_point_scaled = greens_gradient_scaled
-    return greens_gradient_in_observation_point_scaled
-
-
-@_njit
-def difference_and_distance_between_points(locations_source, locations_observation):
-    """
-    Calculate the diffence between points as well as the Euclidian distance.
-
-    Use Numba for acceleration and parallelisation.
-
-    Parameters
-    ----------
-    location_source : np.ndarray of size (3, )
-        The coordinates of the source point.
-    location_source : np.ndarray of size (3, )
-        The coordinates of the source point.
-
-    Returns
-    -------
-    difference_between_points : np.ndarray of size (3, )
-        The difference between source and observer locations.
-    difference_between_points : float
-        The distance between source and observer points.
-    """
-
-    difference_between_points = locations_source - locations_observation
-    distance_between_points = _np.linalg.norm(difference_between_points)
-    return difference_between_points, distance_between_points
 
 
 def calc_field_from_point_sources(
