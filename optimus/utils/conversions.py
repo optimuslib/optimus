@@ -52,6 +52,32 @@ def convert_to_float(value, label="variable"):
     return float(value)
 
 
+def convert_to_positive_float(value, label="variable"):
+    """
+    Check if the input value can be converted into a positive float.
+
+    Parameters
+    ----------
+    value : Any
+        The input value to be converted into a positive float.
+    label : str
+        The name of the variable.
+
+    Returns
+    -------
+    value : float
+        The output value.
+    """
+
+    if not isinstance(value, (float, int)):
+        raise TypeError(label + " needs to be a float or int, not " + str(type(value)))
+
+    if value <= 0:
+        raise ValueError(label + " needs to be positive, not " + str(value))
+
+    return float(value)
+
+
 def convert_to_array(vector, shape=None, label="variable"):
     """
     Check if the input vector can be converted into an array for the specified

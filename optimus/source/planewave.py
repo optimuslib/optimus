@@ -52,12 +52,12 @@ class _PlaneWave(_Source):
         ----------
         medium : optimus.material.Material
             The propagating medium.
-        locations : 3 x N array
+        locations : np.ndarray of size (3, N)
             Locations on which to evaluate the pressure field.
 
         Returns
         ----------
-        pressure : N array
+        pressure : np.ndarray of size (N,)
             The pressure in the locations.
         """
 
@@ -73,21 +73,21 @@ class _PlaneWave(_Source):
     def normal_pressure_gradient(self, medium, locations, normals):
         """
         Calculate the normal gradient of the pressure field in the
-         specified locations.
+        specified locations.
 
         Parameters
         ----------
         medium : optimus.material.Material
             The propagating medium.
-        locations : 3 x N array
+        locations : np.ndarray of size (3, N)
             Locations on which to evaluate the pressure field.
-        normals : 3 x N array
+        normals : np.ndarray of size (3, N)
             Unit normal vectors at the locations on which to evaluate the
-             pressure field.
+            pressure field.
 
         Returns
         ----------
-        gradient : 3 x N array
+        gradient : np.ndarray of size (3, N)
             The normal gradient of the pressure in the locations.
         """
 

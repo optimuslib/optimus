@@ -3,6 +3,8 @@
 import bempp.api as _bempp
 import numpy as _np
 
+from ..utils.conversions import convert_to_positive_float as _convert_to_positive_float
+
 
 class Source:
     def __init__(
@@ -21,13 +23,8 @@ class Source:
             The frequency of the wave field.
         """
 
-        if not isinstance(frequency, (int, float)):
-            raise TypeError("Frequency should be specified as a number")
-        elif frequency <= 0.0:
-            raise ValueError("Frequency should have a positive value.")
-
         self.type = source_type
-        self.frequency = float(frequency)
+        self.frequency = _convert_to_positive_float(frequency, "frequency")
 
     def pressure_field(self, medium, locations):
         """

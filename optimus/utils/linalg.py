@@ -76,14 +76,15 @@ def rotate(locations, source_axis):
 
     Parameters
     ------
-    locations : 3 x N array
+    locations : np.ndarray of size (3, N)
       Coordinates of the point sources.
-    source_axis: 1D array of size 3
+    source_axis: np.ndarray of size (3,)
       Axis of propagation.
 
     Returns
     -------
-    Locations rotated by the axis of propagation (3 x N array).
+    locations : np.ndarray of size (3, N)
+        Locations rotated by the axis of propagation.
     """
 
     source_axis = _np.array(source_axis).flatten()
@@ -154,7 +155,8 @@ def translate(locations, translation):
 
     Returns
     -------
-    Positions translated by the required shift (3 X N array).
+    locations : np.ndarray of size (3, N)
+        Positions translated by the required shift.
     """
 
     translation_array = _np.array(translation).reshape(3, 1)

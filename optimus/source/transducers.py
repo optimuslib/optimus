@@ -17,21 +17,23 @@ def transducer_field(
 ):
     """
     Calculate the field emitted by a transducer source.
+
     Parameters
     ----------
     source : optimus.source.Source
         The type of acoustic source used.
     medium : optimus.material.Material
         The propagating medium.
-    field_locations : _np.ndarray of size (3, N)
+    field_locations : np.ndarray of size (3, N)
         The coordinates of the locations at which the incident field
         is evaluated.
-    normals : _np.ndarray of size (3, N)
+    normals : np.ndarray of size (3, N)
         The coordinates of the unit normal vectors for evaluation of the
         pressure normal gradient on the surface of scatterers.
     verbose : boolean
         Verbosity of output.
         Default: False
+
     Returns
     ----------
     An object with the attributes 'pressure' and 'normal_pressure_gradient'.
@@ -80,12 +82,13 @@ class _Transducer:
         Generate the source points of the transducer. The field emitted from
         any transducer is modelled by a collection of point sources, each
         with weighting for its amplitude.
+
         Sets the following class attributes.
         ----------
-            source_locations : _np.ndarray of size (3, N_sourcepoints)
-                The 3D location of each point source.
-            source_weights : _np.ndarray of size (N_sourcepoints)
-                The weighting of each point source.
+        source_locations : np.ndarray of size (3, N_sourcepoints)
+            The 3D location of each point source.
+        source_weights : np.ndarray of size (N_sourcepoints)
+            The weighting of each point source.
         """
 
         if self.source.type == "piston":
@@ -319,7 +322,7 @@ class _Transducer:
 
         Parameters
         ----------
-        source_locations_on_unit_disk : np.ndarray of size (3, N_sourcepoints)
+        source_locations_on_reference_source : np.ndarray of size (3, N_sourcepoints)
             The locations of the source points on the reference
             element of the transducer type.
         element_range : list
@@ -430,7 +433,7 @@ class _Transducer:
         Calculate the pressure field and the normal gradient of the
         transducer, in a collection of 3D observation points.
 
-        Uses the following class attributes
+        Uses the following class attributes.
         ----------
         source_locations : np.ndarray of size (3, N_sourcepoints)
             The coordinates of the locations of the point sources used to
@@ -514,10 +517,6 @@ def calc_greens_functions_in_observation_points_numba(
         )
         differences_between_all_points = _np.zeros(3, dtype=_np.float64)
         for j in range(locations_source.shape[1]):
-            # TODO: find out if differences_between_all_points can be
-            # calculated more neatly. It seems that Numba has an issue
-            # when subtracting numpy arrays. np.subtract does not work
-            # either
             differences_between_all_points[0] = (
                 locations_source[0, j] - locations_observation[0, i]
             )
