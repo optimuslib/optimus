@@ -67,7 +67,7 @@ class _Transducer:
         self.field_locations = field_locations
         self.normals = normals
         self.density = medium.density
-        self.wavenumber = medium.wavenumber(source.frequency)
+        self.wavenumber = medium.compute_wavenumber(source.frequency)
         self.frequency = source.frequency
         self.verbose = verbose
 

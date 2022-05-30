@@ -62,7 +62,7 @@ class _PlaneWave(_Source):
         """
 
         points = _convert_to_3n_array(locations)
-        wavenumber = medium.wavenumber(self.frequency)
+        wavenumber = medium.compute_wavenumber(self.frequency)
 
         pressure = self.amplitude * _np.exp(
             1j * wavenumber * _np.dot(self.direction_vector, points)
@@ -94,7 +94,7 @@ class _PlaneWave(_Source):
         points = _convert_to_3n_array(locations)
         normals = _convert_to_3n_array(normals)
         unit_normals = _normalize_vector(normals)
-        wavenumber = medium.wavenumber(self.frequency)
+        wavenumber = medium.compute_wavenumber(self.frequency)
 
         normals = _np.dot(self.direction_vector, unit_normals)
         points = _np.dot(self.direction_vector, points)
