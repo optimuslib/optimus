@@ -97,6 +97,11 @@ def create_material(
             _write_material_database(properties)
 
     if properties_user:
-        print("Ignored material properties", list(properties_user.keys()))
+        import warnings
+
+        warnings.warn(
+            "Ignored material properties " + str(list(properties_user.keys())),
+            RuntimeWarning,
+        )
 
     return _Material(properties)

@@ -57,6 +57,9 @@ class GmresSolver:
         Solve the linear system with GMRES.
         """
         from scipy.sparse.linalg import gmres
+        import optimus
+
+        global_params_linalg = optimus.global_parameters.linalg
 
         self.it_count = 0
 
@@ -66,10 +69,20 @@ class GmresSolver:
         solution, info = gmres(
             self.lhs_matrix,
             self.rhs_vector,
-            tol=1e-5,
-            restart=1000,
-            maxiter=1000,
+            tol=global_params_linalg.tol,
+            maxiter=global_params_linalg.maxiter,
+            restart=min(global_params_linalg.maxiter, global_params_linalg.restart),
             callback=callback_fct,
         )
+
+        if self.it_count == global_params_linalg.maxiter:
+            import warnings
+
+            warnings.warn(
+                "The GMRES solver stopped at the maximum number of "
+                + str(self.it_count)
+                + " iterations.",
+                RuntimeWarning,
+            )
 
         return solution
