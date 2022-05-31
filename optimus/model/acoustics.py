@@ -303,7 +303,10 @@ class Pmchwt(_Model):
         for space in self.space:
             inc_traces = self.source.calc_surface_traces(
                 medium=self.material_exterior,
-                spaces=(space, space),
+                space_dirichlet=space,
+                space_neumann=space,
+                dirichlet_trace=True,
+                neumann_trace=True,
             )
             for trace in inc_traces:
                 inc_trace_projections.append(trace.projections())

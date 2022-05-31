@@ -1,12 +1,15 @@
 """Plane wave sources."""
 
 import numpy as _np
+
 from .common import Source as _Source
-from .common import _convert_to_3n_array
-from .common import _convert_to_unit_vector
+from ..utils.conversions import convert_to_float as _convert_to_float
+from ..utils.conversions import convert_to_array as _convert_to_array
+from ..utils.conversions import convert_to_3n_array as _convert_to_3n_array
+from ..utils.linalg import normalize_vector as _normalize_vector
 
 
-def create_planewave(frequency, direction=None, amplitude=1.0):
+def create_planewave(frequency, direction=(1, 0, 0), amplitude=1.0):
     """
     Create a plane wave source.
 
@@ -19,7 +22,7 @@ def create_planewave(frequency, direction=None, amplitude=1.0):
         Default: positive x direction
     amplitude : float
         The amplitude of the plane wave.
-        Default: 1
+        Default: 1 Pa
     """
     return _PlaneWave(frequency, direction, amplitude)
 
@@ -34,41 +37,32 @@ class _PlaneWave(_Source):
 
         super().__init__("planewave", frequency)
 
-        if direction is not None:
-            if not isinstance(direction, (list, tuple, _np.ndarray)):
-                raise TypeError("Wave direction needs to be an array type.")
-            direction_vector = _np.array(direction)
-            if direction_vector.ndim == 1 and direction_vector.size == 3:
-                self.direction_vector = _convert_to_unit_vector(
-                    direction_vector
-                )
-            elif direction_vector.ndim == 2 and direction_vector.size == 3:
-                self.direction_vector = _convert_to_unit_vector(
-                    direction_vector.flatten()
-                )
-            else:
-                raise ValueError("Wave direction needs to be a 3D vector.")
-        else:
-            self.direction_vector = _np.array([1, 0, 0])
+        direction_vector = _convert_to_array(
+            direction, shape=(3,), label="wave direction"
+        )
+        self.direction_vector = _normalize_vector(direction_vector)
 
-        if not isinstance(amplitude, (int, float)):
-            raise TypeError("Wave amplitude should be a number.")
-        else:
-            self.amplitude = amplitude
+        self.amplitude = _convert_to_float(amplitude, label="wave amplitude")
 
-    def pressure_field(self, locations, wavenumber):
+    def pressure_field(self, medium, locations):
         """
         Calculate the pressure field in the specified locations.
 
         Parameters
         ----------
-        locations : 3 x N array
+        medium : optimus.material.Material
+            The propagating medium.
+        locations : np.ndarray of size (3, N)
             Locations on which to evaluate the pressure field.
-        wavenumber : float
-            The wavenumber of the propagating medium of the source.
+
+        Returns
+        ----------
+        pressure : np.ndarray of size (N,)
+            The pressure in the locations.
         """
 
         points = _convert_to_3n_array(locations)
+        wavenumber = medium.compute_wavenumber(self.frequency)
 
         pressure = self.amplitude * _np.exp(
             1j * wavenumber * _np.dot(self.direction_vector, points)
@@ -76,25 +70,31 @@ class _PlaneWave(_Source):
 
         return pressure
 
-    def normal_pressure_gradient(self, locations, normals, wavenumber):
+    def normal_pressure_gradient(self, medium, locations, normals):
         """
         Calculate the normal gradient of the pressure field in the
-         specified locations.
+        specified locations.
 
         Parameters
         ----------
-        locations : 3 x N array
+        medium : optimus.material.Material
+            The propagating medium.
+        locations : np.ndarray of size (3, N)
             Locations on which to evaluate the pressure field.
-        normals : 3 x N array
+        normals : np.ndarray of size (3, N)
             Unit normal vectors at the locations on which to evaluate the
-             pressure field.
-        wavenumber : float
-            The wavenumber of the propagating medium of the source.
+            pressure field.
+
+        Returns
+        ----------
+        gradient : np.ndarray of size (3, N)
+            The normal gradient of the pressure in the locations.
         """
 
         points = _convert_to_3n_array(locations)
         normals = _convert_to_3n_array(normals)
-        unit_normals = _convert_to_unit_vector(normals)
+        unit_normals = _normalize_vector(normals)
+        wavenumber = medium.compute_wavenumber(self.frequency)
 
         normals = _np.dot(self.direction_vector, unit_normals)
         points = _np.dot(self.direction_vector, points)
@@ -105,3 +105,36 @@ class _PlaneWave(_Source):
         )
 
         return gradient
+
+    def calc_surface_traces(
+        self,
+        medium,
+        space_dirichlet=None,
+        space_neumann=None,
+        dirichlet_trace=True,
+        neumann_trace=True,
+    ):
+        """
+        Calculate the surface traces of the source field on the mesh.
+
+        Parameters
+        ----------
+        medium : optimus.material.Material
+            The propagating medium.
+        space_dirichlet, space_neumann : bempp.api.FunctionSpace
+            The discrete spaces on the surface grid.
+        dirichlet_trace, neumann_trace : bool
+            Calculate the Dirichlet or Neumann trace of the field.
+
+        Returns
+        ----------
+        trace : bempp.api.GridFunctions
+            The surface traces.
+        """
+        return super()._calc_surface_traces_from_function(
+            medium,
+            space_dirichlet,
+            space_neumann,
+            dirichlet_trace,
+            neumann_trace,
+        )
