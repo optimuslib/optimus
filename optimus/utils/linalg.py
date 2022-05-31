@@ -23,9 +23,19 @@ def normalize_vector(vector):
         raise TypeError("Vector needs to be a Numpy array.")
 
     if vector.ndim == 1:
-        return vector / _np.linalg.norm(vector)
+        vector_norm = _np.linalg.norm(vector)
+        if _np.isclose(vector_norm, 0):
+            raise ValueError("The vector cannot be normalised because it is zero.")
+        else:
+            return vector / vector_norm
     elif vector.ndim == 2:
-        return vector / _np.linalg.norm(vector, axis=0)
+        vector_norms = _np.linalg.norm(vector, axis=0)
+        if _np.any(_np.isclose(vector_norms, 0)):
+            raise ValueError(
+                "The vectors cannot be normalised because at least one is zero."
+            )
+        else:
+            return vector / vector_norms
     else:
         raise ValueError("Vector needs to be 1D or 2D.")
 
