@@ -1,0 +1,291 @@
+"""Array sources."""
+
+import numpy as _np
+
+from .common import Source as _Source
+from ..utils.conversions import convert_to_positive_int as _convert_to_positive_int
+from ..utils.conversions import convert_to_positive_float as _convert_to_positive_float
+from ..utils.conversions import convert_to_array as _convert_to_array
+from ..utils.conversions import convert_to_3n_array as _convert_to_3n_array
+from ..utils.conversions import (
+    convert_scalar_to_complex_array as _convert_scalar_to_complex_array,
+)
+from ..utils.linalg import normalize_vector as _normalize_vector
+from .transducers import transducer_field as _transducer_field
+
+
+def create_array(
+    frequency,
+    element_radius,
+    centroid_locations,
+    velocity=1.0,
+    source_axis=(1, 0, 0),
+    number_of_point_sources_per_wavelength=6,
+    location=(0, 0, 0),
+    radius_of_curvature=None,
+    number_of_elements=None,
+):
+    """
+    Create an array source consisting of circular piston elements distributed on a
+    spherical section bowl.
+
+    Parameters
+    ----------
+    frequency : float
+        The frequency of the acoustic field.
+    element_radius : float
+        The radius of elements which lie on the spherical section bowl.
+    centroid_locations : np.ndarray of size (3, N) or str
+        The locations of the centroids of the piston elements. These must be specified
+        in a local coordinate sytem where the axis of the transducer is the Cartesian
+        positive z-axis and the focus of the transducer is (0,0,0). The input can either
+        be an array type or a str corresponding to the path and filename containing the
+        centroid data.
+    velocity : np.array of complex values of size (N,)
+        Normal velocities of the array elements.
+        Default : 1 m/s
+    source_axis : array like
+        The axis of the bowl.
+        Default: positive x direction
+    number_of_point_sources_per_wavelength : integer
+        The number of point sources per wavelength used to discretise each piston.
+        Default: 6
+    location : array like
+        The location of the centroid of the bowl.
+        Default: global origin
+    radius_of_curvature : float
+        The radius of curvature of the array. For the default value, this is calculated
+        from the locations of the element centroids.
+        Default : None
+    number_of_elements : int
+        The number of array elements.
+        Default : None
+    """
+    return _Array(
+        frequency,
+        element_radius,
+        centroid_locations,
+        velocity,
+        source_axis,
+        number_of_point_sources_per_wavelength,
+        location,
+        radius_of_curvature,
+        number_of_elements,
+    )
+
+
+class _Array(_Source):
+    def __init__(
+        self,
+        frequency,
+        element_radius,
+        centroid_locations,
+        velocity,
+        source_axis,
+        number_of_point_sources_per_wavelength,
+        location,
+        radius_of_curvature,
+        number_of_elements,
+    ):
+
+        super().__init__("array", frequency)
+
+        source_axis_vector = _convert_to_array(
+            source_axis, shape=(3,), label="array source axis"
+        )
+        self.source_axis = _normalize_vector(source_axis_vector)
+
+        self.number_of_point_sources_per_wavelength = _convert_to_positive_int(
+            number_of_point_sources_per_wavelength,
+            label="number of point sources per wavelength",
+        )
+
+        self.location = _convert_to_array(location, shape=(3,), label="array location")
+
+        self.element_radius = _convert_to_positive_float(element_radius)
+
+        if isinstance(centroid_locations, str):
+            centroid_locations = _np.loadtxt(centroid_locations)
+
+        self.centroid_locations = _convert_to_3n_array(
+            centroid_locations, label="element centroid locations"
+        )
+
+        self.number_of_elements = self._calc_number_of_elements(number_of_elements)
+
+        self.velocity = _convert_scalar_to_complex_array(
+            velocity, shape=(self.number_of_elements,), label="velocity"
+        )
+
+        self.radius_of_curvature = self._calc_radius_of_curvature(
+            self.centroid_locations, radius_of_curvature
+        )
+
+    def _calc_number_of_elements(self, number_of_elements):
+        calc_number_of_elements = self.centroid_locations.shape[1]
+        if number_of_elements:
+            number_of_elements = _convert_to_positive_int(number_of_elements)
+            if number_of_elements != calc_number_of_elements:
+                raise ValueError(
+                    "The specified number of elements does not match the number of"
+                    + "centroid locations."
+                )
+        else:
+            number_of_elements = calc_number_of_elements
+
+        return number_of_elements
+
+    def _calc_radius_of_curvature(self, centroid_locations, radius_of_curvature):
+
+        centroid_locations_l2_norm = _np.linalg.norm(centroid_locations, axis=0)
+        radius_of_curvature_from_centroid_locations = _np.mean(
+            centroid_locations_l2_norm
+        )
+        centroid_locations_l2_norm_std = _np.std(centroid_locations_l2_norm)
+        radius_of_curvature_from_centroid_locations = _np.mean(
+            centroid_locations_l2_norm
+        )
+
+        radius_of_curvature_tol = 1e-6
+        if centroid_locations_l2_norm_std > radius_of_curvature_tol:
+            raise ValueError(
+                "Array element centroid locations do not appear to lie on a sphere."
+            )
+        if radius_of_curvature:
+            radius_of_curvature = _convert_to_positive_float(radius_of_curvature)
+            if (
+                _np.isclose(
+                    radius_of_curvature_from_centroid_locations,
+                    radius_of_curvature,
+                )
+                == False
+            ):
+                raise ValueError(
+                    "The specified value of the array radius of curvature is"
+                    + " inconsistent with the centroid locations."
+                )
+            else:
+                radius_of_curvature = radius_of_curvature
+        else:
+            radius_of_curvature = radius_of_curvature_from_centroid_locations
+
+        return radius_of_curvature
+
+    def pressure_field(self, medium, locations):
+        """
+        Calculate the pressure field in the specified locations.
+
+        Parameters
+        ----------
+        medium : optimus.material.Material
+            The propagating medium.
+        locations : np.ndarray of size (3, N)
+            Locations on which to evaluate the pressure field.
+
+        Returns
+        ----------
+        pressure : np.ndarray of size (N,)
+            The pressure in the locations.
+        """
+
+        points = _convert_to_3n_array(locations)
+        incident_field = _transducer_field(self, medium, points)
+        pressure = incident_field.pressure
+
+        return pressure
+
+    def normal_pressure_gradient(self, locations, normals, medium):
+        """
+        Calculate the normal gradient of the pressure field in the
+        specified locations.
+
+        Parameters
+        ----------
+        medium : optimus.material.Material
+            The propagating medium.
+        locations : np.ndarray of size (3, N)
+            Locations on which to evaluate the pressure field.
+        normals : np.ndarray of size (3, N)
+            Unit normal vectors at the locations on which to evaluate the
+            pressure field.
+
+        Returns
+        ----------
+        gradient : np.ndarray of size (3, N)
+            The normal gradient of the pressure in the locations.
+        """
+
+        points = _convert_to_3n_array(locations)
+        normals = _convert_to_3n_array(normals)
+        unit_normals = _normalize_vector(normals)
+
+        incident_field = _transducer_field(self, medium, points, unit_normals)
+        gradient = incident_field.normal_pressure_gradient
+
+        return gradient
+
+    def pressure_field_and_normal_gradient(self, medium, locations, normals):
+        """
+        Calculate the pressure field and the normal gradient of the pressure
+        field in the specified locations.
+
+        Parameters
+        ----------
+        medium : optimus.material.Material
+            The propagating medium.
+        locations : np.ndarray of size (3, N)
+            Locations on which to evaluate the pressure field.
+        normals : np.ndarray of size (3, N)
+            Unit normal vectors at the locations on which to evaluate the
+            pressure field.
+
+        Returns
+        ----------
+        pressure : np.ndarray of size (N,)
+            The pressure in the locations.
+        gradient : np.ndarray of size (3, N)
+            The normal gradient of the pressure in the locations.
+        """
+
+        points = _convert_to_3n_array(locations)
+        normals = _convert_to_3n_array(normals)
+        unit_normals = _normalize_vector(normals)
+
+        incident_field = _transducer_field(self, medium, points, unit_normals)
+        pressure = incident_field.pressure
+        gradient = incident_field.normal_pressure_gradient
+
+        return pressure, gradient
+
+    def calc_surface_traces(
+        self,
+        medium,
+        space_dirichlet=None,
+        space_neumann=None,
+        dirichlet_trace=True,
+        neumann_trace=True,
+    ):
+        """
+        Calculate the surface traces of the source field on the mesh.
+
+        Parameters
+        ----------
+        medium : optimus.material.Material
+            The propagating medium.
+        space_dirichlet, space_neumann : bempp.api.FunctionSpace
+            The discrete spaces on the surface grid.
+        dirichlet_trace, neumann_trace : bool
+            Calculate the Dirichlet or Neumann trace of the field.
+
+        Returns
+        ----------
+        trace : bempp.api.GridFunctions
+            The surface traces.
+        """
+        return super()._calc_surface_traces_from_coefficients(
+            medium,
+            space_dirichlet,
+            space_neumann,
+            dirichlet_trace,
+            neumann_trace,
+        )
