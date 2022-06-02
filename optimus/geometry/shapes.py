@@ -5,73 +5,75 @@ from .common import Geometry as _Geometry
 
 
 class RegularSphere(_Geometry):
-    def __init__(self, n=1):
+    def __init__(self, refinement_level=1):
         """
-        Create a regular sphere geometry.
+        Create a regular sphere geometry, i.e. a structured mesh sphere with unit radius.
 
         Parameters
         ----------
-        n : int
+        refinement_level : int
             Refinement level.
         """
 
-        grid = _bempp.shapes.regular_sphere(n)
+        grid = _bempp.shapes.regular_sphere(refinement_level)
 
         super().__init__(grid, label="regular_sphere")
 
-        self.refinement = n
+        self.refinement = refinement_level
 
 
 class Sphere(_Geometry):
-    def __init__(self, r=1, origin=(0, 0, 0), h=0.1):
+    def __init__(self, radius=1, origin=(0, 0, 0), element_size=0.1):
         """
         Create a sphere geometry.
 
         Parameters
         ----------
-        r : float
+        radius : float
             Radius of the sphere.
         origin : tuple
             Center of the sphere.
-        h : float
+        element_size : float
             Mesh element size.
         """
 
-        grid = _bempp.shapes.sphere(r, origin, h)
+        grid = _bempp.shapes.sphere(radius, origin, element_size)
 
         super().__init__(grid, label="sphere")
 
-        self.radius = r
+        self.radius = radius
         self.origin = origin
-        self.meshwidth = h
+        self.meshwidth = element_size
 
 
 class Ellipsoid(_Geometry):
-    def __init__(self, r=(1, 1, 1), origin=(0, 0, 0), h=0.1):
+    def __init__(self, radius=(1, 1, 1), origin=(0, 0, 0), element_size=0.1):
         """
         Create an ellipsoid geometry.
 
         Parameters
         ----------
-        r : tuple
-            Radii of the ellipsoid.
+        radius : tuple
+            Radii of the ellipsoid along (x,y,z) axes.
         origin : tuple
             Center of the ellipsoid.
-        h : float
+        element_size : float
             Mesh element size.
         """
 
-        grid = _bempp.shapes.ellipsoid(r[0], r[1], r[2], origin, h)
+        grid = _bempp.shapes.ellipsoid(
+            radius[0], radius[1], radius[2], origin, element_size
+        )
 
         super().__init__(grid, label="ellipsoid")
 
-        self.radius = r
+        self.radius = radius
         self.origin = origin
-        self.meshwidth = h
+        self.meshwidth = element_size
 
 
 class Cube(_Geometry):
-    def __init__(self, length=1, origin=(0, 0, 0), h=0.1):
+    def __init__(self, length=1, origin=(0, 0, 0), element_size=0.1):
         """
         Create a cube geometry.
 
@@ -81,21 +83,21 @@ class Cube(_Geometry):
             The length of the edges.
         origin : tuple
             Position of the vertex with minimum value in each direction.
-        h : float
+        element_size : float
             Mesh element size.
         """
 
-        grid = _bempp.shapes.cube(length, origin, h)
+        grid = _bempp.shapes.cube(length, origin, element_size)
 
         super().__init__(grid, label="cube")
 
         self.length = length
         self.origin = origin
-        self.meshwidth = h
+        self.meshwidth = element_size
 
 
 class ReentrantCube(_Geometry):
-    def __init__(self, refinement_factor=0.2, h=0.1):
+    def __init__(self, refinement_factor=0.2, element_size=0.1):
         """
         Create a reentrant cube geometry.
 
@@ -103,31 +105,31 @@ class ReentrantCube(_Geometry):
         ----------
         refinement_factor : float
             The refinement factor of the reentry.
-        h : float
+        element_size : float
             Mesh element size.
         """
 
-        grid = _bempp.shapes.reentrant_cube(h, refinement_factor)
+        grid = _bempp.shapes.reentrant_cube(element_size, refinement_factor)
 
         super().__init__(grid, label="reentrant_cube")
 
         self.refinement = refinement_factor
-        self.meshwidth = h
+        self.meshwidth = element_size
 
 
 class Almond(_Geometry):
-    def __init__(self, h=0.01):
+    def __init__(self, element_size=0.01):
         """
         Create a NASA almond geometry.
 
         Parameters
         ----------
-        h : float
+        element_size : float
             Mesh element size.
         """
 
-        grid = _bempp.shapes.almond(h)
+        grid = _bempp.shapes.almond(element_size)
 
         super().__init__(grid, label="nasa_almond")
 
-        self.meshwidth = h
+        self.meshwidth = element_size
