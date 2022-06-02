@@ -4,7 +4,7 @@ import numpy as _np
 
 from .common import Source as _Source
 from ..utils.conversions import convert_to_positive_int as _convert_to_positive_int
-from ..utils.conversions import convert_to_float as _convert_to_float
+from ..utils.conversions import convert_to_positive_float as _convert_to_positive_float
 from ..utils.conversions import convert_to_array as _convert_to_array
 from ..utils.conversions import convert_to_3n_array as _convert_to_3n_array
 from ..utils.linalg import normalize_vector as _normalize_vector
@@ -77,7 +77,7 @@ class _Piston(_Source):
 
         self.location = _convert_to_array(location, shape=(3,), label="piston location")
 
-        self.radius = _convert_to_float(radius, label="piston radius")
+        self.radius = _convert_to_positive_float(radius, label="piston radius")
 
         self.velocity = _np.atleast_1d(complex(velocity))
 
