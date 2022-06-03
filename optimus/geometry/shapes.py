@@ -7,7 +7,8 @@ from .common import Geometry as _Geometry
 class RegularSphere(_Geometry):
     def __init__(self, refinement_level=1):
         """
-        Create a regular sphere geometry, i.e. a structured mesh sphere with unit radius.
+        Create a regular sphere geometry, i.e., a structured mesh on a sphere
+        with unit radius.
 
         Parameters
         ----------
