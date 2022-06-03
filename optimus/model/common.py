@@ -187,6 +187,10 @@ def _process_osrc_parameters(preconditioner_parameters):
         The parameters of the OSRC preconditioner.
     """
 
+    import optimus
+
+    global_params_osrc = optimus.global_parameters.preconditioning.osrc
+
     osrc_parameters = {}
 
     if "npade" in preconditioner_parameters:
@@ -198,7 +202,7 @@ def _process_osrc_parameters(preconditioner_parameters):
             )
         osrc_parameters["osrc_npade"] = npade
     else:
-        osrc_parameters["osrc_npade"] = 4
+        osrc_parameters["osrc_npade"] = global_params_osrc.npade
 
     if "theta" in preconditioner_parameters:
         theta = preconditioner_parameters["theta"]
@@ -209,7 +213,7 @@ def _process_osrc_parameters(preconditioner_parameters):
             )
         osrc_parameters["osrc_theta"] = theta
     else:
-        osrc_parameters["osrc_theta"] = _np.pi / 3
+        osrc_parameters["osrc_theta"] = global_params_osrc.theta
 
     if "damped_wavenumber" in preconditioner_parameters:
         k_damped = preconditioner_parameters["damped_wavenumber"]
@@ -220,7 +224,7 @@ def _process_osrc_parameters(preconditioner_parameters):
             )
         osrc_parameters["osrc_damped_wavenumber"] = k_damped
     else:
-        osrc_parameters["osrc_damped_wavenumber"] = None
+        osrc_parameters["osrc_damped_wavenumber"] = global_params_osrc.damped_wavenumber
 
     if "wavenumber" in preconditioner_parameters:
         k_osrc = preconditioner_parameters["wavenumber"]
@@ -237,6 +241,6 @@ def _process_osrc_parameters(preconditioner_parameters):
                 )
         osrc_parameters["osrc_wavenumber"] = k_osrc
     else:
-        osrc_parameters["osrc_wavenumber"] = "int"
+        osrc_parameters["osrc_wavenumber"] = global_params_osrc.wavenumber
 
     return osrc_parameters
