@@ -15,3 +15,5 @@ def _get_version():
 
 
 __version__ = _get_version()
+
+global_parameters = utils.parameters.DefaultParameters()
