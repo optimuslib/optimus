@@ -93,32 +93,32 @@ class _Transducer:
 
         if self.source.type == "piston":
             (
-                source_locations_inside_element,
+                source_locations_inside_transducer,
                 surface_area_weighting,
             ) = self.define_source_points_in_reference_piston(self.source.radius)
         elif self.source.type == "bowl":
             (
-                source_locations_inside_element,
+                source_locations_inside_transducer,
                 surface_area_weighting,
             ) = self.define_source_points_in_reference_bowl()
         elif self.source.type == "array":
             (
-                source_locations_inside_element,
+                source_locations_inside_transducer,
                 surface_area_weighting,
-            ) = self.define_source_points_in_reference_array(self.source.element_radius)
+            ) = self.define_source_points_in_reference_array()
         else:
             raise NotImplementedError
 
-        n_sources_per_element = source_locations_inside_element.shape[1]
+        n_sources_per_transducer = source_locations_inside_transducer.shape[1]
 
         if self.verbose:
             print(
-                "Number of point sources per element:",
-                n_sources_per_element,
+                "Number of point sources in transducer:",
+                n_sources_per_transducer,
             )
 
         self.source_locations = self.transform_source_points(
-            source_locations_inside_element
+            source_locations_inside_transducer
         )
 
         if self.source.type != "array":
@@ -147,9 +147,14 @@ class _Transducer:
 
         The surface area weighting is uniform.
 
+        Parameters
+        ----------
+        radius : float
+            The radius of piston.
+
         Returns
         -------
-        source_locations_inside_element : np.ndarray of size (3, N_points)
+        locations_inside_transducer : np.ndarray of size (3, N_points)
             The locations of the point source inside the reference element.
         surface_area_weighting : np.ndarray of size (N_points,)
             The surface area weighting associated to each point source.
@@ -157,7 +162,7 @@ class _Transducer:
 
         if self.source.number_of_point_sources_per_wavelength == 0:
 
-            source_locations_inside_element = _np.zeros((3, 1))
+            locations_inside_transducer = _np.zeros((3, 1))
 
         else:
 
@@ -189,13 +194,13 @@ class _Transducer:
             )
             distance = _np.linalg.norm(source_vector[:2, :], axis=0)
             inside = distance <= radius
-            source_locations_inside_element = source_vector[:, inside]
+            locations_inside_transducer = source_vector[:, inside]
 
-        n_sources = source_locations_inside_element.shape[1]
+        n_sources = locations_inside_transducer.shape[1]
 
         surface_area_weighting = _np.pi * radius**2 / n_sources
 
-        return source_locations_inside_element, surface_area_weighting
+        return locations_inside_transducer, surface_area_weighting
 
     def define_source_points_in_reference_bowl(self):
         """
@@ -215,7 +220,7 @@ class _Transducer:
 
         Returns
         -------
-        source_locations_inside_element : np.ndarray of size (3, N_points)
+        locations_inside_transducer : np.ndarray of size (3, N_points)
             The locations of the point source inside the reference element.
         surface_area_weighting : np.ndarray of size (N_points,)
             The surface area weighting associated to each point source.
@@ -299,7 +304,7 @@ class _Transducer:
         y_source = _np.array(y_source)
         z_source = _np.array(z_source) + self.source.radius_of_curvature
 
-        source_locations_inside_element = _np.vstack((x_source, y_source, z_source))
+        locations_inside_transducer = _np.vstack((x_source, y_source, z_source))
 
         if self.verbose:
 
@@ -316,37 +321,86 @@ class _Transducer:
 
             actual_area = 2 * _np.pi * self.source.radius_of_curvature * radius_section
             estimated_area = (
-                source_locations_inside_element.shape[1] * surface_area_weighting
+                locations_inside_transducer.shape[1] * surface_area_weighting
             )
 
             print("Actual transducer area (m^2): {:.14f}".format(actual_area))
             print("Approximated transducer area (m^2): {:.14f}".format(estimated_area))
 
-        return source_locations_inside_element, surface_area_weighting
+        return locations_inside_transducer, surface_area_weighting
 
-    def define_source_points_in_reference_array(self, radius):
+    # def define_source_points_in_reference_array(self):
+
+    #     (
+    #         locations_inside_transducer,
+    #         surface_area_weighting,
+    #     ) = self.define_source_points_in_reference_piston(self.source.element_radius)
+
+    #     reference_piston_location = [0, 0, -self.source.radius_of_curvature]
+
+    #     # Translate reference piston source to reference piston location
+    #     locations_inside_transducer = _translate(
+    #         locations_inside_transducer, reference_piston_location
+    #     )
+    #     source_locations = tuple()
+
+    #     for element_number in range(self.source.number_of_elements):
+    #         # Compute rotation matrix
+    #         MxMy = self.get_transformation_matrix(element_number)
+
+    #         # Carry out coordinate transfornation
+    #         source_locations_transformed = MxMy @ locations_inside_transducer
+
+    #         # Generate array of point source locations for each element
+    #         source_locations += (source_locations_transformed,)
+
+    #     # Stack data in tuple to array
+    #     array_source_locations = _np.hstack(source_locations)
+
+    #     array_source_locations = self.add_radius_of_curvature(array_source_locations)
+
+    #     return (array_source_locations, surface_area_weighting)
+
+    def define_source_points_in_reference_array(self):
+        """
+        Define the source points for a reference spherical section
+        array transducer, that is, the source points on a spherical
+        section bowl whose apex is in contact with the z=0 plane,
+        at the global origin and whose axis is the Cartesian x-axis.
+        The array is defined by the location of the element centroids
+        and the radius of the elements.
+
+        The resolution of the points is determined by the specified
+        number of point sources per wavelength which must be strictly
+        positive.
+
+        The surface area weighting is uniform.
+
+        Returns
+        -------
+        locations_inside_transducer : np.ndarray of size (3, N_points)
+            The locations of the point source inside the reference element.
+        surface_area_weighting : np.ndarray of size (N_points,)
+            The surface area weighting associated to each point source.
+        """
 
         (
-            source_locations_inside_element,
+            locations_inside_transducer,
             surface_area_weighting,
-        ) = self.define_source_points_in_reference_piston(radius)
+        ) = self.define_source_points_in_reference_piston(self.source.element_radius)
 
-        reference_piston_location = [0, 0, -self.source.radius_of_curvature]
-
-        # Translate reference piston source to reference piston location
-        source_locations_inside_element = _translate(
-            source_locations_inside_element, reference_piston_location
-        )
         source_locations = tuple()
 
         for element_number in range(self.source.number_of_elements):
-            # Compute rotation matrix
-            MxMy = self.get_transformation_matrix(element_number)
 
-            # Carry out coordinate transfornation
-            source_locations_transformed = MxMy @ source_locations_inside_element
-
-            # Generate array of point source locations for each element
+            source_locations_directed = _rotate(
+                locations_inside_transducer,
+                self.source.element_normals[:, element_number],
+            )
+            source_locations_transformed = _translate(
+                source_locations_directed,
+                self.source.centroid_locations[:, element_number],
+            )
             source_locations += (source_locations_transformed,)
 
         # Stack data in tuple to array
