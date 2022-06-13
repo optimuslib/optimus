@@ -329,38 +329,6 @@ class _Transducer:
 
         return locations_inside_transducer, surface_area_weighting
 
-    # def define_source_points_in_reference_array(self):
-
-    #     (
-    #         locations_inside_transducer,
-    #         surface_area_weighting,
-    #     ) = self.define_source_points_in_reference_piston(self.source.element_radius)
-
-    #     reference_piston_location = [0, 0, -self.source.radius_of_curvature]
-
-    #     # Translate reference piston source to reference piston location
-    #     locations_inside_transducer = _translate(
-    #         locations_inside_transducer, reference_piston_location
-    #     )
-    #     source_locations = tuple()
-
-    #     for element_number in range(self.source.number_of_elements):
-    #         # Compute rotation matrix
-    #         MxMy = self.get_transformation_matrix(element_number)
-
-    #         # Carry out coordinate transfornation
-    #         source_locations_transformed = MxMy @ locations_inside_transducer
-
-    #         # Generate array of point source locations for each element
-    #         source_locations += (source_locations_transformed,)
-
-    #     # Stack data in tuple to array
-    #     array_source_locations = _np.hstack(source_locations)
-
-    #     array_source_locations = self.add_radius_of_curvature(array_source_locations)
-
-    #     return (array_source_locations, surface_area_weighting)
-
     def define_source_points_in_reference_array(self):
         """
         Define the source points for a reference spherical section
@@ -406,7 +374,7 @@ class _Transducer:
         # Stack data in tuple to array
         array_source_locations = _np.hstack(source_locations)
 
-        array_source_locations = self.add_radius_of_curvature(array_source_locations)
+        array_source_locations[2, :] += self.source.radius_of_curvature
 
         return (array_source_locations, surface_area_weighting)
 
@@ -437,80 +405,6 @@ class _Transducer:
         )
 
         return source_locations_transformed
-
-    def get_transformation_matrix(self, transducer_element=None):
-        """
-        Calculate the transformation matrix required to rotate the reference piston
-        element to the locations of the element centroids on the surface of the array
-        transducer.
-
-        Parameters
-        ----------
-        transducer_element : int (default: None)
-            The element in the transducer array. For a single transducer
-            element, specify None.
-
-        Returns
-        -------
-        transformation : np.ndarray of size (3, 3)
-            The 3D transformation matrix.
-        """
-        if self.source.type != "array" and transducer_element is None:
-
-            return _np.identity(3)
-
-        elif self.source.type == "array" and transducer_element is not None:
-
-            x, y = self.source.centroid_locations[:2, transducer_element]
-            beta = _np.arcsin(-x / self.source.radius_of_curvature)
-            alpha = _np.arcsin(y / (self.source.radius_of_curvature * _np.cos(beta)))
-
-            mx = _np.array(
-                [
-                    [1, 0, 0],
-                    [0, _np.cos(alpha), -_np.sin(alpha)],
-                    [0, _np.sin(alpha), _np.cos(alpha)],
-                ]
-            )
-
-            my = _np.array(
-                [
-                    [_np.cos(beta), 0, _np.sin(beta)],
-                    [0, 1, 0],
-                    [-_np.sin(beta), 0, _np.cos(beta)],
-                ]
-            )
-
-            return mx @ my
-
-        else:
-
-            raise NotImplementedError
-
-    def add_radius_of_curvature(
-        self,
-        source_locations,
-    ):
-        """
-        Apply the radius of curvature to the points.
-
-        Parameters
-        ----------
-        locations : np.ndarray of size (3, N_points)
-            The locations of the points to be transformed.
-        radius_of_curvature : float
-            The radius of curvature.
-        origin_of_curvature : array like
-            The origin of the curvature.
-
-        Returns
-        -------
-        locations_curved : np.ndarray of size (3, N_points)
-            The transformed locations of the points.
-
-        """
-        source_locations[2, :] += self.source.radius_of_curvature
-        return source_locations
 
     def calc_pressure_field(self):
         """
