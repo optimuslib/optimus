@@ -160,9 +160,6 @@ class _Array(_Source):
         """
 
         centroid_locations_l2_norm = _np.linalg.norm(centroid_locations, axis=0)
-        radius_of_curvature_from_centroid_locations = _np.mean(
-            centroid_locations_l2_norm
-        )
         centroid_locations_l2_norm_std = _np.std(centroid_locations_l2_norm)
         radius_of_curvature_from_centroid_locations = _np.mean(
             centroid_locations_l2_norm
@@ -174,9 +171,7 @@ class _Array(_Source):
                 "Array element centroid locations do not appear to lie on a sphere."
             )
 
-        radius_of_curvature = radius_of_curvature_from_centroid_locations
-
-        return radius_of_curvature
+        return radius_of_curvature_from_centroid_locations
 
     def pressure_field(self, medium, locations):
         """
