@@ -7,9 +7,7 @@ from ..utils.conversions import convert_to_positive_int as _convert_to_positive_
 from ..utils.conversions import convert_to_positive_float as _convert_to_positive_float
 from ..utils.conversions import convert_to_array as _convert_to_array
 from ..utils.conversions import convert_to_3n_array as _convert_to_3n_array
-from ..utils.conversions import (
-    convert_scalar_to_complex_array as _convert_scalar_to_complex_array,
-)
+from ..utils.conversions import convert_to_complex_array as _convert_to_complex_array
 from ..utils.linalg import normalize_vector as _normalize_vector
 from .transducers import transducer_field as _transducer_field
 
@@ -52,15 +50,6 @@ def create_array(
         positive z-axis and the focus of the transducer is (0,0,0).
     centroid_locations_filename : str with ".dat" extension
         Path and filename containing the centroid locations data.
-    radius_of_curvature : float
-        The radius of curvature of the array. For the default value, this is calculated
-        from the locations of the element centroids.
-        Default : None
-    number_of_elements : int
-        The number of array elements.
-        Default : None
-    element_normals : np.ndarray of size (3, N)
-        The outward normal vectors describing the orientation of the array elements.
     """
     return _Array(
         frequency,
@@ -109,7 +98,7 @@ class _Array(_Source):
 
         self.number_of_elements = self.centroid_locations.shape[1]
 
-        self.velocity = _convert_scalar_to_complex_array(
+        self.velocity = _convert_to_complex_array(
             velocity, shape=(self.number_of_elements,), label="velocity"
         )
 
