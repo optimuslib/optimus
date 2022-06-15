@@ -1,4 +1,4 @@
-"""Piston sources."""
+"""Array sources."""
 
 import numpy as _np
 
@@ -7,66 +7,79 @@ from ..utils.conversions import convert_to_positive_int as _convert_to_positive_
 from ..utils.conversions import convert_to_positive_float as _convert_to_positive_float
 from ..utils.conversions import convert_to_array as _convert_to_array
 from ..utils.conversions import convert_to_3n_array as _convert_to_3n_array
+from ..utils.conversions import convert_to_complex_array as _convert_to_complex_array
 from ..utils.linalg import normalize_vector as _normalize_vector
 from .transducers import transducer_field as _transducer_field
 
 
-def create_piston(
+def create_array(
     frequency,
-    radius,
+    element_radius,
+    velocity=1.0,
     source_axis=(1, 0, 0),
     number_of_point_sources_per_wavelength=6,
     location=(0, 0, 0),
-    velocity=1.0,
+    centroid_locations=None,
+    centroid_locations_filename=None,
 ):
     """
-    Create a plane circular piston source.
+    Create an array source consisting of circular piston elements distributed on a
+    spherical section bowl.
 
     Parameters
     ----------
     frequency : float
         The frequency of the acoustic field.
-    radius : float
-        The radius of the piston.
+    element_radius : float
+        The radius of elements which lie on the spherical section bowl.
+    velocity : np.array of complex values of size (N,)
+        Normal velocities of the array elements.
+        Default : 1 m/s
     source_axis : array like
-        The axis of the piston.
+        The axis of the bowl.
         Default: positive x direction
     number_of_point_sources_per_wavelength : integer
-        The number of point sources per wavelength used to discretise
-        the piston source.
+        The number of point sources per wavelength used to discretise each piston.
         Default: 6
     location : array like
-        The location of the centroid of the piston.
+        The location of the centroid of the bowl.
         Default: global origin
-    velocity : complex
-        Normal velocity of the piston.
-        Default : 1 m/s
+    centroid_locations : np.ndarray of size (3, N)
+        The locations of the centroids of the piston elements. These must be specified
+        in a local coordinate sytem where the axis of the transducer is the Cartesian
+        positive z-axis and the focus of the transducer is (0,0,0).
+    centroid_locations_filename : str with ".dat" extension
+        Path and filename containing the centroid locations data.
     """
-    return _Piston(
+    return _Array(
         frequency,
-        radius,
+        element_radius,
+        velocity,
         source_axis,
         number_of_point_sources_per_wavelength,
         location,
-        velocity,
+        centroid_locations,
+        centroid_locations_filename,
     )
 
 
-class _Piston(_Source):
+class _Array(_Source):
     def __init__(
         self,
         frequency,
-        radius,
+        element_radius,
+        velocity,
         source_axis,
         number_of_point_sources_per_wavelength,
         location,
-        velocity,
+        centroid_locations,
+        centroid_locations_filename,
     ):
 
-        super().__init__("piston", frequency)
+        super().__init__("array", frequency)
 
         source_axis_vector = _convert_to_array(
-            source_axis, shape=(3,), label="piston source axis"
+            source_axis, shape=(3,), label="array source axis"
         )
         self.source_axis = _normalize_vector(source_axis_vector)
 
@@ -75,11 +88,90 @@ class _Piston(_Source):
             label="number of point sources per wavelength",
         )
 
-        self.location = _convert_to_array(location, shape=(3,), label="piston location")
+        self.location = _convert_to_array(location, shape=(3,), label="array location")
 
-        self.radius = _convert_to_positive_float(radius, label="piston radius")
+        self.element_radius = _convert_to_positive_float(element_radius)
 
-        self.velocity = _np.atleast_1d(complex(velocity))
+        self.centroid_locations = self._calc_centroid_locations(
+            centroid_locations, centroid_locations_filename
+        )
+
+        self.number_of_elements = self.centroid_locations.shape[1]
+
+        self.velocity = _convert_to_complex_array(
+            velocity, shape=(self.number_of_elements,), label="velocity"
+        )
+
+        self.radius_of_curvature = self._calc_radius_of_curvature(
+            self.centroid_locations
+        )
+
+        self.element_normals = -_normalize_vector(self.centroid_locations)
+
+    def _calc_centroid_locations(self, centroid_locations, centroid_locations_filename):
+        """
+        Calculates centroid locations.
+
+        Parameters
+        ----------
+        centroid_locations : np.ndarray of size (3, N)
+            The locations of the centroids of the piston elements.
+        centroid_locations_filename : str with ".dat" extension
+            Path and filename containing the centroid locations data.
+
+        Returns
+        ----------
+        centroid_locations : np.ndarray of size (3, N)
+            The locations of the centroids of the piston elements.
+        """
+
+        if centroid_locations is not None and centroid_locations_filename is not None:
+            raise ValueError(
+                "Specify either the centroid locations or the centroid locations "
+                + "filename."
+            )
+        elif centroid_locations is not None and centroid_locations_filename is None:
+            centroid_locations = _convert_to_3n_array(
+                centroid_locations, label="element centroid locations"
+            )
+        elif centroid_locations is None and centroid_locations_filename is not None:
+            if centroid_locations_filename.endswith(".dat"):
+                centroid_locations = _np.loadtxt(centroid_locations_filename)
+            else:
+                raise ValueError(
+                    "The centroid locations filename must have a dat extension."
+                )
+        return centroid_locations
+
+    def _calc_radius_of_curvature(self, centroid_locations):
+        """
+        Calculates the radius of curvature of the array transducer from centroid
+        locations.
+
+        Parameters
+        ----------
+        centroid_locations : np.ndarray of size (3, N)
+            The locations of the centroids of the piston elements.
+
+        Returns
+        ----------
+        radius of curvature : float
+            The radius of curvature of the array.
+        """
+
+        centroid_locations_l2_norm = _np.linalg.norm(centroid_locations, axis=0)
+        centroid_locations_l2_norm_std = _np.std(centroid_locations_l2_norm)
+        radius_of_curvature_from_centroid_locations = _np.mean(
+            centroid_locations_l2_norm
+        )
+
+        radius_of_curvature_tol = 1e-6
+        if centroid_locations_l2_norm_std > radius_of_curvature_tol:
+            raise ValueError(
+                "Array element centroid locations do not appear to lie on a sphere."
+            )
+
+        return radius_of_curvature_from_centroid_locations
 
     def pressure_field(self, medium, locations):
         """
@@ -147,7 +239,7 @@ class _Piston(_Source):
             Locations on which to evaluate the pressure field.
         normals : np.ndarray of size (3, N)
             Unit normal vectors at the locations on which to evaluate the
-             pressure field.
+            pressure field.
 
         Returns
         ----------

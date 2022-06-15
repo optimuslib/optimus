@@ -107,7 +107,7 @@ def rotate(locations, source_axis):
     # positive x-axis
     theta_source, phi_source = theta_phi_point(v_source_axis)
 
-    # First rotation grad_pressurerix: 90 degrees about y axis so that
+    # First rotation matrix: 90 degrees about y axis so that
     # default orientation is now transformed to x-axis
     r_y = _np.array(
         [
@@ -117,7 +117,7 @@ def rotate(locations, source_axis):
         ]
     )
 
-    # Second rotation grad_pressurerix: from default z-axis axis of
+    # Second rotation matrix: from default z-axis axis of
     # symmetry to x-axis
     r_theta = _np.array(
         [
@@ -127,7 +127,7 @@ def rotate(locations, source_axis):
         ]
     )
 
-    # Third rotation grad_pressurerix
+    # Third rotation matrix
     # Define orientation of vector collinear with axis of rotation
     ux = _np.sin(theta_source)
     uy = -_np.cos(theta_source)
