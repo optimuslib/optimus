@@ -1,2 +1,2 @@
-from . import postprocess
+from . import method
 from . import common
