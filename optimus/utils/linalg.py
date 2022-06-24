@@ -174,3 +174,11 @@ def translate(locations, translation):
         locations = locations.reshape(3, 1)
 
     return locations + translation_array
+
+
+def chunker(seq, size):
+    """
+    To split a sequence (list, tuples,...) by a specific size.
+    Imported from https://stackoverflow.com/questions/434287/what-is-the-most-pythonic-way-to-iterate-over-a-list-in-chunks
+    """
+    return (seq[pos : pos + size] for pos in range(0, len(seq), size))
