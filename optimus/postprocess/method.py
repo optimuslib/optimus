@@ -42,7 +42,7 @@ class PostProcess_2D(_PostProcess):
             self.plane_axes,
             self.plane_offset,
             self.bounding_box,
-            mode="2D",
+            mode="numpy",
         )
 
         (
@@ -70,7 +70,6 @@ class PostProcess_2D(_PostProcess):
             self.points_interior,
             self.index_interior,
             self.verbose,
-            h_mat="dense",
         )
 
         self.l2_norm_total_field_mpa = np.linalg.norm(self.total_field)
@@ -126,7 +125,7 @@ class PostProcess_3D(_PostProcess):
             self.plane_axes,
             self.plane_offset,
             self.bounding_box,
-            mode="3D",
+            mode="gmsh",
         )
 
         (
@@ -153,7 +152,6 @@ class PostProcess_3D(_PostProcess):
             self.points_interior,
             self.index_interior,
             self.verbose,
-            h_mat="dense",
         )
 
         self.l2_norm_total_field_mpa = np.linalg.norm(self.total_field)
@@ -189,7 +187,7 @@ class PostProcess_3D(_PostProcess):
         )
 
 
-class PostProcess_USER_DEFINED(_PostProcess):
+class PostProcess_UserDefined(_PostProcess):
     def __init__(self, model, verbose=True):
         super().__init__(model, verbose)
 
@@ -240,7 +238,6 @@ class PostProcess_USER_DEFINED(_PostProcess):
             self.points_interior,
             self.index_interior,
             self.verbose,
-            h_mat="dense",
         )
 
         self.l2_norm_total_field_mpa = np.linalg.norm(self.total_field)

@@ -5,9 +5,7 @@ import pandas as pd
 import os
 
 
-def get_excel_database(
-    database="default", header_format=(0, 1), index_col=None
-):
+def get_excel_database(database="default", header_format=(0, 1), index_col=None):
     """
     Read excel database file as a pandas dataframe
 
@@ -36,9 +34,7 @@ def get_excel_database(
 
     datadir = os.path.dirname(__file__)
     database_file = os.path.join(datadir, file_name)
-    dataframe = pd.read_excel(
-        database_file, header=header_format, index_col=index_col
-    )
+    dataframe = pd.read_excel(database_file, header=header_format, index_col=index_col)
     return dataframe
 
 
@@ -56,6 +52,8 @@ def get_material_properties(name):
     dictionary of material properties
 
     """
+    from ..utils.generic import bold_ul_red_text
+
     if not isinstance(name, str):
         raise TypeError("Name of material should be a string.")
     else:
@@ -63,27 +61,21 @@ def get_material_properties(name):
 
     dataframe_default = get_excel_database(database="default")
     dataframe_user = get_excel_database(database="user-defined")
-    dataframe = pd.concat(
-        [dataframe_default, dataframe_user], axis=0, sort=False
-    )
+    dataframe = pd.concat([dataframe_default, dataframe_user], axis=0, sort=False)
 
     data_mask = dataframe[("Tissue", "Name")].str.lower().isin([name])
     if not data_mask.any():
         raise ValueError(
-            "the material: \033[1m" + name + "\033[0m  is not in the database."
+            "the material: " + bold_ul_red_text(name) + "is not in the database."
         )
     else:
         material = dataframe.loc[data_mask]
         density = material[("Density (kg/m3)", "Average")].get_values()[0]
-        speed_of_sound = material[
-            ("Speed of Sound [m/s]", "Average")
-        ].get_values()[0]
+        speed_of_sound = material[("Speed of Sound [m/s]", "Average")].get_values()[0]
         attenuation_coeff_a = material[
             ("Attenuation Constant", "a [Np/m/MHz]")
         ].get_values()[0]
-        attenuation_pow_b = material[
-            ("Attenuation Constant", "b")
-        ].get_values()[0]
+        attenuation_pow_b = material[("Attenuation Constant", "b")].get_values()[0]
         output = {
             "name": name,
             "density": density,
@@ -116,9 +108,7 @@ def write_material_database(properties):
     dataframe_user = get_excel_database(
         database="user-defined", header_format=[0, 1], index_col=0
     )
-    dataframe_both = pd.concat(
-        [dataframe_default, dataframe_user], axis=0, sort=False
-    )
+    dataframe_both = pd.concat([dataframe_default, dataframe_user], axis=0, sort=False)
 
     name = properties["name"].lower()
     data_mask = dataframe_both[("Tissue", "Name")].str.lower().isin([name])
@@ -147,9 +137,7 @@ def write_material_database(properties):
             {
                 ("Tissue", "Name"): properties["name"],
                 ("Density (kg/m3)", "Average"): properties["density"],
-                ("Speed of Sound [m/s]", "Average"): properties[
-                    "speed_of_sound"
-                ],
+                ("Speed of Sound [m/s]", "Average"): properties["speed_of_sound"],
                 ("Attenuation Constant", "a [Np/m/MHz]"): properties[
                     "attenuation_coeff_a"
                 ],
@@ -162,9 +150,9 @@ def write_material_database(properties):
         datadir = os.path.dirname(__file__)
         database_file = os.path.join(datadir, user_database_file)
         writer = pd.ExcelWriter(database_file, engine="xlsxwriter")
-        dataframe_user.append(
-            dataframe_tmp, ignore_index=True, sort=False
-        ).to_excel(writer, sheet_name="user-defined")
+        dataframe_user.append(dataframe_tmp, ignore_index=True, sort=False).to_excel(
+            writer, sheet_name="user-defined"
+        )
         writer.save()
 
 
@@ -245,10 +233,7 @@ class Material:
         ----------
         attenuation coefficient
         """
-        return (
-            self.attenuation_coeff_a
-            * (frequency * 1e-6) ** self.attenuation_pow_b
-        )
+        return self.attenuation_coeff_a * (frequency * 1e-6) ** self.attenuation_pow_b
 
     def print(self):
         cols = [

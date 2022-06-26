@@ -143,16 +143,33 @@ def compute_pressure_fields(
     points_interior,
     index_interior,
     verbose,
-    h_mat,
 ):
-    from ..utils.linalg import chunker
+    from ..utils.generic import chunker, bold_ul_text
+    from optimus import global_parameters
 
-    if h_mat.lower() == "dense":
+    if global_parameters.postprocessing.assembly_type.lower() in [
+        "h-matrix",
+        "hmat",
+        "h-mat",
+        "h_mat",
+        "h_matrix",
+    ]:
+        bempp.global_parameters.hmat.eps = global_parameters.postprocessing.hmat_eps
+        bempp.global_parameters.hmat.max_rank = (
+            global_parameters.postprocessing.hmat_max_rank
+        )
+        bempp.global_parameters.hmat.max_block_size = (
+            global_parameters.postprocessing.hmat_max_block_size
+        )
+    elif global_parameters.postprocessing.assembly_type.lower() == "dense":
         bempp.global_parameters.assembly.potential_operator_assembly_type = "dense"
     else:
-        bempp.global_parameters.hmat.eps = 1.0e-8
-        bempp.global_parameters.hmat.max_rank = 10000
-        bempp.global_parameters.hmat.max_block_size = 10000
+        raise ValueError(
+            "Supported operator assembly methods are "
+            + bold_ul_text("dense")
+            + " and "
+            + bold_ul_text("h-matrix.")
+        )
 
     TS_POT_OPS_FIELD = time.time()
     print(
@@ -187,7 +204,7 @@ def compute_pressure_fields(
                 interior_material,
             )
 
-        if len(interior_idx):
+        if (interior_idx).any():
             pot_int_sl = bempp.operators.potential.helmholtz.single_layer(
                 space,
                 interior_point,

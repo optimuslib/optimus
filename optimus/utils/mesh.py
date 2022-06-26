@@ -274,9 +274,10 @@ def plane_grid(x_axis_lims, y_axis_lims, rotation_axis, rotation_angle, element_
 
 
 def create_grid_points(resolution, plane_axes, plane_offset, bounding_box, mode):
+    from ..utils.generic import bold_ul_text
 
     ax1_min, ax1_max, ax2_min, ax2_max = bounding_box
-    if mode.lower() == "2d":
+    if mode.lower() == "numpy":
         plot_grid = np.mgrid[
             ax1_min : ax1_max : resolution[0] * 1j,
             ax2_min : ax2_max : resolution[1] * 1j,
@@ -287,7 +288,7 @@ def create_grid_points(resolution, plane_axes, plane_offset, bounding_box, mode)
         points = np.vstack((points_tmp,))
         plane = None
 
-    elif mode.lower() == "3d":
+    elif mode.lower() == "gmsh":
         if 2 not in plane_axes:
             axis1_lims = bounding_box[0:2]
             axis2_lims = bounding_box[2:]
@@ -315,5 +316,11 @@ def create_grid_points(resolution, plane_axes, plane_offset, bounding_box, mode)
             axis1_lims, axis2_lims, rotation_axis, rotation_angle, elem_len
         )
         points = plane.leaf_view.vertices
+    else:
+        raise TypeError(
+            "The correct values for the argument"
+            + bold_ul_text("mode")
+            + "are numpy or gmsh."
+        )
 
     return (points, plane)
