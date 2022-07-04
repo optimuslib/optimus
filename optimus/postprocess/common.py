@@ -180,8 +180,10 @@ def compute_pressure_fields(
     total_field = np.empty((1, points.shape[1]), dtype="complex128").ravel()
     scattered_field = np.empty((1, points.shape[1]), dtype="complex128").ravel()
     scattered_field[:] = np.nan
+    incident_exterior_field = np.empty((1, points.shape[1]), dtype="complex128").ravel()
+    incident_exterior_field[:] = np.nan
 
-    if len(index_exterior):
+    if index_exterior.any():
         exterior_values = np.zeros((1, points_exterior.shape[1]), dtype="complex128")
         ext_calc_flag = True
     else:
@@ -262,16 +264,12 @@ def compute_pressure_fields(
             "\n Calculating the incident field Finished... Duration in secs: ",
             TE_INC_FIELD - TS_INC_FIELD,
         )
-
-        incident_exterior_field = np.empty(
-            (1, points.shape[1]), dtype="complex128"
-        ).ravel()
-        incident_exterior_field[:] = np.nan
         incident_exterior_field[index_exterior] = incident_exterior.ravel()
         scattered_field[index_exterior] = exterior_values.ravel()
         total_field[index_exterior] = (
             scattered_field[index_exterior] + incident_exterior_field[index_exterior]
         )
+
     return total_field, scattered_field, incident_exterior_field
 
 
@@ -296,11 +294,13 @@ def domain_edge(points_interior, plane_axes, alpha=0.005, only_outer=True):
 
     domains_edge_points = []
     for k in range(len(points_interior)):
-        points_int_planar = points_interior[k][plane_axes, :]
-        edges = _concave_hull(points_int_planar.T, alpha, only_outer)
-        for i, j in edges:
-            domains_edge_points.append(
-                np.vstack([points_int_planar[0, [i, j]], points_int_planar[1, [i, j]]])
-            )
-
+        if points_interior[k].any():
+            points_int_planar = points_interior[k][plane_axes, :]
+            edges = _concave_hull(points_int_planar.T, alpha, only_outer)
+            for i, j in edges:
+                domains_edge_points.append(
+                    np.vstack(
+                        [points_int_planar[0, [i, j]], points_int_planar[1, [i, j]]]
+                    )
+                )
     return domains_edge_points
