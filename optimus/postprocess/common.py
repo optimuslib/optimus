@@ -114,7 +114,7 @@ def find_int_ext_points(domain_grids, points, verbose):
             IDX_INTERIOR_TMP,
             IDX_EXTERIOR_TMP,
             IDX_BOUNDARY_TMP,
-        ) = exterior_interior_points_eval(grid, points)
+        ) = exterior_interior_points_eval(grid=grid, xyz_field=points, verbose=verbose)
         points_interior.append(POINTS_INTERIOR_TMP[0])
         idx_interior.append(IDX_INTERIOR_TMP[0])
         idx_exterior[IDX_EXTERIOR_TMP == False] = False
@@ -172,10 +172,11 @@ def compute_pressure_fields(
         )
 
     TS_POT_OPS_FIELD = time.time()
-    print(
-        "\n Calculating the interior and exterior potential operators Started at: ",
-        time.strftime("%a, %d %b %Y %H:%M:%S", time.localtime()),
-    )
+    if verbose:
+        print(
+            "\n Calculating the interior and exterior potential operators Started at: ",
+            time.strftime("%a, %d %b %Y %H:%M:%S", time.localtime()),
+        )
 
     total_field = np.empty((1, points.shape[1]), dtype="complex128").ravel()
     scattered_field = np.empty((1, points.shape[1]), dtype="complex128").ravel()
@@ -250,20 +251,22 @@ def compute_pressure_fields(
 
     if ext_calc_flag:
         TS_INC_FIELD = time.time()
-        print(
-            "\n Calculating the incident field Started at: ",
-            time.strftime("%a, %d %b %Y %H:%M:%S", time.localtime()),
-        )
+        if verbose:
+            print(
+                "\n Calculating the incident field Started at: ",
+                time.strftime("%a, %d %b %Y %H:%M:%S", time.localtime()),
+            )
 
         incident_exterior = model.source.pressure_field(
             model.material_exterior, points_exterior
         )
 
         TE_INC_FIELD = time.time()
-        print(
-            "\n Calculating the incident field Finished... Duration in secs: ",
-            TE_INC_FIELD - TS_INC_FIELD,
-        )
+        if verbose:
+            print(
+                "\n Calculating the incident field Finished... Duration in secs: ",
+                TE_INC_FIELD - TS_INC_FIELD,
+            )
         incident_exterior_field[index_exterior] = incident_exterior.ravel()
         scattered_field[index_exterior] = exterior_values.ravel()
         total_field[index_exterior] = (
@@ -283,7 +286,7 @@ def ppi_calculator(bounding_box, resolution):
     return diagonal_points / diagonal_length_inches
 
 
-def domain_edge(points_interior, plane_axes, alpha=0.005, only_outer=True):
+def domain_edge(points_interior, plane_axes, alpha=0.001, only_outer=True):
     """This function determines the points on the edges of the domains using the Concave Hull method.
     alpha: the threshhold value.
     only_outer: boolean value to specify if we keep only the outer border

@@ -3,7 +3,7 @@ import numpy as np
 
 
 class PostProcess_2D(_PostProcess):
-    def __init__(self, model, verbose=True):
+    def __init__(self, model, verbose=False):
         super().__init__(model, verbose)
 
     def create_computational_grid(
@@ -85,7 +85,7 @@ class PostProcess_2D(_PostProcess):
 
 
 class PostProcess_3D(_PostProcess):
-    def __init__(self, model, verbose=True):
+    def __init__(self, model, verbose=False):
         super().__init__(model, verbose)
 
     def create_computational_grid(
@@ -188,7 +188,7 @@ class PostProcess_3D(_PostProcess):
 
 
 class PostProcess_UserDefined(_PostProcess):
-    def __init__(self, model, verbose=True):
+    def __init__(self, model, verbose=False):
         super().__init__(model, verbose)
 
     def create_computational_grid(self, resolution=[], user_points=[]):
