@@ -5,6 +5,16 @@ import numpy as np
 class PostProcess_2D(_PostProcess):
     def __init__(self, model, verbose=False):
         super().__init__(model, verbose)
+        """
+        Create a PostProcess optimus object where the visualisation grid is a 2D plane.
+
+        Input argument
+        ----------
+        model : an optimus model object
+            optimus model object includes the solution fields on the boundaries
+        verbose : boolean
+            to display the log information or not
+        """
 
     def create_computational_grid(
         self,
@@ -56,6 +66,9 @@ class PostProcess_2D(_PostProcess):
         )
 
     def compute_fields(self):
+        """
+        Calculate the scattered and total pressure fields in the planar grid created.
+        """
         from .common import compute_pressure_fields
 
         (
@@ -84,9 +97,98 @@ class PostProcess_2D(_PostProcess):
         )
 
 
-class PostProcess_3D(_PostProcess):
+class PostProcess_UserDefined(_PostProcess):
     def __init__(self, model, verbose=False):
         super().__init__(model, verbose)
+        """
+        Create a PostProcess optimus object where the visualisation grid is user-defined points (2D/3D).
+
+        Input argument
+        ----------
+        model : an optimus model object
+            optimus model object includes the solution fields on the boundaries
+        verbose : boolean
+            to display the log information or not
+        """
+
+    def create_computational_grid(self, resolution=[], user_points=[]):
+        """
+        Create a planar grid to compute the pressure fields.
+
+        Input argument
+        ----------
+        resolution : a list/tuple of two int numbers
+            Number of points along each axis
+        user_points: numpy array of size 3xN
+            Points defined by a user for field calculations, points can be on a 2D plane or a 3D cloud.
+        """
+
+        import warnings
+        from .common import find_int_ext_points
+
+        try:
+            self.points = user_points
+            warnings.warn(
+                "The user-defined points will be used for field calculations.",
+                RuntimeWarning,
+            )
+        except ValueError:
+            print("user_points must be a 3xN non-zero numpy array")
+
+        self.resolution = resolution
+        (
+            self.points_interior,
+            self.points_exterior,
+            self.index_interior,
+            self.index_exterior,
+        ) = find_int_ext_points(self.domains_grids, self.points, self.verbose)
+
+    def compute_fields(self):
+        """
+        Calculate the scattered and total pressure fields in the planar grid created.
+        """
+        from .common import compute_pressure_fields
+
+        (
+            self.total_field,
+            self.scattered_field,
+            self.incident_field,
+        ) = compute_pressure_fields(
+            self.model,
+            self.points,
+            self.points_exterior,
+            self.index_exterior,
+            self.points_interior,
+            self.index_interior,
+            self.verbose,
+        )
+
+        self.l2_norm_total_field_mpa = np.linalg.norm(self.total_field)
+        if len(self.resolution):
+            self.scattered_field_reshaped = np.flipud(
+                self.scattered_field.reshape(self.resolution).T
+            )
+            self.total_field_reshaped = np.flipud(
+                self.total_field.reshape(self.resolution).T
+            )
+            self.incident_field_reshaped = np.flipud(
+                self.incident_field.reshape(self.resolution).T
+            )
+
+
+class PostProcess_3D(_PostProcess):
+    def __init__(self, model, verbose=True):
+        super().__init__(model, verbose)
+        """
+        Create a PostProcess optimus object where the visualisation grid is a union of a plan and surface meshes of the domains.
+
+        Input argument
+        ----------
+        model : an optimus model object
+            optimus model object includes the solution fields on the boundaries
+        verbose : boolean
+            to display the log information or not
+        """
 
     def create_computational_grid(
         self,
@@ -136,6 +238,14 @@ class PostProcess_3D(_PostProcess):
         ) = find_int_ext_points(self.domains_grids, self.points, self.verbose)
 
     def compute_fields(self, file_name="planar_and_surface"):
+        """
+        Calculate the scattered and total pressure fields in the planar grid created.
+
+        Input argument
+        ----------
+        file_name : a string
+            the out file name, the results are saved as GMSH files. GMSH should be used for visualisation.
+        """
         from .common import compute_pressure_fields
         import bempp.api as bempp
         import numpy as np
@@ -185,69 +295,3 @@ class PostProcess_3D(_PostProcess):
         bempp.export(
             file_name=file_name + "_ptot_abs.msh", grid_function=plot3D_ptot_abs_all
         )
-
-
-class PostProcess_UserDefined(_PostProcess):
-    def __init__(self, model, verbose=False):
-        super().__init__(model, verbose)
-
-    def create_computational_grid(self, resolution=[], user_points=[]):
-        """
-        Create a planar grid to compute the pressure fields.
-
-        Input argument
-        ----------
-        resolution : a list/tuple of two int numbers
-            Number of points along each axis
-        user_points: numpy array of size 3xN
-            Points defined by a user for field calculations, points can be on a 2D plane or a 3D cloud.
-        """
-
-        import warnings
-        from .common import find_int_ext_points
-
-        try:
-            self.points = user_points
-            warnings.warn(
-                "The user-defined points will be used for field calculations.",
-                RuntimeWarning,
-            )
-        except ValueError:
-            print("user_points must be a 3xN non-zero numpy array")
-
-        self.resolution = resolution
-        (
-            self.points_interior,
-            self.points_exterior,
-            self.index_interior,
-            self.index_exterior,
-        ) = find_int_ext_points(self.domains_grids, self.points, self.verbose)
-
-    def compute_fields(self):
-        from .common import compute_pressure_fields
-
-        (
-            self.total_field,
-            self.scattered_field,
-            self.incident_field,
-        ) = compute_pressure_fields(
-            self.model,
-            self.points,
-            self.points_exterior,
-            self.index_exterior,
-            self.points_interior,
-            self.index_interior,
-            self.verbose,
-        )
-
-        self.l2_norm_total_field_mpa = np.linalg.norm(self.total_field)
-        if len(self.resolution):
-            self.scattered_field_reshaped = np.flipud(
-                self.scattered_field.reshape(self.resolution).T
-            )
-            self.total_field_reshaped = np.flipud(
-                self.total_field.reshape(self.resolution).T
-            )
-            self.incident_field_reshaped = np.flipud(
-                self.incident_field.reshape(self.resolution).T
-            )

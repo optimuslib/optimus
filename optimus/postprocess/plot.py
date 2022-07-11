@@ -1,18 +1,27 @@
-def plot_pressure_field(PP_OBJ, field="total", unit="Pa"):
+def plot_pressure_field(postprocess_obj, field="total", unit="Pa"):
 
     """
-    2D contour plotting
+    2D contour plotting of pressure fields of an optimus post process object
+
+    Input argument
+    ----------
+    postprocess_obj : an optimus postprocess object
+        optimus postprocess object that includes the visualisation pressure fields
+    field : string
+        the pressure field to be plotted, options: total/total_field/total_pressure and scattered/scattered_pressure/scattered_field.
+    unit: string
+        pressure unit. the pressure fields are scaled accordingly. Options are: Pa,kPa,MPa and GPa.
     """
     import numpy as np
 
-    plane_axes = PP_OBJ.plane_axes
-    bounding_box = PP_OBJ.bounding_box
+    plane_axes = postprocess_obj.plane_axes
+    bounding_box = postprocess_obj.bounding_box
     [scaling_factor, pressure_unit] = _convert_pressure_unit(unit)
 
     if field.lower() in ["total", "total_field", "total_pressure"]:
-        pressure_field = PP_OBJ.total_field_reshaped * scaling_factor
+        pressure_field = postprocess_obj.total_field_reshaped * scaling_factor
     elif field.lower() in ["scattered", "scattered_field", "scattered_pressure"]:
-        pressure_field = PP_OBJ.scattered_field_reshaped * scaling_factor
+        pressure_field = postprocess_obj.scattered_field_reshaped * scaling_factor
     else:
         raise ValueError("Undefined pressure field, options are total and scattered.")
 
@@ -22,8 +31,8 @@ def plot_pressure_field(PP_OBJ, field="total", unit="Pa"):
     )
     colormap = "seismic"
     axes_labels = _set_pressure_plane(plane_axes)
-    if hasattr(PP_OBJ, "domains_edges"):
-        domains_edges = PP_OBJ.domains_edges
+    if hasattr(postprocess_obj, "domains_edges"):
+        domains_edges = postprocess_obj.domains_edges
     else:
         domains_edges = False
 
@@ -61,6 +70,26 @@ def contour_plot(
     colorbar_unit,
     domains_edges=False,
 ):
+
+    """
+    2D contour plotting of a mesh grid quantity
+
+    Input argument
+    ----------
+    quantity : numpy matrix
+        the quantity to be plotted
+    axes_lims : list of real numbers
+        list of minima and maxima of h-axis and v-axis of the 2D contour plot, [h_axis_min, h_axis_max, v_axis_min, v_axis_max].
+    axes_labels : list of strings
+        the labels for h-axis and v-axis of the plot.
+    colormap : string
+        the name of colormap. all the matplotlib colormaps are supported.
+    colorbar_unit : string
+        the label for colorbar
+    domains_edges : boolean/list
+        if the intersection points of the domains and the visualisation plane is passed as a list, they are overlaid to the field plot.
+
+    """
     from mpl_toolkits.axes_grid1 import make_axes_locatable
     from matplotlib import pylab as plt
     import numpy as np

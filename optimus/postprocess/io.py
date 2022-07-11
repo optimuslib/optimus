@@ -12,7 +12,7 @@ def export_to_file(
     file_name: (string), the export path and the file name in one string.
     file_format: (string),
     'mat': to save ONLY the post_process results into a MATLAB file.
-    'database': (default) to save all the attributes of global parameters, transducer parameters, post processor and pickable objects of the model.
+    'database': (default) to save all the attributes of global parameters, source parameters, post processor and pickable objects of the model.
     """
     model_copy = copy.deepcopy(model)
     delattr(model_copy, "continous_operator")
