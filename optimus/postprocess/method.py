@@ -8,7 +8,7 @@ class PostProcess_2D(_PostProcess):
         """
         Create a PostProcess optimus object where the visualisation grid is a 2D plane.
 
-        Input argument
+        Parameters
         ----------
         model : an optimus model object
             optimus model object includes the solution fields on the boundaries
@@ -26,7 +26,7 @@ class PostProcess_2D(_PostProcess):
         """
         Create a planar grid to compute the pressure fields.
 
-        Input argument
+        Parameters
         ----------
         resolution : a list/tuple of two int numbers
             Number of points along each axis
@@ -103,7 +103,7 @@ class PostProcess_UserDefined(_PostProcess):
         """
         Create a PostProcess optimus object where the visualisation grid is user-defined points (2D/3D).
 
-        Input argument
+        Parameters
         ----------
         model : an optimus model object
             optimus model object includes the solution fields on the boundaries
@@ -115,7 +115,7 @@ class PostProcess_UserDefined(_PostProcess):
         """
         Create a planar grid to compute the pressure fields.
 
-        Input argument
+        Parameters
         ----------
         resolution : a list/tuple of two int numbers
             Number of points along each axis
@@ -182,7 +182,7 @@ class PostProcess_3D(_PostProcess):
         """
         Create a PostProcess optimus object where the visualisation grid is a union of a plan and surface meshes of the domains.
 
-        Input argument
+        Parameters
         ----------
         model : an optimus model object
             optimus model object includes the solution fields on the boundaries
@@ -200,7 +200,7 @@ class PostProcess_3D(_PostProcess):
         """
         Create a planar grid to compute the pressure fields.
 
-        Input argument
+        Parameters
         ----------
         resolution : a list/tuple of two int numbers
             Number of points along each axis
@@ -241,7 +241,7 @@ class PostProcess_3D(_PostProcess):
         """
         Calculate the scattered and total pressure fields in the planar grid created.
 
-        Input argument
+        Parameters
         ----------
         file_name : a string
             the out file name, the results are saved as GMSH files. GMSH should be used for visualisation.

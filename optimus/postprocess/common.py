@@ -7,7 +7,7 @@ class PostProcess:
     """
     Create an optimus postprocess object with the specified parameters.
 
-    Input argument
+    Parameters
     ----------
         model: optimus model object
             this model object must include the solution vectors (the solve() function must be executed).
@@ -27,9 +27,9 @@ class PostProcess:
         Calculate the pressure field in the specified locations.
         Needs to be overridden by specific source type.
 
-        Input argument
+        Parameters
         ---------
-            **kwargs: to be specified for different types of postprocessing.
+            **kwargs : to be specified for different types of postprocessing.
         """
         raise NotImplementedError
 
@@ -41,6 +41,9 @@ class PostProcess:
         raise NotImplementedError
 
     def print_parameters(self):
+        """
+        Display parameters used for visualisation.
+        """
         print("\n", 70 * "*")
         if hasattr(self, "resolution") and hasattr(self, "bounding_box"):
             print("\n resolution in number of points: ", self.resolution)
@@ -64,13 +67,19 @@ def calculate_bounding_box(domains_grids, plane_axes):
     """
     Calculate the bounding box for a set of grids.
 
-    Input argument
+    Parameters
     ---------
-        domains_grids: a list of optimus grids
+        domains_grids : a list of optimus grids
             the bounding box of the union of grids is determined.
         plane_axes : a list/tuple of two int numbers
             The boundary plane. possible values are 0,1,2 for x,y,z axes, respectively
+
+    Returns
+    ----------
+        bounding_box: a list/tuple of four float numbers
+            Bounding box specifying the visualisation section on the plane_axis: [axis1_min, axis1_max, axis2_min, axis2_max]
     """
+
     if not isinstance(domains_grids, list):
         domains_grids = list(domains_grids)
 
@@ -88,13 +97,27 @@ def find_int_ext_points(domain_grids, points, verbose):
     """
     Identify the interior and exterior points w.r.t each grid.
 
-    Input argument
+    Parameters
     ---------
-        domains_grids: a list of optimus grids
+        domains_grids : a list of optimus grids
             the bounding box of the union of grids is determined.
         points : a numpy array of size 3xN
-            The field points.
+            the field points.
+        verbose : boolean
+            to display the logs or not
+
+    Returns
+    -----------
+    points_interior : list of numpy arrays of size 3xN
+        element i of the list is an array of coordinates of the interior points for domain i, i=1,...,no_subdomains
+    points_exterior : numpy array of size 3xN
+        visualisation points in the exterior domain
+    index_interior : list of boolean arrays of size 1xN
+        to identify the interior points
+    index_exterior : boolean array of size 1xN
+        to identify the exterior points
     """
+
     from .exterior_interior_points_eval import exterior_interior_points_eval
 
     points_interior = []
@@ -144,6 +167,36 @@ def compute_pressure_fields(
     index_interior,
     verbose,
 ):
+
+    """
+    Calculate the scattered and total pressure fields for visualisation.
+
+    Parameters
+    ----------
+    model : optimus model object
+        a model object which has solution attributes already computed
+    points : numpy array of size 3xN
+        visualisation points
+    points_exterior : numpy array of size 3xN
+        visualisation points in the exterior domain
+    index_exterior : boolean array of size 1xN
+        to identify the exterior points
+    points_interior : list of numpy arrays of size 3xN
+        element i of the list is an array of coordinates of the interior points for domain i, i=1,...,no_subdomains
+    index_interior : list of boolean arrays of size 1xN
+        to identify the interior points
+
+
+    Returns
+    -----------
+    total_field : complex numpy array of size 1xN
+        complex total pressure values
+    scattered_field : complex numpy array of size 1xN
+        complex scattered pressure values
+    incident_exterior_field : complex numpy array
+        complex incident pressure values of size 1xN
+    """
+
     from ..utils.generic import chunker, bold_ul_text
     from optimus import global_parameters
 
@@ -277,20 +330,45 @@ def compute_pressure_fields(
 
 
 def ppi_calculator(bounding_box, resolution):
+    """
+    To convert resolution to diagonal ppi
+
+    Parameters
+    -----------
+    bounding_box : list
+        list of min and max of the 2D plane
+    resolution : list
+        list of number of points along each direction
+
+    Returns
+    -----------
+    resolution in ppi : real number
+    """
     diagonal_length_meter = np.sqrt(
         (bounding_box[1] - bounding_box[0]) ** 2
         + (bounding_box[3] - bounding_box[2]) ** 2
     )
     diagonal_length_inches = diagonal_length_meter * 39.37
     diagonal_points = np.sqrt(resolution[0] ** 2 + resolution[1] ** 2)
+
     return diagonal_points / diagonal_length_inches
 
 
 def domain_edge(points_interior, plane_axes, alpha=0.001, only_outer=True):
-    """This function determines the points on the edges of the domains using the Concave Hull method.
-    alpha: the threshhold value.
-    only_outer: boolean value to specify if we keep only the outer border
-    or also inner edges.
+    """
+    To determine the points on the edges of the domains using the Concave Hull method.
+
+    Parameters
+    ----------
+    alpha : real number
+        the threshhold parameter in the Concave Hell method.
+    only_outer : boolean
+        specify if we keep only the points on the outer border or also inner edges.
+
+    Returns
+    -----------
+    domains_edge_points : list
+        list of lists of coordinates of points on the edges
     """
 
     from .concave_hull import concave_hull as _concave_hull

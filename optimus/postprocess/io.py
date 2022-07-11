@@ -8,11 +8,16 @@ def export_to_file(
     file_name="optimus_exported_data",
     file_format="db",
 ):
-    """This function exports the simulation results into a file.
-    file_name: (string), the export path and the file name in one string.
-    file_format: (string),
-    'mat': to save ONLY the post_process results into a MATLAB file.
-    'database': (default) to save all the attributes of global parameters, source parameters, post processor and pickable objects of the model.
+    """
+    To export the simulation results into a file.
+
+    Parameters
+    -------------
+    file_name : str
+        the export path and the file name in one string.
+    file_format : str
+        'mat': to save ONLY the post_process results into a MATLAB file.
+        'db': (default) to save all the attributes of global parameters, source parameters, post processor and pickable objects of the model.
     """
     model_copy = copy.deepcopy(model)
     delattr(model_copy, "continous_operator")
@@ -50,9 +55,18 @@ def export_to_file(
 
 
 def import_from_file(file_name):
-    """This function imports the saved data from a file.
-    file_name: (string), this string includes the file name (with path) and the file extension in one string.
-    the supported extensions (file formats) are 'mat' and 'db'.
+    """
+    To import the saved data from a file.
+
+    Parameters
+    ------------
+    file_name : str
+        this string includes the file name (with path) and the file extension in one string. The supported extensions are 'mat' and 'db'.
+
+    Returns
+    ------------
+    imported_data : dict
+        dictionary of different objects imported from the data file.
     """
 
     import os

@@ -3,12 +3,12 @@ def plot_pressure_field(postprocess_obj, field="total", unit="Pa"):
     """
     2D contour plotting of pressure fields of an optimus post process object
 
-    Input argument
+    Parameters
     ----------
-    postprocess_obj : an optimus postprocess object
+    postprocess_obj : optimus postprocess object
         optimus postprocess object that includes the visualisation pressure fields
     field : string
-        the pressure field to be plotted, options: total/total_field/total_pressure and scattered/scattered_pressure/scattered_field.
+        the pressure field to be plotted, options: total, total_field, or total_pressure and scattered, scattered_pressure, or scattered_field.
     unit: string
         pressure unit. the pressure fields are scaled accordingly. Options are: Pa,kPa,MPa and GPa.
     """
@@ -74,7 +74,7 @@ def contour_plot(
     """
     2D contour plotting of a mesh grid quantity
 
-    Input argument
+    Parameters
     ----------
     quantity : numpy matrix
         the quantity to be plotted
