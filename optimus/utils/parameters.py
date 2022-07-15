@@ -39,6 +39,7 @@ class LinalgParameters:
         """
         Initialize the default parameters for linear algebra routines.
         """
+        self.linsolver = "gmres"
         self.tol = 1e-5
         self.maxiter = 1000
         self.restart = 1000
@@ -47,6 +48,7 @@ class LinalgParameters:
         """
         Print all parameters.
         """
+        print(prefix + "Linear solver:", self.linsolver)
         print(prefix + "Tolerance:", self.tol)
         print(prefix + "Maximum number of iterations:", self.maxiter)
         print(prefix + "Number of iterations before restart:", self.restart)

@@ -26,8 +26,14 @@ def linear_solve(
     it_count : int
         The number of iterations (optional).
     """
+    import optimus
 
-    solver = GmresSolver(lhs_system, rhs_system)
+    if optimus.global_parameters.linalg.linsolver == "gmres":
+        solver = GmresSolver(lhs_system, rhs_system)
+    else:
+        raise ValueError("Linear solver " +
+                         optimus.global_parameters.linalg.linsolver +
+                         " is not known.")
     solution = solver.solve()
 
     if return_iteration_count:
