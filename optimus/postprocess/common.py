@@ -1,21 +1,23 @@
+"""Common functionality for postprocessing and visualising results."""
+
 import numpy as np
 import bempp.api as bempp
 import time
 
 
 class PostProcess:
-    """
-    Create an optimus postprocess object with the specified parameters.
-
-    Parameters
-    ----------
-        model: optimus model object
-            this model object must include the solution vectors (the solve() function must be executed).
-        verbose: boolean
-            to display the logs or not.
-    """
-
     def __init__(self, model, verbose=False):
+        """
+        Create an optimus postprocess object with the specified parameters.
+
+        Parameters
+        ----------
+        model: optimus model object
+            The model object must include the solution vectors, i.e.,
+            the solve() function must have been executed.
+        verbose: boolean
+            Display the logs.
+        """
         self.verbose = verbose
         self.model = model
         self.domains_grids = [
@@ -24,7 +26,7 @@ class PostProcess:
 
     def create_computational_grid(self, **kwargs):
         """
-        Calculate the pressure field in the specified locations.
+        Create the grid on which to calculate the pressure field.
         Needs to be overridden by specific source type.
 
         Parameters
@@ -45,13 +47,15 @@ class PostProcess:
         Display parameters used for visualisation.
         """
         print("\n", 70 * "*")
+        if hasattr(self, "points"):
+            print("\n number of visualisation points: ", self.points.shape[1])
         if hasattr(self, "resolution") and hasattr(self, "bounding_box"):
             print("\n resolution in number of points: ", self.resolution)
             print(
                 "\n resolution in ppi (diagonal ppi): %d "
                 % ppi_calculator(self.bounding_box, self.resolution)
             )
-        if hasattr(self, "plane_axes"):
+        if hasattr(self, "plane_axes") and hasattr(self, "plane_offset"):
             print("\n 2D plane axes: ", self.plane_axes)
             print("\n the offset of 2D plane along the 3rd axis: ", self.plane_offset)
         if hasattr(self, "bounding_box"):
@@ -69,15 +73,16 @@ def calculate_bounding_box(domains_grids, plane_axes):
 
     Parameters
     ---------
-        domains_grids : a list of optimus grids
-            the bounding box of the union of grids is determined.
-        plane_axes : a list/tuple of two int numbers
-            The boundary plane. possible values are 0,1,2 for x,y,z axes, respectively
+    domains_grids : a list of optimus grids
+        The grids of the subdomains.
+    plane_axes : a list/tuple of two int numbers
+        The boundary plane. possible values are 0,1,2 for x,y,z axes, respectively.
 
     Returns
     ----------
-        bounding_box: a list/tuple of four float numbers
-            Bounding box specifying the visualisation section on the plane_axis: [axis1_min, axis1_max, axis2_min, axis2_max]
+    bounding_box: list[float]
+        Bounding box specifying the visualisation section on
+        the plane_axis: [axis1_min, axis1_max, axis2_min, axis2_max]
     """
 
     if not isinstance(domains_grids, list):
@@ -93,23 +98,24 @@ def calculate_bounding_box(domains_grids, plane_axes):
     return bounding_box
 
 
-def find_int_ext_points(domain_grids, points, verbose):
+def find_int_ext_points(domains_grids, points, verbose):
     """
-    Identify the interior and exterior points w.r.t each grid.
+    Identify the interior and exterior points w.r.t. each grid.
 
     Parameters
     ---------
-        domains_grids : a list of optimus grids
-            the bounding box of the union of grids is determined.
-        points : a numpy array of size 3xN
-            the field points.
-        verbose : boolean
-            to display the logs or not
+    domains_grids : a list of optimus grids
+        The grids of the subdomains.
+    points : np.array of size (3,n)
+        The field points.
+    verbose : boolean
+        to display the logs or not
 
     Returns
     -----------
     points_interior : list of numpy arrays of size 3xN
-        element i of the list is an array of coordinates of the interior points for domain i, i=1,...,no_subdomains
+        element i of the list is an array of coordinates of the
+        interior points for domain i, i=1,...,no_subdomains
     points_exterior : numpy array of size 3xN
         visualisation points in the exterior domain
     index_interior : list of boolean arrays of size 1xN
@@ -122,14 +128,14 @@ def find_int_ext_points(domain_grids, points, verbose):
 
     points_interior = []
     idx_interior = []
-    idx_exterior = np.full((points.shape)[1], True, dtype=bool)
+    idx_exterior = np.full(points.shape[1], True)
     if verbose:
         TS_INT_EXT = time.time()
         print(
             "\n Identifying the exterior and interior points Started at: ",
             time.strftime("%a, %d %b %Y %H:%M:%S", time.localtime()),
         )
-    for grid in domain_grids:
+    for grid in domains_grids:
         (
             POINTS_INTERIOR_TMP,
             POINTS_EXTERIOR_TMP,
@@ -145,7 +151,8 @@ def find_int_ext_points(domain_grids, points, verbose):
     if verbose:
         TE_INT_EXT = time.time()
         print(
-            "\n Identifying the exterior and interior points Finished... Duration in secs: ",
+            "\n Identifying the exterior and interior points "
+            "Finished... Duration in secs: ",
             TE_INT_EXT - TS_INT_EXT,
         )
 
@@ -182,10 +189,12 @@ def compute_pressure_fields(
     index_exterior : boolean array of size 1xN
         to identify the exterior points
     points_interior : list of numpy arrays of size 3xN
-        element i of the list is an array of coordinates of the interior points for domain i, i=1,...,no_subdomains
+        element i of the list is an array of coordinates of the
+        interior points for domain i, i=1,...,no_subdomains
     index_interior : list of boolean arrays of size 1xN
         to identify the interior points
-
+    verbose : bool
+        Display the logs.
 
     Returns
     -----------
@@ -260,7 +269,7 @@ def compute_pressure_fields(
                 interior_material,
             )
 
-        if (interior_idx).any():
+        if interior_idx.any():
             pot_int_sl = bempp.operators.potential.helmholtz.single_layer(
                 space,
                 interior_point,
@@ -298,7 +307,8 @@ def compute_pressure_fields(
         if verbose:
             TE_POT_OPS_FIELD = time.time()
             print(
-                "\n Calculating the interior and exterior potential operators Finished... Duration in secs: ",
+                "\n Calculating the interior and exterior potential operators "
+                "Finished... Duration in secs: ",
                 TE_POT_OPS_FIELD - TS_POT_OPS_FIELD,
             )
 
@@ -335,9 +345,9 @@ def ppi_calculator(bounding_box, resolution):
 
     Parameters
     -----------
-    bounding_box : list
+    bounding_box : list[float]
         list of min and max of the 2D plane
-    resolution : list
+    resolution : list[float]
         list of number of points along each direction
 
     Returns
@@ -360,15 +370,19 @@ def domain_edge(points_interior, plane_axes, alpha=0.001, only_outer=True):
 
     Parameters
     ----------
-    alpha : real number
-        the threshhold parameter in the Concave Hell method.
+    points_interior : np.ndarray
+        The interior points.
+    plane_axes : list[int]
+        The axes of the plane.
+    alpha : float
+        The threshold parameter in the Concave Hell method.
     only_outer : boolean
-        specify if we keep only the points on the outer border or also inner edges.
+        Specify if we keep only the points on the outer border or also inner edges.
 
     Returns
     -----------
-    domains_edge_points : list
-        list of lists of coordinates of points on the edges
+    domains_edge_points : list[np.ndarray]
+        list of numpy arrays of coordinates of points on the edges
     """
 
     from .concave_hull import concave_hull as _concave_hull

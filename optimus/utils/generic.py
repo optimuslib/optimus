@@ -1,7 +1,7 @@
 """Utilities for generic frequently used functions."""
 
 
-class ansi_escape_format:
+class AnsiEscapeFormat:
     PURPLE = "\033[95m"
     CYAN = "\033[96m"
     DARKCYAN = "\033[36m"
@@ -17,20 +17,20 @@ class ansi_escape_format:
 
 def bold_ul_text(string):
     return (
-        ansi_escape_format.BOLD
-        + ansi_escape_format.UNDERLINE
-        + string
-        + ansi_escape_format.END
+            AnsiEscapeFormat.BOLD
+            + AnsiEscapeFormat.UNDERLINE
+            + string
+            + AnsiEscapeFormat.END
     )
 
 
 def bold_ul_red_text(string):
     return (
-        ansi_escape_format.BOLD
-        + ansi_escape_format.UNDERLINE
-        + ansi_escape_format.RED
-        + string
-        + ansi_escape_format.END
+            AnsiEscapeFormat.BOLD
+            + AnsiEscapeFormat.UNDERLINE
+            + AnsiEscapeFormat.RED
+            + string
+            + AnsiEscapeFormat.END
     )
 
 
@@ -39,4 +39,4 @@ def chunker(seq, size):
     To split a sequence (list, tuples,...) by a specific size.
     Imported from https://stackoverflow.com/questions/434287/what-is-the-most-pythonic-way-to-iterate-over-a-list-in-chunks
     """
-    return (seq[pos : pos + size] for pos in range(0, len(seq), size))
+    return (seq[pos: pos + size] for pos in range(0, len(seq), size))

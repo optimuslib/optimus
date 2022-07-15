@@ -5,28 +5,37 @@ import numpy as np
 def concave_hull(points, alpha, only_outer=True):
     """
     Compute the alpha shape (concave hull) of a set of 2D points.
-    points: np.array of shape (2,n) points.
-    alpha: alpha value.
-    only_outer: boolean value to specify if we keep only the outer border
-    or also inner edges.
-    return: set of (i,j) pairs representing edges of the alpha-shape. (i,j) are
-    the indices in the points array.
+
+    Parameters
+    ----------
+    points : np.ndarray
+        Array of shape (2,n) with the points.
+    alpha : float
+        The alpha value.
+    only_outer : bool
+        Specify if we keep only the outer border or also inner edges.
+
+    Returns
+    ----------
+    edges : set
+        The set of (i,j) pairs representing edges of the alpha-shape. (i,j) are
+        the indices in the points array.
     """
     assert points.shape[0] > 3, "Need at least four points"
 
-    def add_edge(edges, i, j):
+    def add_edge(edge, i, j):
         """
         Add an edge between the i-th and j-th points,
         if not in the list already
         """
-        if (i, j) in edges or (j, i) in edges:
+        if (i, j) in edge or (j, i) in edge:
             # already added
-            assert (j, i) in edges, "Can't go twice over same directed edge..."
+            assert (j, i) in edge, "Can't go twice over same directed edge..."
             if only_outer:
                 # if both neighboring triangles are in shape, it's not a boundary edge
-                edges.remove((j, i))
+                edge.remove((j, i))
             return
-        edges.add((i, j))
+        edge.add((i, j))
 
     triangles = Delaunay(points)
     edges = set()

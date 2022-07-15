@@ -8,15 +8,18 @@ def exterior_interior_points_eval(
     grid, xyz_field, solid_angle_tolerance=None, verbose=False
 ):
     """
-    To evaluate whether a field point is within a domain or not using a solid angle method.
+    To evaluate whether a field point is within a domain or not using a
+    solid angle method.
 
     Parameters
     ------------
     grid : bempp grid
         surface grid defining a domain
-    xyz_field : numpy array of size 3xN
-        field points to be evaluated if they are inside the volume defined by the surface grid or not
-    solid_angle_tolerance : real/None
+    xyz_field : np.ndarray
+        Field points to be evaluated if they are inside the volume defined by
+        the surface grid or not.
+        Array of size (3,N).
+    solid_angle_tolerance : float
         the tolerance in solid angle method
     verbose : boolean
         to display the log or not
@@ -107,7 +110,7 @@ def exterior_interior_points_eval(
         i_val = np.arange(0, xyz_field.shape[1])
         t0 = _time.time()
         N_workers = mp.cpu_count()
-        func = partial(Omega_eval, xcen, ycen, zcen, xyz_field, normals, dS)
+        func = partial(omega_eval, xcen, ycen, zcen, xyz_field, normals, dS)
         pool = mp.Pool(N_workers)
         result = pool.starmap(func, zip(i_val))
         pool.close()
@@ -135,7 +138,7 @@ def exterior_interior_points_eval(
     return xyz_int, xyz_ext, xyz_boundary, n_int, n_ext, n_boundary
 
 
-def Omega_eval(xcen, ycen, zcen, xyz_field, normals, dS, jj):
+def omega_eval(xcen, ycen, zcen, xyz_field, normals, dS, jj):
 
     r = np.array(
         [xcen - xyz_field[0, jj], ycen - xyz_field[1, jj], zcen - xyz_field[2, jj]]
@@ -143,5 +146,5 @@ def Omega_eval(xcen, ycen, zcen, xyz_field, normals, dS, jj):
     r_norm = np.linalg.norm(r, axis=0)
     r_unit = np.divide(r, r_norm)
     r_unit_dot_n = np.sum(r_unit * normals, axis=0)
-    Omega = np.sum(r_unit_dot_n * dS / r_norm**2) / (4 * np.pi)
-    return Omega
+    omega = np.sum(r_unit_dot_n * dS / r_norm**2) / (4 * np.pi)
+    return omega

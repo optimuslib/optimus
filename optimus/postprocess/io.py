@@ -1,4 +1,7 @@
-import shelve, copy
+"""Utilities for input and output."""
+
+import shelve
+import copy
 
 
 def export_to_file(
@@ -13,11 +16,18 @@ def export_to_file(
 
     Parameters
     -------------
+    model : optimus.model.Model
+        An instance of the optimus model object.
+    post_process : optimus.postprocess.PostProcess
+        An instance of the optimus postprocess object.
+    global_parameters : Any
+        The global parameters of the simulation.
     file_name : str
         the export path and the file name in one string.
     file_format : str
         'mat': to save ONLY the post_process results into a MATLAB file.
-        'db': (default) to save all the attributes of global parameters, source parameters, post processor and pickable objects of the model.
+        'db': (default) to save all the attributes of global parameters,
+        source parameters, post processor and pickable objects of the model.
     """
     model_copy = copy.deepcopy(model)
     delattr(model_copy, "continous_operator")
@@ -61,7 +71,8 @@ def import_from_file(file_name):
     Parameters
     ------------
     file_name : str
-        this string includes the file name (with path) and the file extension in one string. The supported extensions are 'mat' and 'db'.
+        this string includes the file name (with path) and the file extension
+        in one string. The supported extensions are 'mat' and 'db'.
 
     Returns
     ------------
@@ -80,7 +91,6 @@ def import_from_file(file_name):
         imported_data = sio.loadmat(file_name)
     else:
         db_handle = shelve.open(os.path.splitext(file_name)[0])
-        imported_data = dict()
         imported_data = {key: db_handle[key] for key in list(db_handle.keys())}
         db_handle.close()
 

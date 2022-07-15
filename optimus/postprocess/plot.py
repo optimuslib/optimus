@@ -1,3 +1,6 @@
+"""Functionality to plot pressure fields."""
+
+
 def plot_pressure_field(postprocess_obj, field="total", unit="Pa"):
 
     """
@@ -5,12 +8,21 @@ def plot_pressure_field(postprocess_obj, field="total", unit="Pa"):
 
     Parameters
     ----------
-    postprocess_obj : optimus postprocess object
+    postprocess_obj : optimus.postprocess.PostProcess
         optimus postprocess object that includes the visualisation pressure fields
     field : string
-        the pressure field to be plotted, options: total, total_field, or total_pressure and scattered, scattered_pressure, or scattered_field.
+        The pressure field to be plotted.
+        The options are:
+            1. total, total_field, or total_pressure;
+            2. scattered, scattered_pressure, or scattered_field.
     unit: string
-        pressure unit. the pressure fields are scaled accordingly. Options are: Pa,kPa,MPa and GPa.
+        Pressure unit. the pressure fields are scaled accordingly.
+        Options are: Pa, kPa, MPa and GPa.
+
+    Returns
+    ----------
+    fig_p_real, fig_p_tot
+        Contour plots of the real and absolute value of the pressure field.
     """
     import numpy as np
 
@@ -70,25 +82,32 @@ def contour_plot(
     colorbar_unit,
     domains_edges=False,
 ):
-
     """
     2D contour plotting of a mesh grid quantity
 
     Parameters
     ----------
-    quantity : numpy matrix
+    quantity : np.ndarray
         the quantity to be plotted
-    axes_lims : list of real numbers
-        list of minima and maxima of h-axis and v-axis of the 2D contour plot, [h_axis_min, h_axis_max, v_axis_min, v_axis_max].
-    axes_labels : list of strings
+    axes_lims : list[float], tuple[float]
+        List of minima and maxima of h-axis and v-axis of the 2D contour plot,
+        in the form of [h_axis_min, h_axis_max, v_axis_min, v_axis_max].
+    axes_labels : list[str], tuple[str]
         the labels for h-axis and v-axis of the plot.
     colormap : string
         the name of colormap. all the matplotlib colormaps are supported.
+    colormap_lims : list[float], tuple[float]
+        The limit values of the colormap.
     colorbar_unit : string
         the label for colorbar
-    domains_edges : boolean/list
-        if the intersection points of the domains and the visualisation plane is passed as a list, they are overlaid to the field plot.
+    domains_edges : bool, list[bool]
+        if the intersection points of the domains and the visualisation plane
+        is passed as a list, they are overlaid to the field plot.
 
+    Returns
+    ----------
+    fig : plt.figure
+        A Matplotlib figure.
     """
     from mpl_toolkits.axes_grid1 import make_axes_locatable
     from matplotlib import pylab as plt
@@ -113,7 +132,7 @@ def contour_plot(
     if domains_edges:
         if len(domains_edges):
             for i, j in domains_edges:
-                plt.plot(i, j, color="black", linestyle="dashed", linewidth=2)
+                plt.plot(i, j, color="black", linestyle="-", linewidth=2)
 
     ax.set_xlabel(haxis_label, size=18)
     ax.set_ylabel(vaxis_label, size=18)
@@ -138,4 +157,6 @@ def _set_pressure_plane(plane_axes):
 def _convert_pressure_unit(pressure_unit):
     units_list = ["Pa", "kPa", "MPa", "GPa"]
     index = [i for i, s in enumerate(units_list) if pressure_unit.lower() == s.lower()]
+    if len(index) != 1:
+        raise ValueError("Pressure unit " + str(pressure_unit) + " not known.")
     return 10 ** (-3 * index[0]), units_list[index[0]]

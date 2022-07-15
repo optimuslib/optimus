@@ -167,7 +167,7 @@ class Material:
             A dictionary of the material properties with the keys
             as defined below.
 
-        Parameters
+        Dictionary keys
         ----------
         density : float
             The mass density in [kg/m3]

@@ -1,10 +1,11 @@
+"""Functionality to calculate acoustic fields on different visualisation grids"""
+
 from .common import PostProcess as _PostProcess
 import numpy as np
 
 
 class PostProcess_2D(_PostProcess):
     def __init__(self, model, verbose=False):
-        super().__init__(model, verbose)
         """
         Create a PostProcess optimus object where the visualisation grid is a 2D plane.
 
@@ -15,27 +16,32 @@ class PostProcess_2D(_PostProcess):
         verbose : boolean
             to display the log information or not
         """
+        super().__init__(model, verbose)
 
     def create_computational_grid(
         self,
-        resolution=[141, 141],
-        plane_axes=[0, 1],
+        resolution=(141, 141),
+        plane_axes=(0, 1),
         plane_offset=0.0,
-        bounding_box=[],
+        bounding_box=None,
     ):
         """
         Create a planar grid to compute the pressure fields.
 
         Parameters
         ----------
-        resolution : a list/tuple of two int numbers
-            Number of points along each axis
-        plane_axes : a list/tuple of two int numbers
-            Visualisation plane. possible values are 0,1,2 for x,y,z axes, respectively
-        plane_offset: float (default: 0)
-            Offset the visualisation plane defined by plane_axes, along the third axis
-        bounding_box: a list/tuple of four float numbers
-            Bounding box specifying the visualisation section on the plane_axis: [axis1_min, axis1_max, axis2_min, axis2_max]
+        resolution : list[int], tuple[int]
+            Number of points along the two axes.
+        plane_axes : list[int], tuple[int]
+            The indices of the axes for the visualisation plane.
+            Possible values are 0,1,2 denoting the x,y,z axes, respectively.
+            Default: (0, 1).
+        plane_offset : float
+            Offset of the visualisation plane defined along the third axis.
+            Default: 0.
+        bounding_box : list[float], tuple[float]
+            Bounding box specifying the visualisation section along
+            the plane's axes: [axis1_min, axis1_max, axis2_min, axis2_max]
         """
         from .common import calculate_bounding_box, find_int_ext_points, domain_edge
         from ..utils.mesh import create_grid_points
@@ -43,11 +49,13 @@ class PostProcess_2D(_PostProcess):
         self.resolution = resolution
         self.plane_axes = plane_axes
         self.plane_offset = plane_offset
-        if bounding_box:
+
+        if bounding_box is not None:
             self.bounding_box = bounding_box
         else:
             self.bounding_box = calculate_bounding_box(self.domains_grids, plane_axes)
-        (self.points, self.plane) = create_grid_points(
+
+        self.points, self.plane = create_grid_points(
             self.resolution,
             self.plane_axes,
             self.plane_offset,
@@ -61,6 +69,7 @@ class PostProcess_2D(_PostProcess):
             self.index_interior,
             self.index_exterior,
         ) = find_int_ext_points(self.domains_grids, self.points, self.verbose)
+
         self.domains_edges = domain_edge(
             self.points_interior, self.plane_axes, alpha=0.005, only_outer=True
         )
@@ -99,7 +108,6 @@ class PostProcess_2D(_PostProcess):
 
 class PostProcess_UserDefined(_PostProcess):
     def __init__(self, model, verbose=False):
-        super().__init__(model, verbose)
         """
         Create a PostProcess optimus object where the visualisation grid is user-defined points (2D/3D).
 
@@ -110,6 +118,7 @@ class PostProcess_UserDefined(_PostProcess):
         verbose : boolean
             to display the log information or not
         """
+        super().__init__(model, verbose)
 
     def create_computational_grid(self, resolution=[], user_points=[]):
         """
@@ -178,9 +187,9 @@ class PostProcess_UserDefined(_PostProcess):
 
 class PostProcess_3D(_PostProcess):
     def __init__(self, model, verbose=True):
-        super().__init__(model, verbose)
         """
-        Create a PostProcess optimus object where the visualisation grid is a union of a plan and surface meshes of the domains.
+        Create a PostProcess optimus object where the visualisation grid is
+        a union of a plane and surface meshes of the domains.
 
         Parameters
         ----------
@@ -189,27 +198,32 @@ class PostProcess_3D(_PostProcess):
         verbose : boolean
             to display the log information or not
         """
+        super().__init__(model, verbose)
 
     def create_computational_grid(
         self,
-        resolution=[141, 141],
-        plane_axes=[0, 1],
+        resolution=(141, 141),
+        plane_axes=(0, 1),
         plane_offset=0.0,
-        bounding_box=[],
+        bounding_box=None,
     ):
         """
         Create a planar grid to compute the pressure fields.
 
         Parameters
         ----------
-        resolution : a list/tuple of two int numbers
-            Number of points along each axis
-        plane_axes : a list/tuple of two int numbers
-            Visualisation plane. possible values are 0,1,2 for x,y,z axes, respectively
-        plane_offset: float (default: 0)
-            Offset the visualisation plane defined by plane_axes, along the third axis
-        bounding_box: a list/tuple of four float numbers
-            Bounding box specifying the visualisation section on the plane_axis: [axis1_min, axis1_max, axis2_min, axis2_max]
+        resolution : list[int], tuple[int]
+            Number of points along the two axes.
+        plane_axes : list[int], tuple[int]
+            The indices of the axes for the visualisation plane.
+            Possible values are 0,1,2 denoting the x,y,z axes, respectively.
+            Default: (0, 1).
+        plane_offset : float
+            Offset of the visualisation plane defined along the third axis.
+            Default: 0.
+        bounding_box : list[float], tuple[float]
+            Bounding box specifying the visualisation section along
+            the plane's axes: [axis1_min, axis1_max, axis2_min, axis2_max]
         """
 
         from .common import calculate_bounding_box, find_int_ext_points
@@ -218,11 +232,13 @@ class PostProcess_3D(_PostProcess):
         self.resolution = resolution
         self.plane_axes = plane_axes
         self.plane_offset = plane_offset
+
         if bounding_box:
             self.bounding_box = bounding_box
         else:
             self.bounding_box = calculate_bounding_box(self.domains_grids, plane_axes)
-        (self.points, self.plane) = create_grid_points(
+
+        self.points, self.plane = create_grid_points(
             self.resolution,
             self.plane_axes,
             self.plane_offset,
@@ -240,15 +256,16 @@ class PostProcess_3D(_PostProcess):
     def compute_fields(self, file_name="planar_and_surface"):
         """
         Calculate the scattered and total pressure fields in the planar grid created.
+        Export the field values to gmsh files.
 
         Parameters
         ----------
-        file_name : a string
-            the out file name, the results are saved as GMSH files. GMSH should be used for visualisation.
+        file_name : str
+            The name for the output file. The results are saved as GMSH files.
+            GMSH should be used for visualisation.
         """
         from .common import compute_pressure_fields
         import bempp.api as bempp
-        import numpy as np
 
         (
             self.total_field,

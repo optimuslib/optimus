@@ -207,14 +207,24 @@ def plane_grid(x_axis_lims, y_axis_lims, rotation_axis, rotation_angle, element_
     """
     Return a 2D square shaped plane.
 
+    Parameters
+    ----------
     x_axis_lims : list of two float numbers
         The bounding values along the x-axis of plane.
     y_axis_lims : list of two float numbers
         The bounding values along the y-axis of plane.
     rotation_axis : a list of size three populated with 0 or 1,
-        It defines the axis of rotation so to construct the desired plane from an x-y plane.
+        It defines the axis of rotation so to construct the desired plane
+        from an x-y plane.
+    rotation_angle : str
+        The angle of rotation.
     element_size : float
         Element size.
+
+    Returns
+    ----------
+    grid : Grid
+        The triangular mesh on the plane.
     """
     stub = """
     Point(1) = {ax1_lim1, ax2_lim1, 0, cl};
@@ -233,12 +243,7 @@ def plane_grid(x_axis_lims, y_axis_lims, rotation_axis, rotation_angle, element_
     import sys
 
     if sys.version_info.major >= 3 and sys.version_info.minor >= 6:
-        pass
-        # geometry = (f"ax1_lim1 = {x_axis_lims[0]};\nax1_lim2 = {x_axis_lims[1]};\n"
-        #             + "ax2_lim1 = {y_axis_lims[0]};\nax2_lim2 = {y_axis_lims[1]};\n"
-        #             + "rot_ax1 = {rotation_axis[0]};\nrot_ax2 = {rotation_axis[1]};\n"
-        #             + "rot_ax3 = {rotation_axis[2]};\nrot_ang_rad = {rotation_angle};\ncl = {element_size};\n"
-        #             + stub)
+        return
     else:
         geometry = (
             "ax1_lim1 = "
@@ -270,17 +275,41 @@ def plane_grid(x_axis_lims, y_axis_lims, rotation_axis, rotation_angle, element_
             + ";\n"
             + stub
         )
-    return generate_grid_from_geo_string(geometry)
+        return generate_grid_from_geo_string(geometry)
 
 
 def create_grid_points(resolution, plane_axes, plane_offset, bounding_box, mode):
+    """
+    Create a grid on a plane, either with Numpy or Gmsh.
+
+    Parameters
+    ----------
+    resolution : list[int], tuple[int]
+        The number of visualisation points along the plane axes.
+    plane_axes : list[int], tuple[int]
+        The labels of the plane axes (0,1,2).
+    plane_offset : float
+        The offset of the plane in perpendicular direction.
+    bounding_box : list[float], tuple[float]
+        Restricting the plane to the bounding box.
+    mode : str
+        The algorithm to create a visualisation plane.
+        Options: "numpy", "gmsh".
+
+    Returns
+    -------
+    points : np.ndarray
+        The visualisation points.
+    plane : Any
+        The grid, with format depending on the algorithm.
+    """
     from ..utils.generic import bold_ul_text
 
     ax1_min, ax1_max, ax2_min, ax2_max = bounding_box
     if mode.lower() == "numpy":
         plot_grid = np.mgrid[
-            ax1_min : ax1_max : resolution[0] * 1j,
-            ax2_min : ax2_max : resolution[1] * 1j,
+            ax1_min: ax1_max: resolution[0] * 1j,
+            ax2_min: ax2_max: resolution[1] * 1j,
         ]
         points_tmp = [np.ones(plot_grid[0].size) * plane_offset] * 3
         points_tmp[plane_axes[0]] = plot_grid[0].ravel()
@@ -304,6 +333,8 @@ def create_grid_points(resolution, plane_axes, plane_offset, bounding_box, mode)
             axis2_lims = bounding_box[0:2]
             rotation_axis = [0, 1, 0]
             rotation_angle = "-Pi/2"
+        else:
+            raise ValueError("Plane axis not correctly defined.")
 
         elem_len = np.min(
             [
@@ -323,4 +354,4 @@ def create_grid_points(resolution, plane_axes, plane_offset, bounding_box, mode)
             + "are numpy or gmsh."
         )
 
-    return (points, plane)
+    return points, plane
