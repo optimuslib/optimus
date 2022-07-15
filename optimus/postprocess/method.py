@@ -86,14 +86,14 @@ class PostProcess_2D(_PostProcess):
         )
 
         self.l2_norm_total_field_mpa = np.linalg.norm(self.total_field)
-        self.scattered_field_reshaped = np.flipud(
-            self.scattered_field.reshape(self.resolution).T
+        self.scattered_field_imshow = array_to_imshow(
+            self.scattered_field.reshape(self.resolution)
         )
-        self.total_field_reshaped = np.flipud(
-            self.total_field.reshape(self.resolution).T
+        self.total_field_imshow = array_to_imshow(
+            self.total_field.reshape(self.resolution)
         )
-        self.incident_field_reshaped = np.flipud(
-            self.incident_field.reshape(self.resolution).T
+        self.incident_field_imshow = array_to_imshow(
+            self.incident_field.reshape(self.resolution)
         )
 
 
@@ -295,3 +295,20 @@ class PostProcess_3D(_PostProcess):
         bempp.export(
             file_name=file_name + "_ptot_abs.msh", grid_function=plot3D_ptot_abs_all
         )
+
+
+def array_to_imshow(field_array):
+    """
+    Convert a two-dimensional array to a format for imshow plots.
+
+    Parameters
+    ----------
+    field_array : np.ndarray
+        The two-dimensional array with grid values.
+
+    Returns
+    -------
+    field_imshow : np.ndarray
+        The two-dimensional array for imshow plots.
+    """
+    return np.flipud(field_array.T)

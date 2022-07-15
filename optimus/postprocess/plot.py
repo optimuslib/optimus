@@ -16,19 +16,19 @@ def plot_pressure_field(postprocess_obj, field="total", unit="Pa"):
 
     plane_axes = postprocess_obj.plane_axes
     bounding_box = postprocess_obj.bounding_box
-    [scaling_factor, pressure_unit] = _convert_pressure_unit(unit)
 
     if field.lower() in ["total", "total_field", "total_pressure"]:
-        pressure_field = postprocess_obj.total_field_reshaped * scaling_factor
+        pressure_field = postprocess_obj.total_field_imshow
     elif field.lower() in ["scattered", "scattered_field", "scattered_pressure"]:
-        pressure_field = postprocess_obj.scattered_field_reshaped * scaling_factor
+        pressure_field = postprocess_obj.scattered_field_imshow
     else:
         raise ValueError("Undefined pressure field, options are total and scattered.")
 
-    colormap_lims = (
-        -np.nanmax(np.real(pressure_field)),
-        np.nanmax(np.real(pressure_field)),
-    )
+    scaling_factor, pressure_unit = _convert_pressure_unit(unit)
+    pressure_field *= scaling_factor
+
+    max_real_pressure = np.nanmax(np.abs(np.real(pressure_field)))
+    colormap_lims = (-max_real_pressure, max_real_pressure)
     colormap = "seismic"
     axes_labels = _set_pressure_plane(plane_axes)
     if hasattr(postprocess_obj, "domains_edges"):
