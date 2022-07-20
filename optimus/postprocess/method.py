@@ -1,7 +1,7 @@
 """Functionality to calculate acoustic fields on different visualisation grids"""
 
 from .common import PostProcess as _PostProcess
-import numpy as np
+import numpy as _np
 
 
 class PostProcess_2D(_PostProcess):
@@ -94,7 +94,7 @@ class PostProcess_2D(_PostProcess):
             self.verbose,
         )
 
-        self.l2_norm_total_field_mpa = np.linalg.norm(self.total_field)
+        self.l2_norm_total_field_mpa = _np.linalg.norm(self.total_field)
         self.scattered_field_imshow = array_to_imshow(
             self.scattered_field.reshape(self.resolution)
         )
@@ -172,15 +172,15 @@ class PostProcess_UserDefined(_PostProcess):
             self.verbose,
         )
 
-        self.l2_norm_total_field_mpa = np.linalg.norm(self.total_field)
+        self.l2_norm_total_field_mpa = _np.linalg.norm(self.total_field)
         if len(self.resolution):
-            self.scattered_field_reshaped = np.flipud(
+            self.scattered_field_reshaped = _np.flipud(
                 self.scattered_field.reshape(self.resolution).T
             )
-            self.total_field_reshaped = np.flipud(
+            self.total_field_reshaped = _np.flipud(
                 self.total_field.reshape(self.resolution).T
             )
-            self.incident_field_reshaped = np.flipud(
+            self.incident_field_reshaped = _np.flipud(
                 self.incident_field.reshape(self.resolution).T
             )
 
@@ -265,7 +265,7 @@ class PostProcess_3D(_PostProcess):
             GMSH should be used for visualisation.
         """
         from .common import compute_pressure_fields
-        import bempp.api as bempp
+        import bempp.api as _bempp
 
         (
             self.total_field,
@@ -281,35 +281,35 @@ class PostProcess_3D(_PostProcess):
             self.verbose,
         )
 
-        self.l2_norm_total_field_mpa = np.linalg.norm(self.total_field)
+        self.l2_norm_total_field_mpa = _np.linalg.norm(self.total_field)
 
         self.domains_grids.append(self.plane)
-        grids_union_all = bempp.shapes.union(self.domains_grids)
-        space_union_all = bempp.function_space(grids_union_all, "P", 1)
+        grids_union_all = _bempp.shapes.union(self.domains_grids)
+        space_union_all = _bempp.function_space(grids_union_all, "P", 1)
         domain_solutions_all = [
             self.model.solution[2 * i].coefficients
             for i in range(self.model.n_subdomains)
         ]
         domain_solutions_all.append(self.total_field)
-        plot3D_ptot_all = bempp.GridFunction(
+        plot3D_ptot_all = _bempp.GridFunction(
             space_union_all,
-            coefficients=np.concatenate(
+            coefficients=_np.concatenate(
                 [domain_solutions_all[i] for i in range(self.model.n_subdomains + 1)]
             ),
         )
-        plot3D_ptot_abs_all = bempp.GridFunction(
+        plot3D_ptot_abs_all = _bempp.GridFunction(
             space_union_all,
-            coefficients=np.concatenate(
+            coefficients=_np.concatenate(
                 [
-                    np.abs(domain_solutions_all[i])
+                    _np.abs(domain_solutions_all[i])
                     for i in range(self.model.n_subdomains + 1)
                 ]
             ),
         )
-        bempp.export(
+        _bempp.export(
             file_name=file_name + "_ptot_complex.msh", grid_function=plot3D_ptot_all
         )
-        bempp.export(
+        _bempp.export(
             file_name=file_name + "_ptot_abs.msh", grid_function=plot3D_ptot_abs_all
         )
 
@@ -328,4 +328,4 @@ def array_to_imshow(field_array):
     field_imshow : np.ndarray
         The two-dimensional array for imshow plots.
     """
-    return np.flipud(field_array.T)
+    return _np.flipud(field_array.T)

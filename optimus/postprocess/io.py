@@ -39,9 +39,9 @@ def export_to_file(
     delattr(postprocess_copy, "model")
 
     if file_format.lower() == "mat":
-        import scipy.io as sio
+        import scipy.io as _sio
 
-        sio.savemat(
+        _sio.savemat(
             file_name + ".mat",
             {
                 "total_field": post_process.total_field,
@@ -81,14 +81,14 @@ def import_from_file(file_name):
     """
 
     import os
-    import scipy.io as sio
+    import scipy.io as _sio
     import shelve
 
     file_format = os.path.splitext(file_name)[1]
     if not file_format.lower() in [".mat", ".db"]:
         raise TypeError("The file format is unknown, pass a DB or MAT file to import.")
     elif file_format.lower() == ".mat":
-        imported_data = sio.loadmat(file_name)
+        imported_data = _sio.loadmat(file_name)
     else:
         db_handle = shelve.open(os.path.splitext(file_name)[0])
         imported_data = {key: db_handle[key] for key in list(db_handle.keys())}

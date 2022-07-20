@@ -1,5 +1,5 @@
 from scipy.spatial import Delaunay
-import numpy as np
+import numpy as _np
 
 
 def concave_hull(points, alpha, only_outer=True):
@@ -46,11 +46,11 @@ def concave_hull(points, alpha, only_outer=True):
         pb = points[ib]
         pc = points[ic]
         # Computing radius of triangle circumcircle
-        a = np.sqrt((pa[0] - pb[0]) ** 2 + (pa[1] - pb[1]) ** 2)
-        b = np.sqrt((pb[0] - pc[0]) ** 2 + (pb[1] - pc[1]) ** 2)
-        c = np.sqrt((pc[0] - pa[0]) ** 2 + (pc[1] - pa[1]) ** 2)
+        a = _np.sqrt((pa[0] - pb[0]) ** 2 + (pa[1] - pb[1]) ** 2)
+        b = _np.sqrt((pb[0] - pc[0]) ** 2 + (pb[1] - pc[1]) ** 2)
+        c = _np.sqrt((pc[0] - pa[0]) ** 2 + (pc[1] - pa[1]) ** 2)
         s = (a + b + c) / 2.0
-        area = np.sqrt(s * (s - a) * (s - b) * (s - c))
+        area = _np.sqrt(s * (s - a) * (s - b) * (s - c))
         circum_r = a * b * c / (4.0 * area)
         if circum_r < alpha:
             add_edge(edges, ia, ib)

@@ -1,7 +1,7 @@
-import numpy as np
-from functools import partial
+import numpy as _np
+from functools import _partial
 import time as _time
-import multiprocessing as mp
+import multiprocessing as _mp
 
 
 def exterior_interior_points_eval(
@@ -44,15 +44,15 @@ def exterior_interior_points_eval(
     number_of_elements = grid.leaf_view.entity_count(0)
     elem = list(grid.leaf_view.entity_iterator(0))
 
-    element_property = np.zeros(number_of_elements, dtype=np.int)
-    element_groups = np.zeros(shape=(4, number_of_elements), dtype=np.int)
+    element_property = _np.zeros(number_of_elements, dtype=_np.int)
+    element_groups = _np.zeros(shape=(4, number_of_elements), dtype=_np.int)
     element_groups[1:4, :] = elements
     for i in range(number_of_elements):
         property_number = elem[i].domain
         element_property[i] = property_number
         element_groups[0, i] = property_number
 
-    element_properties = np.array(list(set(element_property)), dtype=np.int)
+    element_properties = _np.array(list(set(element_property)), dtype=_np.int)
     if verbose:
         print("Element groups are:")
         print(element_properties)
@@ -61,7 +61,7 @@ def exterior_interior_points_eval(
     xyz_ext = []
     xyz_boundary = []
     n_int = []
-    n_ext = np.full(xyz_field.shape[1], True, dtype=bool)
+    n_ext = _np.full(xyz_field.shape[1], True, dtype=bool)
     n_boundary = []
 
     for i in range(element_properties.size):
@@ -69,55 +69,55 @@ def exterior_interior_points_eval(
         elements_trunc = elements[:, element_groups[0, :] == element_properties[i]]
         num_elem = elements_trunc.shape[1]
 
-        xmesh = np.zeros(shape=(3, num_elem), dtype=float)
-        ymesh = np.zeros(shape=(3, num_elem), dtype=float)
-        zmesh = np.zeros(shape=(3, num_elem), dtype=float)
+        xmesh = _np.zeros(shape=(3, num_elem), dtype=float)
+        ymesh = _np.zeros(shape=(3, num_elem), dtype=float)
+        zmesh = _np.zeros(shape=(3, num_elem), dtype=float)
         # Populate grid vertices matrices
         for k in range(3):
             xmesh[k, :] = vertices[0, elements_trunc[k, :]]
             ymesh[k, :] = vertices[1, elements_trunc[k, :]]
             zmesh[k, :] = vertices[2, elements_trunc[k, :]]
         # Obtain coordinates of triangular patch centroids through barycentric method
-        xcen = np.mean(xmesh, axis=0)
-        ycen = np.mean(ymesh, axis=0)
-        zcen = np.mean(zmesh, axis=0)
+        xcen = _np.mean(xmesh, axis=0)
+        ycen = _np.mean(ymesh, axis=0)
+        zcen = _np.mean(zmesh, axis=0)
 
         # Preallocate matrix of vectors for triangular patches
-        u = np.zeros(shape=(3, num_elem), dtype=float)
-        v = np.zeros(shape=(3, num_elem), dtype=float)
+        u = _np.zeros(shape=(3, num_elem), dtype=float)
+        v = _np.zeros(shape=(3, num_elem), dtype=float)
         # Compute matrix of vectors defining each triangular patch
-        u = np.array(
+        u = _np.array(
             [
                 xmesh[1, :] - xmesh[0, :],
                 ymesh[1, :] - ymesh[0, :],
                 zmesh[1, :] - zmesh[0, :],
             ]
         )
-        v = np.array(
+        v = _np.array(
             [
                 xmesh[2, :] - xmesh[0, :],
                 ymesh[2, :] - ymesh[0, :],
                 zmesh[2, :] - zmesh[0, :],
             ]
         )
-        u_cross_v = np.cross(u, v, axisa=0, axisb=0, axisc=0)
-        u_cross_v_norm = np.linalg.norm(u_cross_v, axis=0)
+        u_cross_v = _np.cross(u, v, axisa=0, axisb=0, axisc=0)
+        u_cross_v_norm = _np.linalg.norm(u_cross_v, axis=0)
         # Obtain outward pointing unit normal vectors for each patch
-        normals = np.divide(u_cross_v, u_cross_v_norm)
+        normals = _np.divide(u_cross_v, u_cross_v_norm)
         # Obtain surface area of each patch
         dS = 0.5 * u_cross_v_norm
 
-        i_val = np.arange(0, xyz_field.shape[1])
+        i_val = _np.arange(0, xyz_field.shape[1])
         t0 = _time.time()
-        N_workers = mp.cpu_count()
-        func = partial(omega_eval, xcen, ycen, zcen, xyz_field, normals, dS)
-        pool = mp.Pool(N_workers)
+        N_workers = _mp.cpu_count()
+        func = _partial(omega_eval, xcen, ycen, zcen, xyz_field, normals, dS)
+        pool = _mp.Pool(N_workers)
         result = pool.starmap(func, zip(i_val))
         pool.close()
         t1 = _time.time() - t0
         if verbose:
             print("Time to complete solid angle field parallelisation: ", t1)
-        Omega = np.hstack(result)
+        Omega = _np.hstack(result)
         if solid_angle_tolerance:
             n_int_tmp = Omega > 0.5 + solid_angle_tolerance
             n_boundary_tmp = (Omega > 0.5 - solid_angle_tolerance) & (
@@ -140,11 +140,11 @@ def exterior_interior_points_eval(
 
 def omega_eval(xcen, ycen, zcen, xyz_field, normals, dS, jj):
 
-    r = np.array(
+    r = _np.array(
         [xcen - xyz_field[0, jj], ycen - xyz_field[1, jj], zcen - xyz_field[2, jj]]
     )
-    r_norm = np.linalg.norm(r, axis=0)
-    r_unit = np.divide(r, r_norm)
-    r_unit_dot_n = np.sum(r_unit * normals, axis=0)
-    omega = np.sum(r_unit_dot_n * dS / r_norm**2) / (4 * np.pi)
+    r_norm = _np.linalg.norm(r, axis=0)
+    r_unit = _np.divide(r, r_norm)
+    r_unit_dot_n = _np.sum(r_unit * normals, axis=0)
+    omega = _np.sum(r_unit_dot_n * dS / r_norm**2) / (4 * _np.pi)
     return omega

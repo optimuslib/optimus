@@ -1,7 +1,7 @@
 """Common functionality for postprocessing and visualising results."""
 
-import numpy as np
-import bempp.api as bempp
+import numpy as _np
+import bempp.api as _bempp
 import time
 
 
@@ -90,10 +90,10 @@ def calculate_bounding_box(domains_grids, plane_axes):
 
     ax1_min, ax1_max, ax2_min, ax2_max = 0, 0, 0, 0
     for grid in domains_grids:
-        ax1_min = np.min([ax1_min, grid.bounding_box[0][plane_axes[0]].min()])
-        ax1_max = np.max([ax1_max, grid.bounding_box[1][plane_axes[0]].max()])
-        ax2_min = np.min([ax2_min, grid.bounding_box[0][plane_axes[1]].min()])
-        ax2_max = np.max([ax2_max, grid.bounding_box[1][plane_axes[1]].max()])
+        ax1_min = _np.min([ax1_min, grid.bounding_box[0][plane_axes[0]].min()])
+        ax1_max = _np.max([ax1_max, grid.bounding_box[1][plane_axes[0]].max()])
+        ax2_min = _np.min([ax2_min, grid.bounding_box[0][plane_axes[1]].min()])
+        ax2_max = _np.max([ax2_max, grid.bounding_box[1][plane_axes[1]].max()])
     bounding_box = [ax1_min, ax1_max, ax2_min, ax2_max]
     return bounding_box
 
@@ -128,7 +128,7 @@ def find_int_ext_points(domains_grids, points, verbose):
 
     points_interior = []
     idx_interior = []
-    idx_exterior = np.full(points.shape[1], True)
+    idx_exterior = _np.full(points.shape[1], True)
     if verbose:
         TS_INT_EXT = time.time()
         print(
@@ -216,15 +216,15 @@ def compute_pressure_fields(
         "h_mat",
         "h_matrix",
     ]:
-        bempp.global_parameters.hmat.eps = global_parameters.postprocessing.hmat_eps
-        bempp.global_parameters.hmat.max_rank = (
+        _bempp.global_parameters.hmat.eps = global_parameters.postprocessing.hmat_eps
+        _bempp.global_parameters.hmat.max_rank = (
             global_parameters.postprocessing.hmat_max_rank
         )
-        bempp.global_parameters.hmat.max_block_size = (
+        _bempp.global_parameters.hmat.max_block_size = (
             global_parameters.postprocessing.hmat_max_block_size
         )
     elif global_parameters.postprocessing.assembly_type.lower() == "dense":
-        bempp.global_parameters.assembly.potential_operator_assembly_type = "dense"
+        _bempp.global_parameters.assembly.potential_operator_assembly_type = "dense"
     else:
         raise ValueError(
             "Supported operator assembly methods are "
@@ -240,14 +240,16 @@ def compute_pressure_fields(
             time.strftime("%a, %d %b %Y %H:%M:%S", time.localtime()),
         )
 
-    total_field = np.empty((1, points.shape[1]), dtype="complex128").ravel()
-    scattered_field = np.empty((1, points.shape[1]), dtype="complex128").ravel()
-    scattered_field[:] = np.nan
-    incident_exterior_field = np.empty((1, points.shape[1]), dtype="complex128").ravel()
-    incident_exterior_field[:] = np.nan
+    total_field = _np.empty((1, points.shape[1]), dtype="complex128").ravel()
+    scattered_field = _np.empty((1, points.shape[1]), dtype="complex128").ravel()
+    scattered_field[:] = _np.nan
+    incident_exterior_field = _np.empty(
+        (1, points.shape[1]), dtype="complex128"
+    ).ravel()
+    incident_exterior_field[:] = _np.nan
 
     if index_exterior.any():
-        exterior_values = np.zeros((1, points_exterior.shape[1]), dtype="complex128")
+        exterior_values = _np.zeros((1, points_exterior.shape[1]), dtype="complex128")
         ext_calc_flag = True
     else:
         ext_calc_flag = False
@@ -270,12 +272,12 @@ def compute_pressure_fields(
             )
 
         if interior_idx.any():
-            pot_int_sl = bempp.operators.potential.helmholtz.single_layer(
+            pot_int_sl = _bempp.operators.potential.helmholtz.single_layer(
                 space,
                 interior_point,
                 interior_material.compute_wavenumber(model.source.frequency),
             )
-            pot_int_dl = bempp.operators.potential.helmholtz.double_layer(
+            pot_int_dl = _bempp.operators.potential.helmholtz.double_layer(
                 space,
                 interior_point,
                 interior_material.compute_wavenumber(model.source.frequency),
@@ -288,12 +290,12 @@ def compute_pressure_fields(
             total_field[interior_idx] = interior_value.ravel()
 
         if ext_calc_flag:
-            pot_ext_sl = bempp.operators.potential.helmholtz.single_layer(
+            pot_ext_sl = _bempp.operators.potential.helmholtz.single_layer(
                 space,
                 points_exterior,
                 model.material_exterior.compute_wavenumber(model.source.frequency),
             )
-            pot_ext_dl = bempp.operators.potential.helmholtz.double_layer(
+            pot_ext_dl = _bempp.operators.potential.helmholtz.double_layer(
                 space,
                 points_exterior,
                 model.material_exterior.compute_wavenumber(model.source.frequency),
@@ -354,12 +356,12 @@ def ppi_calculator(bounding_box, resolution):
     -----------
     resolution in ppi : real number
     """
-    diagonal_length_meter = np.sqrt(
+    diagonal_length_meter = _np.sqrt(
         (bounding_box[1] - bounding_box[0]) ** 2
         + (bounding_box[3] - bounding_box[2]) ** 2
     )
     diagonal_length_inches = diagonal_length_meter * 39.37
-    diagonal_points = np.sqrt(resolution[0] ** 2 + resolution[1] ** 2)
+    diagonal_points = _np.sqrt(resolution[0] ** 2 + resolution[1] ** 2)
 
     return diagonal_points / diagonal_length_inches
 
@@ -394,7 +396,7 @@ def domain_edge(points_interior, plane_axes, alpha=0.001, only_outer=True):
             edges = _concave_hull(points_int_planar.T, alpha, only_outer)
             for i, j in edges:
                 domains_edge_points.append(
-                    np.vstack(
+                    _np.vstack(
                         [points_int_planar[0, [i, j]], points_int_planar[1, [i, j]]]
                     )
                 )

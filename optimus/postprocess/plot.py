@@ -24,7 +24,7 @@ def plot_pressure_field(postprocess_obj, field="total", unit="Pa"):
     fig_p_real, fig_p_tot
         Contour plots of the real and absolute value of the pressure field.
     """
-    import numpy as np
+    import numpy as _np
 
     plane_axes = postprocess_obj.plane_axes
     bounding_box = postprocess_obj.bounding_box
@@ -39,7 +39,7 @@ def plot_pressure_field(postprocess_obj, field="total", unit="Pa"):
     scaling_factor, pressure_unit = _convert_pressure_unit(unit)
     pressure_field *= scaling_factor
 
-    max_real_pressure = np.nanmax(np.abs(np.real(pressure_field)))
+    max_real_pressure = _np.nanmax(_np.abs(_np.real(pressure_field)))
     colormap_lims = (-max_real_pressure, max_real_pressure)
     colormap = "seismic"
     axes_labels = _set_pressure_plane(plane_axes)
@@ -49,7 +49,7 @@ def plot_pressure_field(postprocess_obj, field="total", unit="Pa"):
         domains_edges = False
 
     fig_p_real = contour_plot(
-        np.real(pressure_field),
+        _np.real(pressure_field),
         bounding_box,
         axes_labels,
         colormap,
@@ -58,10 +58,10 @@ def plot_pressure_field(postprocess_obj, field="total", unit="Pa"):
         domains_edges=domains_edges,
     )
 
-    colormap_lims = (0, np.nanmax(np.abs(pressure_field)))
+    colormap_lims = (0, _np.nanmax(_np.abs(pressure_field)))
     colormap = "viridis"
     fig_p_tot = contour_plot(
-        np.abs(pressure_field),
+        _np.abs(pressure_field),
         bounding_box,
         axes_labels,
         colormap,
@@ -111,10 +111,10 @@ def contour_plot(
     """
     from mpl_toolkits.axes_grid1 import make_axes_locatable
     from matplotlib import pylab as plt
-    import numpy as np
+    import numpy as _np
 
     no_cbarticks = 10
-    cbar_ticks = np.linspace(
+    cbar_ticks = _np.linspace(
         colormap_lims[0], colormap_lims[1], no_cbarticks, endpoint=True
     )
     haxis_label, vaxis_label = axes_labels[0], axes_labels[1]

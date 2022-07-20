@@ -1,9 +1,9 @@
 """Get mesh statistics and scale mesh elements."""
 
-import bempp.api as bempp
+import bempp.api as _bempp
 from ..geometry.common import Geometry as _Geometry
 from .conversions import convert_to_float as _convert_to_float
-import numpy as np
+import numpy as _np
 
 
 def _get_mesh_stats(grid, verbose=False):
@@ -25,22 +25,22 @@ def _get_mesh_stats(grid, verbose=False):
     """
     elements = list(grid.leaf_view.entity_iterator(0))
     element_size = [
-        np.sqrt(
+        _np.sqrt(
             (
                 (
                     element.geometry.corners
-                    - np.roll(element.geometry.corners, 1, axis=1)
+                    - _np.roll(element.geometry.corners, 1, axis=1)
                 )
                 ** 2
             ).sum(axis=0)
         )
         for element in elements
     ]
-    elements_min = np.min(element_size)
-    elements_max = np.max(element_size)
-    elements_avg = np.mean(element_size)
-    elements_med = np.median(element_size)
-    elements_std = np.std(element_size)
+    elements_min = _np.min(element_size)
+    elements_max = _np.max(element_size)
+    elements_avg = _np.mean(element_size)
+    elements_med = _np.median(element_size)
+    elements_std = _np.std(element_size)
     number_of_nodes = grid.leaf_view.entity_count(2)
 
     if verbose:
@@ -97,7 +97,7 @@ def get_geometries_stats(geometries, verbose=False):
             elements_med.append(stats["elements_med"])
             elements_std.append(stats["elements_std"])
             number_of_nodes.append(stats["number_of_nodes"])
-        total_number_of_nodes = np.sum(number_of_nodes)
+        total_number_of_nodes = _np.sum(number_of_nodes)
 
         stats_total = {
             "elements_min": elements_min,
@@ -158,7 +158,7 @@ def scale_mesh(geometry, scaling_factor):
     scaling = _convert_to_float(scaling_factor, "mesh scaling factor")
     vertices = geometry.grid.leaf_view.vertices * scaling
     elements = geometry.grid.leaf_view.elements
-    scaled_grid = bempp.grid_from_element_data(vertices, elements)
+    scaled_grid = _bempp.grid_from_element_data(vertices, elements)
     return _Geometry(scaled_grid, label=geometry.label + "_scaled")
 
 
@@ -167,13 +167,13 @@ def msh_from_string(geo_string):
     import os
     import subprocess
 
-    gmsh_command = bempp.GMSH_PATH
+    gmsh_command = _bempp.GMSH_PATH
     if gmsh_command is None:
         raise RuntimeError("Gmsh is not found. Cannot generate mesh")
 
     import tempfile
 
-    geo, geo_name = tempfile.mkstemp(suffix=".geo", dir=bempp.TMP_PATH, text=True)
+    geo, geo_name = tempfile.mkstemp(suffix=".geo", dir=_bempp.TMP_PATH, text=True)
     geo_file = os.fdopen(geo, "w")
     msh_name = os.path.splitext(geo_name)[0] + ".msh"
 
@@ -198,7 +198,7 @@ def generate_grid_from_geo_string(geo_string):
     import os
 
     msh_name = msh_from_string(geo_string)
-    grid = bempp.import_grid(msh_name)
+    grid = _bempp.import_grid(msh_name)
     os.remove(msh_name)
     return grid
 
@@ -307,14 +307,14 @@ def create_grid_points(resolution, plane_axes, plane_offset, bounding_box, mode)
 
     ax1_min, ax1_max, ax2_min, ax2_max = bounding_box
     if mode.lower() == "numpy":
-        plot_grid = np.mgrid[
-            ax1_min: ax1_max: resolution[0] * 1j,
-            ax2_min: ax2_max: resolution[1] * 1j,
+        plot_grid = _np.mgrid[
+            ax1_min : ax1_max : resolution[0] * 1j,
+            ax2_min : ax2_max : resolution[1] * 1j,
         ]
-        points_tmp = [np.ones(plot_grid[0].size) * plane_offset] * 3
+        points_tmp = [_np.ones(plot_grid[0].size) * plane_offset] * 3
         points_tmp[plane_axes[0]] = plot_grid[0].ravel()
         points_tmp[plane_axes[1]] = plot_grid[1].ravel()
-        points = np.vstack((points_tmp,))
+        points = _np.vstack((points_tmp,))
         plane = None
 
     elif mode.lower() == "gmsh":
@@ -336,7 +336,7 @@ def create_grid_points(resolution, plane_axes, plane_offset, bounding_box, mode)
         else:
             raise ValueError("Plane axis not correctly defined.")
 
-        elem_len = np.min(
+        elem_len = _np.min(
             [
                 (axis1_lims[1] - axis1_lims[0]) / resolution[0],
                 (axis2_lims[1] - axis2_lims[0]) / resolution[1],
