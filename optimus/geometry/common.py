@@ -46,6 +46,9 @@ class Geometry:
         _bempp.export(filename, grid=self.grid)
 
     def _correct_elements_group_bempp_grids(self):
+        """
+        To add mesh group to geometries created by bempp.
+        """
         import os
 
         self.export_mesh("TEMP.msh")

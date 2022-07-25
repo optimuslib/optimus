@@ -4,7 +4,7 @@ from .common import PostProcess as _PostProcess
 import numpy as _np
 
 
-class PostProcess_2D(_PostProcess):
+class PlaneVisualisation(_PostProcess):
     def __init__(self, model, verbose=False):
         """
         Create a PostProcess optimus object where the visualisation grid is a 2D plane.
@@ -106,10 +106,10 @@ class PostProcess_2D(_PostProcess):
         )
 
 
-class PostProcess_UserDefined(_PostProcess):
+class CloudPoints(_PostProcess):
     def __init__(self, model, verbose=False):
         """
-        Create a PostProcess optimus object where the visualisation grid is user-defined points (2D/3D).
+        Create a PostProcess optimus object where the visualisation grid is user-defined points (planar 2D / cloud 3D).
 
         Parameters
         ----------
@@ -120,7 +120,7 @@ class PostProcess_UserDefined(_PostProcess):
         """
         super().__init__(model, verbose)
 
-    def create_computational_grid(self, resolution=[], user_points=[]):
+    def create_computational_grid(self, points=[], resolution=[]):
         """
         Create a planar grid to compute the pressure fields.
 
@@ -128,22 +128,16 @@ class PostProcess_UserDefined(_PostProcess):
         ----------
         resolution : a list/tuple of two int numbers
             Number of points along each axis
-        user_points: numpy array of size 3xN
+        points: numpy array of size 3xN
             Points defined by a user for field calculations, points can be on a 2D plane or a 3D cloud.
         """
 
-        import warnings
         from .common import find_int_ext_points
 
-        try:
-            self.points = user_points
-            warnings.warn(
-                "The user-defined points will be used for field calculations.",
-                RuntimeWarning,
-            )
-        except ValueError:
-            print("user_points must be a 3xN non-zero numpy array")
+        if not points:
+            raise ValueError("the argument points must be a 3xN non-zero numpy array")
 
+        self.points = points
         self.resolution = resolution
         (
             self.points_interior,
@@ -185,7 +179,7 @@ class PostProcess_UserDefined(_PostProcess):
             )
 
 
-class PostProcess_3D(_PostProcess):
+class PlaneAndBoundaryVisualisation(_PostProcess):
     def __init__(self, model, verbose=True):
         """
         Create a PostProcess optimus object where the visualisation grid is
