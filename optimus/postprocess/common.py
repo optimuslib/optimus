@@ -106,21 +106,21 @@ def find_int_ext_points(domains_grids, points, verbose):
     ---------
     domains_grids : a list of optimus grids
         The grids of the subdomains.
-    points : np.array of size (3,n)
+    points : numpy ndarray of size (3,N)
         The field points.
     verbose : boolean
         to display the logs or not
 
     Returns
     -----------
-    points_interior : list of numpy arrays of size 3xN
+    points_interior : list of numpy ndarrays of size (3,N)
         element i of the list is an array of coordinates of the
         interior points for domain i, i=1,...,no_subdomains
-    points_exterior : numpy array of size 3xN
+    points_exterior : numpy ndarray of size (3,N)
         visualisation points in the exterior domain
-    index_interior : list of boolean arrays of size 1xN
+    index_interior : list of boolean arrays of size (1,N)
         to identify the interior points
-    index_exterior : boolean array of size 1xN
+    index_exterior : boolean array of size (1,N)
         to identify the exterior points
     """
 
@@ -182,28 +182,28 @@ def compute_pressure_fields(
     ----------
     model : optimus model object
         a model object which has solution attributes already computed
-    points : numpy array of size 3xN
+    points : numpy ndarray of size (3,N)
         visualisation points
-    points_exterior : numpy array of size 3xN
+    points_exterior : numpy ndarray of size (3,N)
         visualisation points in the exterior domain
-    index_exterior : boolean array of size 1xN
+    index_exterior : boolean array of size (1,N)
         to identify the exterior points
-    points_interior : list of numpy arrays of size 3xN
+    points_interior : list of numpy ndarrays of size (3,N)
         element i of the list is an array of coordinates of the
         interior points for domain i, i=1,...,no_subdomains
-    index_interior : list of boolean arrays of size 1xN
+    index_interior : list of boolean arrays of size (1,N)
         to identify the interior points
     verbose : bool
         Display the logs.
 
     Returns
     -----------
-    total_field : complex numpy array of size 1xN
+    total_field : complex numpy array of size (1,N)
         complex total pressure values
-    scattered_field : complex numpy array of size 1xN
+    scattered_field : complex numpy array of size (1,N)
         complex scattered pressure values
     incident_exterior_field : complex numpy array
-        complex incident pressure values of size 1xN
+        complex incident pressure values of size (1,N)
     """
 
     from ..utils.generic import chunker, bold_ul_text
@@ -372,7 +372,7 @@ def domain_edge(points_interior, plane_axes, alpha=0.001, only_outer=True):
 
     Parameters
     ----------
-    points_interior : np.ndarray
+    points_interior : numpy ndarray of size (3,N)
         The interior points.
     plane_axes : list[int]
         The axes of the plane.

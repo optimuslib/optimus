@@ -8,8 +8,8 @@ def concave_hull(points, alpha, only_outer=True):
 
     Parameters
     ----------
-    points : np.ndarray
-        Array of shape (2,n) with the points.
+    points : numpy ndarray of size (2,N)
+        Array of shape (2,N) with the points.
     alpha : float
         The alpha value.
     only_outer : bool
@@ -56,7 +56,11 @@ def concave_hull(points, alpha, only_outer=True):
             (vertex_c[0] - vertex_a[0]) ** 2 + (vertex_c[1] - vertex_a[1]) ** 2
         )
         coeff = (side_a + side_b + side_c) / 2.0
-        area = _np.sqrt(coeff * (coeff - side_a) * (coeff - side_b) * (coeff - side_c))
+        dist = coeff * (coeff - side_a) * (coeff - side_b) * (coeff - side_c)
+
+        if (dist < 0).any():
+            dist = 0
+        area = _np.sqrt(dist)
 
         if area > 0:
             circum_radius = side_a * side_b * side_c / (4.0 * area)

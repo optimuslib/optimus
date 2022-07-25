@@ -128,7 +128,7 @@ class VisualiseCloudPoints(_PostProcess):
         ----------
         resolution : a list/tuple of two int numbers
             Number of points along each axis
-        points: numpy array of size 3xN
+        points: numpy ndarray of size (3,N)
             Points defined by a user for field calculations, points can be on a 2D plane or a 3D cloud.
         """
 
@@ -136,7 +136,9 @@ class VisualiseCloudPoints(_PostProcess):
         import numpy as _np
 
         if not _np.count_nonzero(points):
-            raise ValueError("the argument points must be a 3xN non-zero numpy array")
+            raise ValueError(
+                "the argument points must be a non-zero numpy array of size (3,N)"
+            )
 
         self.points = points
         self.resolution = resolution

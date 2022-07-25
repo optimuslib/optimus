@@ -26,14 +26,15 @@ def plot_pressure_field(postprocess_obj, field="total", unit="Pa", clim=()):
         Contour plots of the real and absolute value of the pressure field.
     """
     import numpy as _np
+    import copy as _copy
 
     plane_axes = postprocess_obj.plane_axes
     bounding_box = postprocess_obj.bounding_box
 
     if field.lower() in ["total", "total_field", "total_pressure"]:
-        pressure_field = postprocess_obj.total_field_imshow
+        pressure_field = _copy.deepcopy(postprocess_obj.total_field_imshow)
     elif field.lower() in ["scattered", "scattered_field", "scattered_pressure"]:
-        pressure_field = postprocess_obj.scattered_field_imshow
+        pressure_field = _copy.deepcopy(postprocess_obj.scattered_field_imshow)
     else:
         raise ValueError("Undefined pressure field, options are total and scattered.")
 
@@ -90,7 +91,7 @@ def surface_plot(
     domains_edges=False,
 ):
     """
-    2D contour plotting of a mesh grid quantity
+    2D surface plotting of a mesh grid quantity
 
     Parameters
     ----------
@@ -147,7 +148,7 @@ def surface_plot(
     divider = make_axes_locatable(ax)
     cax = divider.append_axes("right", size="5%", pad=0.2)
     cbar = plt.colorbar(ax_image, ticks=cbar_ticks, cax=cax)
-    cbar.set_ticklabels(["{:1.1f}".format(i) for i in cbar_ticks])
+    cbar.set_ticklabels(["{:1.1e}".format(i) for i in cbar_ticks])
     cbar.set_label(colorbar_unit, size=18)
     cbar.ax.tick_params(labelsize=14)
     fig.tight_layout()
