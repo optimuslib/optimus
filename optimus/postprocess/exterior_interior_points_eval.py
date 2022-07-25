@@ -1,11 +1,11 @@
 import numpy as _np
-from functools import _partial
+from functools import partial as _partial
 import time as _time
 import multiprocessing as _mp
 
 
 def exterior_interior_points_eval(
-    grid, xyz_field, solid_angle_tolerance=None, verbose=False
+    grid, points, solid_angle_tolerance=0.1, verbose=False
 ):
     """
     To evaluate whether a field point is within a domain or not using a
@@ -15,7 +15,7 @@ def exterior_interior_points_eval(
     ------------
     grid : bempp grid
         surface grid defining a domain
-    xyz_field : np.ndarray
+    points : np.ndarray
         Field points to be evaluated if they are inside the volume defined by
         the surface grid or not.
         Array of size (3,N).
@@ -26,17 +26,17 @@ def exterior_interior_points_eval(
 
     Returns
     ------------
-    xyz_int : numpy array 3xN
+    points_interior : numpy array 3xN
         coordinates of the interior points
-    xyz_ext : numpy array 3xN
+    points_exterior : numpy array 3xN
         coordinates of the exterior points
-    xyz_boundary : numpy array 3xN
+    points_boundary : numpy array 3xN
         coordinates of the points lie on the surface of the domain
-    n_int : boolean numpy array 1xN
+    index_interior : boolean numpy array 1xN
         indices of the interior points
-    n_ext : boolean numpy array 1xN
+    index_exterior : boolean numpy array 1xN
         indices of the exterior points
-    n_boundary : boolean numpy array 1xN
+    index_boundary : boolean numpy array 1xN
         indices of the surface points
     """
     elements = grid.leaf_view.elements
@@ -57,94 +57,137 @@ def exterior_interior_points_eval(
         print("Element groups are:")
         print(element_properties)
 
-    xyz_int = []
-    xyz_ext = []
-    xyz_boundary = []
-    n_int = []
-    n_ext = _np.full(xyz_field.shape[1], True, dtype=bool)
-    n_boundary = []
+    points_interior = []
+    points_exterior = []
+    points_boundary = []
+    index_interior = []
+    index_exterior = _np.full(points.shape[1], True, dtype=bool)
+    index_boundary = []
 
     for i in range(element_properties.size):
 
         elements_trunc = elements[:, element_groups[0, :] == element_properties[i]]
         num_elem = elements_trunc.shape[1]
 
-        xmesh = _np.zeros(shape=(3, num_elem), dtype=float)
-        ymesh = _np.zeros(shape=(3, num_elem), dtype=float)
-        zmesh = _np.zeros(shape=(3, num_elem), dtype=float)
+        elements_x_coordinate = _np.zeros(shape=(3, num_elem), dtype=float)
+        elements_y_coordinate = _np.zeros(shape=(3, num_elem), dtype=float)
+        elements_z_coordinate = _np.zeros(shape=(3, num_elem), dtype=float)
         # Populate grid vertices matrices
         for k in range(3):
-            xmesh[k, :] = vertices[0, elements_trunc[k, :]]
-            ymesh[k, :] = vertices[1, elements_trunc[k, :]]
-            zmesh[k, :] = vertices[2, elements_trunc[k, :]]
-        # Obtain coordinates of triangular patch centroids through barycentric method
-        xcen = _np.mean(xmesh, axis=0)
-        ycen = _np.mean(ymesh, axis=0)
-        zcen = _np.mean(zmesh, axis=0)
+            elements_x_coordinate[k, :] = vertices[0, elements_trunc[k, :]]
+            elements_y_coordinate[k, :] = vertices[1, elements_trunc[k, :]]
+            elements_z_coordinate[k, :] = vertices[2, elements_trunc[k, :]]
+        # Obtain coordinates of triangular elements centroielements_surface_area through barycentric method
+        elements_barycent_x_coordinate = _np.mean(elements_x_coordinate, axis=0)
+        elements_barycent_y_coordinate = _np.mean(elements_y_coordinate, axis=0)
+        elements_barycent_z_coordinate = _np.mean(elements_z_coordinate, axis=0)
 
-        # Preallocate matrix of vectors for triangular patches
-        u = _np.zeros(shape=(3, num_elem), dtype=float)
-        v = _np.zeros(shape=(3, num_elem), dtype=float)
-        # Compute matrix of vectors defining each triangular patch
-        u = _np.array(
+        # Preallocate matrix of vectors for triangular elementses
+        elements_u_coordinate = _np.zeros(shape=(3, num_elem), dtype=float)
+        elements_v_coordinate = _np.zeros(shape=(3, num_elem), dtype=float)
+        # Compute matrix of vectors defining each triangular elements
+        elements_u_coordinate = _np.array(
             [
-                xmesh[1, :] - xmesh[0, :],
-                ymesh[1, :] - ymesh[0, :],
-                zmesh[1, :] - zmesh[0, :],
+                elements_x_coordinate[1, :] - elements_x_coordinate[0, :],
+                elements_y_coordinate[1, :] - elements_y_coordinate[0, :],
+                elements_z_coordinate[1, :] - elements_z_coordinate[0, :],
             ]
         )
-        v = _np.array(
+        elements_v_coordinate = _np.array(
             [
-                xmesh[2, :] - xmesh[0, :],
-                ymesh[2, :] - ymesh[0, :],
-                zmesh[2, :] - zmesh[0, :],
+                elements_x_coordinate[2, :] - elements_x_coordinate[0, :],
+                elements_y_coordinate[2, :] - elements_y_coordinate[0, :],
+                elements_z_coordinate[2, :] - elements_z_coordinate[0, :],
             ]
         )
-        u_cross_v = _np.cross(u, v, axisa=0, axisb=0, axisc=0)
-        u_cross_v_norm = _np.linalg.norm(u_cross_v, axis=0)
-        # Obtain outward pointing unit normal vectors for each patch
-        normals = _np.divide(u_cross_v, u_cross_v_norm)
-        # Obtain surface area of each patch
-        dS = 0.5 * u_cross_v_norm
+        elements_u_cross_v = _np.cross(
+            elements_u_coordinate, elements_v_coordinate, axisa=0, axisb=0, axisc=0
+        )
+        elements_u_cross_v_norm = _np.linalg.norm(elements_u_cross_v, axis=0)
+        # Obtain outward pointing unit normal vectors for each elements
+        normals = _np.divide(elements_u_cross_v, elements_u_cross_v_norm)
+        # Obtain surface area of each elements
+        elements_surface_area = 0.5 * elements_u_cross_v_norm
 
-        i_val = _np.arange(0, xyz_field.shape[1])
-        t0 = _time.time()
+        start_time = _time.time()
         N_workers = _mp.cpu_count()
-        func = _partial(omega_eval, xcen, ycen, zcen, xyz_field, normals, dS)
+        parallelised_compute_solid_angle = _partial(
+            compute_solid_angle,
+            elements_barycent_x_coordinate,
+            elements_barycent_y_coordinate,
+            elements_barycent_z_coordinate,
+            points,
+            normals,
+            elements_surface_area,
+        )
         pool = _mp.Pool(N_workers)
-        result = pool.starmap(func, zip(i_val))
+        result = pool.starmap(
+            parallelised_compute_solid_angle, zip(_np.arange(0, points.shape[1]))
+        )
         pool.close()
-        t1 = _time.time() - t0
+        end_time = _time.time() - start_time
         if verbose:
-            print("Time to complete solid angle field parallelisation: ", t1)
-        Omega = _np.hstack(result)
+            print("Time to complete solid angle field parallelisation: ", end_time)
+        solid_angle = _np.hstack(result)
         if solid_angle_tolerance:
-            n_int_tmp = Omega > 0.5 + solid_angle_tolerance
-            n_boundary_tmp = (Omega > 0.5 - solid_angle_tolerance) & (
-                Omega < 0.5 + solid_angle_tolerance
+            index_interior_tmp = solid_angle > 0.5 + solid_angle_tolerance
+            index_boundary_tmp = (solid_angle > 0.5 - solid_angle_tolerance) & (
+                solid_angle < 0.5 + solid_angle_tolerance
             )
-            xyz_boundary.append(xyz_field[:, n_boundary_tmp])
-            n_boundary.append(n_boundary_tmp)
-            n_ext = n_ext & ((n_int_tmp == False) & (n_boundary_tmp == False))
+            points_boundary.append(points[:, index_boundary_tmp])
+            index_boundary.append(index_boundary_tmp)
+            index_exterior = index_exterior & (
+                (index_interior_tmp == False) & (index_boundary_tmp == False)
+            )
         else:
-            n_int_tmp = Omega > 0.5
-            n_ext = n_ext & (n_int_tmp == False)
+            index_interior_tmp = solid_angle > 0.5
+            index_exterior = index_exterior & (index_interior_tmp == False)
 
-        xyz_int.append(xyz_field[:, n_int_tmp])
-        n_int.append(n_int_tmp)
+        points_interior.append(points[:, index_interior_tmp])
+        index_interior.append(index_interior_tmp)
 
-    xyz_ext = xyz_field[:, n_ext]
+    points_exterior = points[:, index_exterior]
 
-    return xyz_int, xyz_ext, xyz_boundary, n_int, n_ext, n_boundary
-
-
-def omega_eval(xcen, ycen, zcen, xyz_field, normals, dS, jj):
-
-    r = _np.array(
-        [xcen - xyz_field[0, jj], ycen - xyz_field[1, jj], zcen - xyz_field[2, jj]]
+    return (
+        points_interior,
+        points_exterior,
+        points_boundary,
+        index_interior,
+        index_exterior,
+        index_boundary,
     )
-    r_norm = _np.linalg.norm(r, axis=0)
-    r_unit = _np.divide(r, r_norm)
-    r_unit_dot_n = _np.sum(r_unit * normals, axis=0)
-    omega = _np.sum(r_unit_dot_n * dS / r_norm**2) / (4 * _np.pi)
-    return omega
+
+
+def compute_solid_angle(
+    elements_barycent_x_coordinate,
+    elements_barycent_y_coordinate,
+    elements_barycent_z_coordinate,
+    points,
+    normals,
+    elements_surface_area,
+    point_index,
+):
+    """
+    To compute the solid angle value for a triangular element
+    """
+
+    elements_barycen_dist = _np.array(
+        [
+            elements_barycent_x_coordinate - points[0, point_index],
+            elements_barycent_y_coordinate - points[1, point_index],
+            elements_barycent_z_coordinate - points[2, point_index],
+        ]
+    )
+    elements_barycen_dist_norm = _np.linalg.norm(elements_barycen_dist, axis=0)
+    elements_barycen_dist_normalised = _np.divide(
+        elements_barycen_dist, elements_barycen_dist_norm
+    )
+    elements_barycen_dist_projected = _np.sum(
+        elements_barycen_dist_normalised * normals, axis=0
+    )
+    solid_angle = _np.sum(
+        elements_barycen_dist_projected
+        * elements_surface_area
+        / elements_barycen_dist_norm**2
+    ) / (4 * _np.pi)
+    return solid_angle

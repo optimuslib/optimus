@@ -31,9 +31,11 @@ def linear_solve(
     if optimus.global_parameters.linalg.linsolver == "gmres":
         solver = GmresSolver(lhs_system, rhs_system)
     else:
-        raise ValueError("Linear solver " +
-                         optimus.global_parameters.linalg.linsolver +
-                         " is not known.")
+        raise ValueError(
+            "Linear solver "
+            + optimus.global_parameters.linalg.linsolver
+            + " is not known."
+        )
     solution = solver.solve()
 
     if return_iteration_count:

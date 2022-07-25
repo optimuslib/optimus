@@ -1,8 +1,5 @@
 """Utilities for input and output."""
 
-import shelve
-import copy
-
 
 def export_to_file(
     model,
@@ -29,13 +26,16 @@ def export_to_file(
         'db': (default) to save all the attributes of global parameters,
         source parameters, post processor and pickable objects of the model.
     """
-    model_copy = copy.deepcopy(model)
+    import shelve as _shelve
+    import copy as _copy
+
+    model_copy = _copy.deepcopy(model)
     delattr(model_copy, "continous_operator")
     delattr(model_copy, "discrete_operator")
     delattr(model_copy, "discrete_preconditioner")
     delattr(model_copy, "lhs_discrete_system")
 
-    postprocess_copy = copy.deepcopy(post_process)
+    postprocess_copy = _copy.deepcopy(post_process)
     delattr(postprocess_copy, "model")
 
     if file_format.lower() == "mat":
@@ -54,7 +54,7 @@ def export_to_file(
         )
         print("The data are written to the file:", file_name + file_format)
     else:
-        db_handle = shelve.open(file_name)
+        db_handle = _shelve.open(file_name)
         db_handle["global_parameters"] = global_parameters
         db_handle["source"] = model_copy.source
         db_handle["model"] = model_copy
@@ -82,7 +82,7 @@ def import_from_file(file_name):
 
     import os
     import scipy.io as _sio
-    import shelve
+    import shelve as _shelve
 
     file_format = os.path.splitext(file_name)[1]
     if not file_format.lower() in [".mat", ".db"]:
@@ -90,7 +90,7 @@ def import_from_file(file_name):
     elif file_format.lower() == ".mat":
         imported_data = _sio.loadmat(file_name)
     else:
-        db_handle = shelve.open(os.path.splitext(file_name)[0])
+        db_handle = _shelve.open(os.path.splitext(file_name)[0])
         imported_data = {key: db_handle[key] for key in list(db_handle.keys())}
         db_handle.close()
 

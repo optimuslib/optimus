@@ -2,7 +2,6 @@
 
 
 def plot_pressure_field(postprocess_obj, field="total", unit="Pa", clim=()):
-
     """
     2D contour plotting of pressure fields of an optimus post process object
 
@@ -53,7 +52,7 @@ def plot_pressure_field(postprocess_obj, field="total", unit="Pa", clim=()):
     else:
         domains_edges = False
 
-    fig_p_real = contour_plot(
+    fig_p_real = surface_plot(
         _np.real(pressure_field),
         bounding_box,
         axes_labels,
@@ -68,7 +67,7 @@ def plot_pressure_field(postprocess_obj, field="total", unit="Pa", clim=()):
     else:
         colormap_lims = (0, _np.nanmax(_np.abs(pressure_field)))
     colormap = "viridis"
-    fig_p_tot = contour_plot(
+    fig_p_tot = surface_plot(
         _np.abs(pressure_field),
         bounding_box,
         axes_labels,
@@ -81,7 +80,7 @@ def plot_pressure_field(postprocess_obj, field="total", unit="Pa", clim=()):
     return fig_p_real, fig_p_tot
 
 
-def contour_plot(
+def surface_plot(
     quantity,
     axes_lims,
     axes_labels,

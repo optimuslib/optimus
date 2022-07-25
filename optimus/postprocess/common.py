@@ -2,7 +2,7 @@
 
 import numpy as _np
 import bempp.api as _bempp
-import time
+import time as _time
 
 
 class PostProcess:
@@ -130,30 +130,30 @@ def find_int_ext_points(domains_grids, points, verbose):
     idx_interior = []
     idx_exterior = _np.full(points.shape[1], True)
     if verbose:
-        TS_INT_EXT = time.time()
+        start_time_int_ext = _time.time()
         print(
             "\n Identifying the exterior and interior points Started at: ",
-            time.strftime("%a, %d %b %Y %H:%M:%S", time.localtime()),
+            _time.strftime("%a, %d %b %Y %H:%M:%S", _time.localtime()),
         )
     for grid in domains_grids:
         (
-            POINTS_INTERIOR_TMP,
-            POINTS_EXTERIOR_TMP,
-            POINTS_BOUNDARY_TMP,
-            IDX_INTERIOR_TMP,
-            IDX_EXTERIOR_TMP,
-            IDX_BOUNDARY_TMP,
-        ) = exterior_interior_points_eval(grid=grid, xyz_field=points, verbose=verbose)
-        points_interior.append(POINTS_INTERIOR_TMP[0])
-        idx_interior.append(IDX_INTERIOR_TMP[0])
-        idx_exterior[IDX_EXTERIOR_TMP == False] = False
+            points_interior_temp,
+            points_exterior_temp,
+            points_boundary_temp,
+            idx_interior_temp,
+            idx_exterior_temp,
+            idx_boundary_temp,
+        ) = exterior_interior_points_eval(grid=grid, points=points, verbose=verbose)
+        points_interior.append(points_interior_temp[0])
+        idx_interior.append(idx_interior_temp[0])
+        idx_exterior[idx_exterior_temp == False] = False
 
     if verbose:
-        TE_INT_EXT = time.time()
+        end_time_int_ext = _time.time()
         print(
             "\n Identifying the exterior and interior points "
             "Finished... Duration in secs: ",
-            TE_INT_EXT - TS_INT_EXT,
+            end_time_int_ext - start_time_int_ext,
         )
 
     points_exterior = points[:, idx_exterior]
@@ -233,11 +233,11 @@ def compute_pressure_fields(
             + bold_ul_text("h-matrix.")
         )
 
-    TS_POT_OPS_FIELD = time.time()
+    start_time_pot_ops = _time.time()
     if verbose:
         print(
             "\n Calculating the interior and exterior potential operators Started at: ",
-            time.strftime("%a, %d %b %Y %H:%M:%S", time.localtime()),
+            _time.strftime("%a, %d %b %Y %H:%M:%S", _time.localtime()),
         )
 
     total_field = _np.empty((1, points.shape[1]), dtype="complex128").ravel()
@@ -307,30 +307,30 @@ def compute_pressure_fields(
         i += 1
 
         if verbose:
-            TE_POT_OPS_FIELD = time.time()
+            end_time_pot_ops = _time.time()
             print(
                 "\n Calculating the interior and exterior potential operators "
                 "Finished... Duration in secs: ",
-                TE_POT_OPS_FIELD - TS_POT_OPS_FIELD,
+                end_time_pot_ops - start_time_pot_ops,
             )
 
     if ext_calc_flag:
-        TS_INC_FIELD = time.time()
+        start_time_pinc = _time.time()
         if verbose:
             print(
                 "\n Calculating the incident field Started at: ",
-                time.strftime("%a, %d %b %Y %H:%M:%S", time.localtime()),
+                _time.strftime("%a, %d %b %Y %H:%M:%S", _time.localtime()),
             )
 
         incident_exterior = model.source.pressure_field(
             model.material_exterior, points_exterior
         )
 
-        TE_INC_FIELD = time.time()
+        end_time_pinc = _time.time()
         if verbose:
             print(
                 "\n Calculating the incident field Finished... Duration in secs: ",
-                TE_INC_FIELD - TS_INC_FIELD,
+                end_time_pinc - start_time_pinc,
             )
         incident_exterior_field[index_exterior] = incident_exterior.ravel()
         scattered_field[index_exterior] = exterior_values.ravel()

@@ -52,8 +52,7 @@ class Model:
         for subdomain in self.geometry:
             if not isinstance(subdomain, Geometry):
                 raise TypeError(
-                    "The subdomain needs to be specified as an "
-                    "Optimus Geometry object."
+                    "The subdomain needs to be specified as an Optimus Geometry object."
                 )
         n_bounded_domains = len(self.geometry)
 

@@ -40,20 +40,31 @@ def concave_hull(points, alpha, only_outer=True):
     triangles = Delaunay(points)
     edges = set()
     # Loop over triangles:
-    # ia, ib, ic = indices of corner points of the triangle
-    for ia, ib, ic in triangles.vertices:
-        pa = points[ia]
-        pb = points[ib]
-        pc = points[ic]
+    # ia, vertex_b_idx, vertex_c_idx = indices of corner points of the triangle
+    for vertex_a_idx, vertex_b_idx, vertex_c_idx in triangles.vertices:
+        vertex_a = points[vertex_a_idx]
+        vertex_b = points[vertex_b_idx]
+        vertex_c = points[vertex_c_idx]
         # Computing radius of triangle circumcircle
-        a = _np.sqrt((pa[0] - pb[0]) ** 2 + (pa[1] - pb[1]) ** 2)
-        b = _np.sqrt((pb[0] - pc[0]) ** 2 + (pb[1] - pc[1]) ** 2)
-        c = _np.sqrt((pc[0] - pa[0]) ** 2 + (pc[1] - pa[1]) ** 2)
-        s = (a + b + c) / 2.0
-        area = _np.sqrt(s * (s - a) * (s - b) * (s - c))
-        circum_r = a * b * c / (4.0 * area)
-        if circum_r < alpha:
-            add_edge(edges, ia, ib)
-            add_edge(edges, ib, ic)
-            add_edge(edges, ic, ia)
+        side_a = _np.sqrt(
+            (vertex_a[0] - vertex_b[0]) ** 2 + (vertex_a[1] - vertex_b[1]) ** 2
+        )
+        side_b = _np.sqrt(
+            (vertex_b[0] - vertex_c[0]) ** 2 + (vertex_b[1] - vertex_c[1]) ** 2
+        )
+        side_c = _np.sqrt(
+            (vertex_c[0] - vertex_a[0]) ** 2 + (vertex_c[1] - vertex_a[1]) ** 2
+        )
+        coeff = (side_a + side_b + side_c) / 2.0
+        area = _np.sqrt(coeff * (coeff - side_a) * (coeff - side_b) * (coeff - side_c))
+
+        if area > 0:
+            circum_radius = side_a * side_b * side_c / (4.0 * area)
+        else:
+            circum_radius = _np.inf
+
+        if circum_radius < alpha:
+            add_edge(edges, vertex_a_idx, vertex_b_idx)
+            add_edge(edges, vertex_b_idx, vertex_c_idx)
+            add_edge(edges, vertex_c_idx, vertex_a_idx)
     return edges

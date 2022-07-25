@@ -4,7 +4,7 @@ from .common import PostProcess as _PostProcess
 import numpy as _np
 
 
-class PlaneVisualisation(_PostProcess):
+class VisualisePlane(_PostProcess):
     def __init__(self, model, verbose=False):
         """
         Create a PostProcess optimus object where the visualisation grid is a 2D plane.
@@ -106,7 +106,7 @@ class PlaneVisualisation(_PostProcess):
         )
 
 
-class CloudPoints(_PostProcess):
+class VisualiseCloudPoints(_PostProcess):
     def __init__(self, model, verbose=False):
         """
         Create a PostProcess optimus object where the visualisation grid is user-defined points (planar 2D / cloud 3D).
@@ -133,8 +133,9 @@ class CloudPoints(_PostProcess):
         """
 
         from .common import find_int_ext_points
+        import numpy as _np
 
-        if not points:
+        if not _np.count_nonzero(points):
             raise ValueError("the argument points must be a 3xN non-zero numpy array")
 
         self.points = points
@@ -179,7 +180,7 @@ class CloudPoints(_PostProcess):
             )
 
 
-class PlaneAndBoundaryVisualisation(_PostProcess):
+class VisualisePlaneAndBoundary(_PostProcess):
     def __init__(self, model, verbose=True):
         """
         Create a PostProcess optimus object where the visualisation grid is

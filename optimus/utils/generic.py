@@ -17,20 +17,20 @@ class AnsiEscapeFormat:
 
 def bold_ul_text(string):
     return (
-            AnsiEscapeFormat.BOLD
-            + AnsiEscapeFormat.UNDERLINE
-            + string
-            + AnsiEscapeFormat.END
+        AnsiEscapeFormat.BOLD
+        + AnsiEscapeFormat.UNDERLINE
+        + string
+        + AnsiEscapeFormat.END
     )
 
 
 def bold_ul_red_text(string):
     return (
-            AnsiEscapeFormat.BOLD
-            + AnsiEscapeFormat.UNDERLINE
-            + AnsiEscapeFormat.RED
-            + string
-            + AnsiEscapeFormat.END
+        AnsiEscapeFormat.BOLD
+        + AnsiEscapeFormat.UNDERLINE
+        + AnsiEscapeFormat.RED
+        + string
+        + AnsiEscapeFormat.END
     )
 
 
@@ -39,4 +39,4 @@ def chunker(seq, size):
     To split a sequence (list, tuples,...) by a specific size.
     Imported from https://stackoverflow.com/questions/434287/what-is-the-most-pythonic-way-to-iterate-over-a-list-in-chunks
     """
-    return (seq[pos: pos + size] for pos in range(0, len(seq), size))
+    return (seq[pos : pos + size] for pos in range(0, len(seq), size))
