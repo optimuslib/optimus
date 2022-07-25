@@ -174,7 +174,6 @@ def compute_pressure_fields(
     index_interior,
     verbose,
 ):
-
     """
     Calculate the scattered and total pressure fields for visualisation.
 
@@ -240,13 +239,9 @@ def compute_pressure_fields(
             _time.strftime("%a, %d %b %Y %H:%M:%S", _time.localtime()),
         )
 
-    total_field = _np.empty((1, points.shape[1]), dtype="complex128").ravel()
-    scattered_field = _np.empty((1, points.shape[1]), dtype="complex128").ravel()
-    scattered_field[:] = _np.nan
-    incident_exterior_field = _np.empty(
-        (1, points.shape[1]), dtype="complex128"
-    ).ravel()
-    incident_exterior_field[:] = _np.nan
+    total_field = _np.full(points.shape[1], _np.nan, dtype=complex)
+    scattered_field = _np.full(points.shape[1], _np.nan, dtype=complex)
+    incident_exterior_field = _np.full(points.shape[1], _np.nan, dtype=complex)
 
     if index_exterior.any():
         exterior_values = _np.zeros((1, points_exterior.shape[1]), dtype="complex128")

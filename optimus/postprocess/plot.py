@@ -1,7 +1,7 @@
 """Functionality to plot pressure fields."""
 
 
-def plot_pressure_field(postprocess_obj, field="total", unit="Pa", clim=()):
+def plot_pressure_field(postprocess_obj, field="total", unit="Pa", clim=None):
     """
     2D contour plotting of pressure fields of an optimus post process object
 
@@ -17,8 +17,9 @@ def plot_pressure_field(postprocess_obj, field="total", unit="Pa", clim=()):
     unit: string
         Pressure unit. the pressure fields are scaled accordingly.
         Options are: Pa, kPa, MPa and GPa.
-    clim : tuple
-        colorbar limits: (clim_min, clim_max). Must be of the same units as pressure fields.
+    clim : tuple[float, int]
+        The color limits: (clim_min, clim_max).
+        Must be of the same units as pressure fields.
 
     Returns
     ----------
@@ -41,7 +42,7 @@ def plot_pressure_field(postprocess_obj, field="total", unit="Pa", clim=()):
     scaling_factor, pressure_unit = _convert_pressure_unit(unit)
     pressure_field *= scaling_factor
 
-    if clim:
+    if clim is not None:
         colormap_lims = clim
     else:
         max_real_pressure = _np.nanmax(_np.abs(_np.real(pressure_field)))
@@ -63,7 +64,7 @@ def plot_pressure_field(postprocess_obj, field="total", unit="Pa", clim=()):
         domains_edges=domains_edges,
     )
 
-    if clim:
+    if clim is not None:
         colormap_lims = (0, clim[1])
     else:
         colormap_lims = (0, _np.nanmax(_np.abs(pressure_field)))
