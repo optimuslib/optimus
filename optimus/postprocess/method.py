@@ -113,7 +113,8 @@ class VisualisePlane(_PostProcess):
 class VisualiseCloudPoints(_PostProcess):
     def __init__(self, model, verbose=False):
         """
-        Create a PostProcess optimus object where the visualisation grid is user-defined points (planar 2D / cloud 3D).
+        Create a PostProcess optimus object where the visualisation grid is
+        a cloud of 3D points.
 
         Parameters
         ----------
@@ -124,27 +125,21 @@ class VisualiseCloudPoints(_PostProcess):
         """
         super().__init__(model, verbose)
 
-    def create_computational_grid(self, points=[]):
+    def create_computational_grid(self, points):
         """
-        Create a planar grid to compute the pressure fields.
+        Create a point cloud to compute the pressure fields.
 
         Parameters
         ----------
-        resolution : a list/tuple of two int numbers
-            Number of points along each axis
         points: numpy ndarray of size (3,N)
-            Points defined by a user for field calculations, points can be on a 2D plane or a 3D cloud.
+            The 3D points on which to calculate the pressure field.
         """
 
         from .common import find_int_ext_points
-        import numpy as _np
+        from ..utils.conversions import convert_to_3n_array
 
-        if not _np.count_nonzero(points):
-            raise ValueError(
-                "the argument points must be a non-zero numpy array of size (3,N)"
-            )
+        self.points = convert_to_3n_array(points, "visualisation points")
 
-        self.points = points
         (
             self.points_interior,
             self.points_exterior,
@@ -154,7 +149,7 @@ class VisualiseCloudPoints(_PostProcess):
 
     def compute_fields(self):
         """
-        Calculate the scattered and total pressure fields in the planar grid created.
+        Calculate the scattered and total pressure fields in the postprocess grid.
         """
         from .common import compute_pressure_fields
 

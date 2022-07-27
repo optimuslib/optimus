@@ -2,9 +2,8 @@
 
 
 def plot_pressure_field(
-    postprocess_obj, field="total", unit="Pa", display_edges=True, clim=()
+    postprocess_obj, field="total", unit="Pa", display_edges=True, clim=None
 ):
-
     """
     2D contour plotting of pressure fields of an optimus post process object
 
@@ -22,8 +21,9 @@ def plot_pressure_field(
         Options are: Pa, kPa, MPa and GPa.
     display_edges : boolean (default is True)
         To display domains edges, i.e. domains and plane interfaces, or not.
-    clim : tuple
-        Colorbar limits: (clim_min, clim_max). Must be of the same units as pressure fields.
+    clim : tuple[float, int]
+        The color limits: (clim_min, clim_max).
+        Must be of the same units as pressure fields.
 
     Returns
     ----------
@@ -46,14 +46,12 @@ def plot_pressure_field(
     scaling_factor, pressure_unit = _convert_pressure_unit(unit)
     pressure_field *= scaling_factor
 
-    if not clim:
+    if clim is None:
         max_real_pressure = _np.nanmax(_np.abs(_np.real(pressure_field)))
         colormap_lims = (-max_real_pressure, max_real_pressure)
     else:
-        assert len(clim) == 2, (
-            "clim=(clim_min, clim_max). Must be a tuple of size 2 and of the same units"
-            " as pressure fields"
-        )
+        if len(clim) != 2:
+            raise ValueError("The variable clim must be a tuple of size 2.")
         colormap_lims = clim
 
     colormap = "seismic"
@@ -73,13 +71,11 @@ def plot_pressure_field(
         domains_edges=domains_edges,
     )
 
-    if not clim:
+    if clim is None:
         colormap_lims = (0, _np.nanmax(_np.abs(pressure_field)))
     else:
-        assert len(clim) == 2, (
-            "clim=(clim_min, clim_max). Must be a tuple of size 2 and of the same units"
-            " as pressure fields"
-        )
+        if len(clim) != 2:
+            raise ValueError("The variable clim must be a tuple of size 2.")
         colormap_lims = (0, clim[1])
 
     colormap = "viridis"
