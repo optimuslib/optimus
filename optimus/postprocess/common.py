@@ -125,6 +125,7 @@ def find_int_ext_points(domains_grids, points, verbose):
     """
 
     from .exterior_interior_points_eval import exterior_interior_points_eval
+    from optimus import global_parameters
 
     points_interior = []
     idx_interior = []
@@ -143,7 +144,12 @@ def find_int_ext_points(domains_grids, points, verbose):
             idx_interior_temp,
             idx_exterior_temp,
             idx_boundary_temp,
-        ) = exterior_interior_points_eval(grid=grid, points=points, verbose=verbose)
+        ) = exterior_interior_points_eval(
+            grid=grid,
+            points=points,
+            solid_angle_tolerance=global_parameters.postprocessing.solid_angle_tolerance,
+            verbose=verbose,
+        )
         points_interior.append(points_interior_temp[0])
         idx_interior.append(idx_interior_temp[0])
         idx_exterior[idx_exterior_temp == False] = False
@@ -401,3 +407,20 @@ def domain_edge(points_interior, plane_axes, alpha=0.001, only_outer=True):
                     )
                 )
     return domains_edge_points
+
+
+def array_to_imshow(field_array):
+    """
+    Convert a two-dimensional array to a format for imshow plots.
+
+    Parameters
+    ----------
+    field_array : np.ndarray
+        The two-dimensional array with grid values.
+
+    Returns
+    -------
+    field_imshow : np.ndarray
+        The two-dimensional array for imshow plots.
+    """
+    return _np.flipud(field_array.T)

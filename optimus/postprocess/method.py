@@ -45,6 +45,7 @@ class VisualisePlane(_PostProcess):
         """
         from .common import calculate_bounding_box, find_int_ext_points, domain_edge
         from ..utils.mesh import create_grid_points
+        from optimus import global_parameters
 
         self.resolution = resolution
         self.plane_axes = plane_axes
@@ -71,14 +72,17 @@ class VisualisePlane(_PostProcess):
         ) = find_int_ext_points(self.domains_grids, self.points, self.verbose)
 
         self.domains_edges = domain_edge(
-            self.points_interior, self.plane_axes, alpha=0.005, only_outer=True
+            self.points_interior,
+            self.plane_axes,
+            global_parameters.postprocessing.concave_hull_alpha,
+            only_outer=True,
         )
 
     def compute_fields(self):
         """
         Calculate the scattered and total pressure fields in the planar grid created.
         """
-        from .common import compute_pressure_fields
+        from .common import compute_pressure_fields, array_to_imshow
 
         (
             self.total_field,
@@ -120,7 +124,7 @@ class VisualiseCloudPoints(_PostProcess):
         """
         super().__init__(model, verbose)
 
-    def create_computational_grid(self, points=[], resolution=[]):
+    def create_computational_grid(self, points=[]):
         """
         Create a planar grid to compute the pressure fields.
 
@@ -141,7 +145,6 @@ class VisualiseCloudPoints(_PostProcess):
             )
 
         self.points = points
-        self.resolution = resolution
         (
             self.points_interior,
             self.points_exterior,
@@ -170,16 +173,6 @@ class VisualiseCloudPoints(_PostProcess):
         )
 
         self.l2_norm_total_field_mpa = _np.linalg.norm(self.total_field)
-        if len(self.resolution):
-            self.scattered_field_reshaped = _np.flipud(
-                self.scattered_field.reshape(self.resolution).T
-            )
-            self.total_field_reshaped = _np.flipud(
-                self.total_field.reshape(self.resolution).T
-            )
-            self.incident_field_reshaped = _np.flipud(
-                self.incident_field.reshape(self.resolution).T
-            )
 
 
 class VisualisePlaneAndBoundary(_PostProcess):
@@ -309,20 +302,3 @@ class VisualisePlaneAndBoundary(_PostProcess):
         _bempp.export(
             file_name=file_name + "_ptot_abs.msh", grid_function=plot3D_ptot_abs_all
         )
-
-
-def array_to_imshow(field_array):
-    """
-    Convert a two-dimensional array to a format for imshow plots.
-
-    Parameters
-    ----------
-    field_array : np.ndarray
-        The two-dimensional array with grid values.
-
-    Returns
-    -------
-    field_imshow : np.ndarray
-        The two-dimensional array for imshow plots.
-    """
-    return _np.flipud(field_array.T)

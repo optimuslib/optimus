@@ -4,9 +4,7 @@ import time as _time
 import multiprocessing as _mp
 
 
-def exterior_interior_points_eval(
-    grid, points, solid_angle_tolerance=0.1, verbose=False
-):
+def exterior_interior_points_eval(grid, points, solid_angle_tolerance, verbose=False):
     """
     To evaluate whether a field point is within a domain or not using a
     solid angle method.
@@ -19,8 +17,8 @@ def exterior_interior_points_eval(
         Field points to be evaluated if they are inside the volume defined by
         the surface grid or not.
         Array of size (3,N).
-    solid_angle_tolerance : float
-        the tolerance in solid angle method
+    solid_angle_tolerance : float and None
+        the tolerance in solid angle method. If set to None/zero boundary points are not identified, otherwise they are.
     verbose : boolean
         to display the log or not
 

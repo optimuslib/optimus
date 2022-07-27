@@ -98,6 +98,8 @@ class PostProcessingParameters:
         self.hmat_max_rank = 10000
         self.hmat_max_block_size = 10000
         self.assembly_type = "h-matrix"
+        self.solid_angle_tolerance = 0.01
+        self.concave_hull_alpha = 0.1
 
     def print(self, prefix=""):
         """
@@ -122,3 +124,9 @@ class PostProcessingParameters:
                 prefix + "H-matrix maximum block size for postprocessing operators:",
                 self.hmat_max_block_size,
             )
+
+        print(prefix + "Solid angle tolerance is: ", self.solid_angle_tolerance)
+        print(
+            prefix + "Concave Hull threshold parameter (alpha) is: ",
+            self.concave_hull_alpha,
+        )

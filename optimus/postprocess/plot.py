@@ -1,7 +1,9 @@
 """Functionality to plot pressure fields."""
 
 
-def plot_pressure_field(postprocess_obj, field="total", unit="Pa", clim=()):
+def plot_pressure_field(
+    postprocess_obj, field="total", unit="Pa", display_edges=True, clim=()
+):
     """
     2D contour plotting of pressure fields of an optimus post process object
 
@@ -17,8 +19,10 @@ def plot_pressure_field(postprocess_obj, field="total", unit="Pa", clim=()):
     unit: string
         Pressure unit. the pressure fields are scaled accordingly.
         Options are: Pa, kPa, MPa and GPa.
+    display_edges : boolean (default is True)
+        To display domains edges, i.e. domains and plane interfaces, or not.
     clim : tuple
-        colorbar limits: (clim_min, clim_max). Must be of the same units as pressure fields.
+        Colorbar limits: (clim_min, clim_max). Must be of the same units as pressure fields.
 
     Returns
     ----------
@@ -48,7 +52,7 @@ def plot_pressure_field(postprocess_obj, field="total", unit="Pa", clim=()):
         colormap_lims = (-max_real_pressure, max_real_pressure)
     colormap = "seismic"
     axes_labels = _set_pressure_plane(plane_axes)
-    if hasattr(postprocess_obj, "domains_edges"):
+    if hasattr(postprocess_obj, "domains_edges") and display_edges:
         domains_edges = postprocess_obj.domains_edges
     else:
         domains_edges = False
