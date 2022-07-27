@@ -4,6 +4,7 @@
 def plot_pressure_field(
     postprocess_obj, field="total", unit="Pa", display_edges=True, clim=()
 ):
+
     """
     2D contour plotting of pressure fields of an optimus post process object
 
@@ -45,7 +46,7 @@ def plot_pressure_field(
     scaling_factor, pressure_unit = _convert_pressure_unit(unit)
     pressure_field *= scaling_factor
 
-    if clim:
+    if clim is not None:
         colormap_lims = clim
     else:
         max_real_pressure = _np.nanmax(_np.abs(_np.real(pressure_field)))
@@ -67,7 +68,7 @@ def plot_pressure_field(
         domains_edges=domains_edges,
     )
 
-    if clim:
+    if clim is not None:
         colormap_lims = (0, clim[1])
     else:
         colormap_lims = (0, _np.nanmax(_np.abs(pressure_field)))
