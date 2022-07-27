@@ -46,11 +46,16 @@ def plot_pressure_field(
     scaling_factor, pressure_unit = _convert_pressure_unit(unit)
     pressure_field *= scaling_factor
 
-    if clim is not None:
-        colormap_lims = clim
-    else:
+    if not clim:
         max_real_pressure = _np.nanmax(_np.abs(_np.real(pressure_field)))
         colormap_lims = (-max_real_pressure, max_real_pressure)
+    else:
+        assert len(clim) == 2, (
+            "clim=(clim_min, clim_max). Must be a tuple of size 2 and of the same units"
+            " as pressure fields"
+        )
+        colormap_lims = clim
+
     colormap = "seismic"
     axes_labels = _set_pressure_plane(plane_axes)
     if hasattr(postprocess_obj, "domains_edges") and display_edges:
@@ -68,10 +73,15 @@ def plot_pressure_field(
         domains_edges=domains_edges,
     )
 
-    if clim is not None:
-        colormap_lims = (0, clim[1])
-    else:
+    if not clim:
         colormap_lims = (0, _np.nanmax(_np.abs(pressure_field)))
+    else:
+        assert len(clim) == 2, (
+            "clim=(clim_min, clim_max). Must be a tuple of size 2 and of the same units"
+            " as pressure fields"
+        )
+        colormap_lims = (0, clim[1])
+
     colormap = "viridis"
     fig_p_tot = surface_plot(
         _np.abs(pressure_field),
