@@ -8,7 +8,6 @@ def exterior_interior_points_eval(grid, points, solid_angle_tolerance, verbose=F
     """
     To evaluate whether a field point is within a domain or not using a
     solid angle method.
-
     Parameters
     ------------
     grid : bempp grid
