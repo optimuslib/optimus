@@ -14,21 +14,21 @@ def create_default_model(source, geometry, exterior, interior):
 
     Parameters
     ----------
-    source : optimus.source
+    source : optimus.Source
         The Optimus representation of a source field.
-    geometry : optimus.geometry
+    geometry : optimus.Geometry
         The Optimus representation of the geometry, with the grid of
         the scatterers. For multiple domains, provide a list of geometries.
-    exterior : optimus.material
+    exterior : optimus.Material
         The Optimus representation of the material for the unbounded
         exterior region.
-    interior : optimus.material
+    interior : optimus.Material
         The Optimus representation of the material for the bounded
         scatterer. For multiple domains, provide a list of materials.
 
     Returns
     ----------
-    model : optimus.model
+    model : optimus.Model
         The Optimus representation of the the BEM model of acoustic wave
         propagation in the interior and exterior domains.
     """
@@ -60,15 +60,15 @@ def create_acoustic_model(
 
     Parameters
     ----------
-    source : optimus.source
+    source : optimus.Source
         The Optimus representation of a source field.
-    geometry : optimus.geometry
+    geometry : optimus.Geometry
         The Optimus representation of the geometry, with the grid of
         the scatterers. For multiple domains, provide a list of geometries.
-    exterior : optimus.material
+    exterior : optimus.Material
         The Optimus representation of the material for the unbounded
         exterior region.
-    interior : optimus.material
+    interior : optimus.Material
         The Optimus representation of the material for the bounded
         scatterer. For multiple domains, provide a list of materials.
     formulation : str
@@ -82,7 +82,7 @@ def create_acoustic_model(
 
     Returns
     ----------
-    model : optimus.model
+    model : optimus.Model
         The Optimus representation of the the BEM model of acoustic wave
         propagation in the interior and exterior domains.
     """
@@ -148,7 +148,6 @@ class Pmchwt(_Model):
         """
         Solve the PMCHWT model.
         """
-
         self._create_function_spaces()
         self._create_continuous_operator()
         self._create_preconditioner()
@@ -390,7 +389,7 @@ def create_boundary_integral_operators(
 
     Returns
     -------
-    operators : bempp.api.operators.boundary.helmholtz
+    operators : list[bempp.api.operators.boundary.Helmholtz]
         A list of boundary integral operators of the Helmholtz equation
     """
 
@@ -491,7 +490,7 @@ def create_osrc_operators(
 
     Returns
     -------
-    operators : bempp.api.operators.boundary.helmholtz
+    operators : list[bempp.api.operators.boundary.Helmholtz]
         A list of OSRC operators of the Helmholtz equation
     """
 

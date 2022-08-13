@@ -1,4 +1,4 @@
-"""Common functionality for acoustic materials."""
+"""Common functionality for materials."""
 
 import numpy as _np
 import pandas as pd
@@ -14,21 +14,23 @@ def get_excel_database(
     """
     Read excel database file as a pandas dataframe
 
-    Input
+    Parameters
     ----------
     database: string
         The type of the database to be loaded. Accepted values are:
         'default': to load default database,
         'user-defined': to load user-defined database.
-    sheet_name: string
+    sheet_name: str, int
         The excel sheet to be loaded
-    header_format: tuple of numbers
+    header_format: tuple[int]
         The header format of data table in the sheet
+    index_col : int, None
+        Column index for labels.
 
-    Output
+    Returns
     ----------
-    dataframe: pandas dataframe object
-
+    dataframe: pandas.Dataframe
+        The database with material parameters.
     """
     if database.lower() == "default":
         file_name = "Material_database.xls"
@@ -52,15 +54,15 @@ def get_material_properties(name):
     """
     Extract material properties from all databases.
 
-    Input
+    Parameters
     ----------
     name : string
         The name of material in the database.
 
-    Output
+    Returns
     ----------
-    dictionary of material properties
-
+    properties : dict
+        A dictionary of material properties
     """
     from ..utils.generic import bold_ul_red_text
 
@@ -101,13 +103,13 @@ def write_material_database(properties):
     Write a pandas dataframe of user-defined properties to the user-defined
     material database Excel file.
 
-    Input
+    Parameters
     ----------
     properties: dict
         The dictionary of material properties defined by the user
 
-    Output
-    ----------
+    Returns
+    -------
     None
     """
 
@@ -171,24 +173,20 @@ class Material:
         """
         Object for the physical properties of a material.
 
-        Input argument
+        Parameters
         ----------
         properties : dict
             A dictionary of the material properties with the keys
             as defined below.
-
-        Dictionary keys
-        ----------
-        density : float
-            The mass density in [kg/m3]
-        speed_of_sound : float
-            The speed of sound in [m/s]
-        attenuation_coeff_a: float
-            Attenuation coefficient in power law [Np/m/MHz]
-        attenuation_pow_b: float
-            Attenuation power in power law [dimensionless]
+            density : float
+                The mass density in [kg/m3]
+            speed_of_sound : float
+                The speed of sound in [m/s]
+            attenuation_coeff_a: float
+                Attenuation coefficient in power law [Np/m/MHz]
+            attenuation_pow_b: float
+                Attenuation power in power law [dimensionless]
         """
-
         self.name = properties["name"]
         self.density = properties["density"]
         self.speed_of_sound = properties["speed_of_sound"]
@@ -200,14 +198,15 @@ class Material:
         """
         Calculate the wavenumber for the specified frequency.
 
-        Input
+        Parameters
         ----------
-        frequency: float/int
+        frequency: float
             The wave frequency
 
-        Output
+        Returns
         ----------
-        complex wavenumber
+        wavenumber : complex
+            The wavenumber
         """
         return (
             2 * _np.pi * frequency / self.speed_of_sound
@@ -218,14 +217,15 @@ class Material:
         """
         Calculate the wave length for the specified frequency.
 
-        Input
+        Parameters
         ----------
-        frequency: float/int
+        frequency: float
             The wave frequency
 
-        Output
+        Returns
         ----------
-        wavelength
+        wavelength : float
+            The wave length
         """
         return self.speed_of_sound / frequency
 
@@ -234,18 +234,26 @@ class Material:
         Calculate the power law attenuation coefficient (alpha) for the
         specified frequency.
 
-        Input
+        Parameters
         ----------
-        frequency: float/int
+        frequency: float
             The wave frequency
 
-        Output
+        Returns
         ----------
-        attenuation coefficient
+        attenuation : float
+            The attenuation coefficient
         """
         return self.attenuation_coeff_a * (frequency * 1e-6) ** self.attenuation_pow_b
 
     def print(self):
+        """
+        Print the material properties
+
+        Returns
+        -------
+        None
+        """
         cols = [
             "name",
             "density",

@@ -33,7 +33,7 @@ class Sphere(_Geometry):
         ----------
         radius : float
             Radius of the sphere.
-        origin : tuple
+        origin : tuple[float]
             Center of the sphere.
         element_size : float
             Mesh element size.
@@ -56,9 +56,9 @@ class Ellipsoid(_Geometry):
 
         Parameters
         ----------
-        radius : tuple
+        radius : tuple[float]
             Radii of the ellipsoid along (x,y,z) axes.
-        origin : tuple
+        origin : tuple[float]
             Center of the ellipsoid.
         element_size : float
             Mesh element size.
@@ -84,7 +84,7 @@ class Cube(_Geometry):
         ----------
         length : float
             The length of the edges.
-        origin : tuple
+        origin : tuple[float]
             Position of the vertex with minimum value in each direction.
         element_size : float
             Mesh element size.

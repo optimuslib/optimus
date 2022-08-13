@@ -19,7 +19,7 @@ class Source:
         ----------
         source_type : str
             The name of the source.
-        frequency : int, float
+        frequency : float
             The frequency of the wave field.
         """
 

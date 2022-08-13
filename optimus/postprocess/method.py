@@ -11,10 +11,10 @@ class VisualisePlane(_PostProcess):
 
         Parameters
         ----------
-        model : an optimus model object
-            optimus model object includes the solution fields on the boundaries
+        model : optimus.Model
+            An optimus model object that includes the solution fields on the boundaries.
         verbose : boolean
-            to display the log information or not
+            Display the log information.
         """
         super().__init__(model, verbose)
 
@@ -118,10 +118,10 @@ class VisualiseCloudPoints(_PostProcess):
 
         Parameters
         ----------
-        model : an optimus model object
-            optimus model object includes the solution fields on the boundaries
+        model : optimus.Model
+            An optimus model object that includes the solution fields on the boundaries.
         verbose : boolean
-            to display the log information or not
+            Display the log information.
         """
         super().__init__(model, verbose)
 
@@ -131,8 +131,8 @@ class VisualiseCloudPoints(_PostProcess):
 
         Parameters
         ----------
-        points: numpy ndarray of size (3,N)
-            The 3D points on which to calculate the pressure field.
+        points: numpy.ndarray
+            Array of size (3,N) with points on which to calculate the pressure field.
         """
 
         from .common import find_int_ext_points
@@ -178,10 +178,10 @@ class VisualisePlaneAndBoundary(_PostProcess):
 
         Parameters
         ----------
-        model : an optimus model object
-            optimus model object includes the solution fields on the boundaries
+        model : optimus.Model
+            An optimus model object that includes the solution fields on the boundaries.
         verbose : boolean
-            to display the log information or not
+            Display the log information.
         """
         super().__init__(model, verbose)
 

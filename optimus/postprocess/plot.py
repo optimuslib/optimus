@@ -24,15 +24,15 @@ def plot_pressure_field(
     unit: string
         Pressure unit. the pressure fields are scaled accordingly.
         Options are: Pa, kPa, MPa and GPa.
-    display_edges : boolean (default is True)
-        To display domains edges, i.e. domains and plane interfaces, or not.
+    display_edges : boolean
+        Display domains edges, i.e. domains and plane interfaces.
     clim : tuple[float, int]
         The color limits: (clim_min, clim_max).
         Must be of the same units as pressure fields.
 
     Returns
     ----------
-    fig_p_real, fig_p_tot
+    fig_p_real, fig_p_tot : matplotlib.Figure
         Contour plots of the real and absolute value of the pressure field.
     """
     import numpy as _np
@@ -134,7 +134,7 @@ def surface_plot(
 
     Returns
     ----------
-    fig : plt.figure
+    fig : matplotlib.Figure
         A Matplotlib figure.
     """
     from mpl_toolkits.axes_grid1 import make_axes_locatable

@@ -17,7 +17,7 @@ def create_planewave(frequency, direction=(1, 0, 0), amplitude=1.0):
     ----------
     frequency : float
         The frequency of the acoustic field.
-    direction : array like
+    direction : tuple[fooat]
         The direction of the plane wave.
         Default: positive x direction
     amplitude : float
@@ -52,13 +52,14 @@ class _PlaneWave(_Source):
         ----------
         medium : optimus.material.Material
             The propagating medium.
-        locations : np.ndarray of size (3, N)
-            Locations on which to evaluate the pressure field.
+        locations : numpy.ndarray
+            An array of size (3,N) with the locations on which to evaluate
+            the pressure field.
 
         Returns
         ----------
-        pressure : np.ndarray of size (N,)
-            The pressure in the locations.
+        pressure : np.ndarray
+            An array of size (N,) with the pressure in the locations.
         """
 
         points = _convert_to_3n_array(locations)
@@ -79,16 +80,18 @@ class _PlaneWave(_Source):
         ----------
         medium : optimus.material.Material
             The propagating medium.
-        locations : np.ndarray of size (3, N)
-            Locations on which to evaluate the pressure field.
-        normals : np.ndarray of size (3, N)
-            Unit normal vectors at the locations on which to evaluate the
-            pressure field.
+        locations : numpy.ndarray
+            An array of size (3,N) with the locations on which to evaluate
+            the pressure field.
+        normals : numpy.ndarray
+            An array of size (3,N) with the unit normal vectors at the locations
+            on which to evaluate the pressure field.
 
         Returns
         ----------
-        gradient : np.ndarray of size (3, N)
-            The normal gradient of the pressure in the locations.
+        gradient : numpy.ndarray
+            An array of size (3,N) with the normal gradient of the pressure
+            in the locations.
         """
 
         points = _convert_to_3n_array(locations)

@@ -24,19 +24,20 @@ def transducer_field(
         The type of acoustic source used.
     medium : optimus.material.Material
         The propagating medium.
-    field_locations : np.ndarray of size (3, N)
-        The coordinates of the locations at which the incident field
-        is evaluated.
-    normals : np.ndarray of size (3, N)
-        The coordinates of the unit normal vectors for evaluation of the
-        pressure normal gradient on the surface of scatterers.
+    field_locations : numpy.ndarray
+        An array of size (3,N) with the coordinates of the locations at
+        which the incident field is evaluated.
+    normals : numpy.ndarray
+        Array of size (3,N) with the coordinates of the unit normal vectors
+        for evaluation of the pressure normal gradient on the surface of scatterers.
     verbose : boolean
         Verbosity of output.
         Default: False
 
     Returns
     ----------
-    An object with the attributes 'pressure' and 'normal_pressure_gradient'.
+    transducer : _Transducer
+        An object with the attributes 'pressure' and 'normal_pressure_gradient'.
     """
 
     if source.type in ("piston", "bowl", "array"):
@@ -82,10 +83,10 @@ class _Transducer:
 
         Returns
         ----------
-        source_locations : np.ndarray of size (3, N_sourcepoints)
-            The 3D location of each point source.
-        source_weights : np.ndarray of size (N_sourcepoints)
-            The weighting of each point source.
+        source_locations : numpy.ndarray
+            An array of size (3,N_sourcepoints) with the location of each point source.
+        source_weights : numpy.ndarray
+            An array of size (N_sourcepoints,) with the weighting of each point source.
         """
 
         if self.source.type == "piston":
@@ -151,8 +152,9 @@ class _Transducer:
 
         Returns
         -------
-        locations_inside_transducer : np.ndarray of size (3, N_points)
-            The locations of the point source inside the reference element.
+        locations_inside_transducer : numpy.ndarray
+            An array of size (3,N_points) with the locations of the point source
+            inside the reference element.
         surface_area_weighting : float
             The surface area weighting associated to each point source.
         """
@@ -217,8 +219,9 @@ class _Transducer:
 
         Returns
         -------
-        locations_inside_transducer : np.ndarray of size (3, N_points)
-            The locations of the point source inside the reference element.
+        locations_inside_transducer : numpy.ndarray
+            An array of size (3,N_points) with the locations of the point source
+            inside the reference element.
         surface_area_weighting : float
             The surface area weighting associated to each point source.
         """
@@ -343,8 +346,9 @@ class _Transducer:
 
         Returns
         -------
-        locations_inside_transducer : np.ndarray of size (3, N_points)
-            The locations of the point source inside the reference array.
+        locations_inside_transducer : numpy.ndarray
+            An array of size (3,N_points) with the locations of the point source
+            inside the reference array.
         surface_area_weighting : float
             The surface area weighting associated to each point source.
         """
@@ -385,14 +389,15 @@ class _Transducer:
 
         Parameters
         ----------
-        source_locations_on_reference_source : np.ndarray of size (3, N_sourcepoints)
-            The locations of the source points on the reference
-            element of the transducer type.
+        source_locations_on_reference_source : numpy.ndarray
+            An array of size (3,N_sourcepoints) with the locations of the
+            source points on the reference element of the transducer type.
 
         Returns
         -------
-        source_locations_transformed : np.ndarray of size (3, N_sourcepoints)
-            The locations of the source points on the transducer.
+        source_locations_transformed : numpy.ndarray
+            An array of size (3,N_sourcepoints) with the locations of the
+            source points on the transducer.
         """
 
         source_locations_directed = _rotate(
@@ -412,24 +417,28 @@ class _Transducer:
 
         Uses the following class attributes.
         ----------
-        source_locations : np.ndarray of size (3, N_sourcepoints)
-            The coordinates of the locations of the point sources used to
-            discretise the acoustic source.
-        source_weights : np.ndarray of size (N_sourcepoints,)
-            The weighting assigned to each point source.
-        field_locations : np.ndarray of size (3, N_observationpoints)
-            The coordinates of the locations at which the incident field
-            is evaluated.
-        normals : np.ndarray of size (3, N_observationpoints)
-            The coordinates of the normal vectors for evaluation of the
-            pressure normal gradient on the surface of scatterers.
+        source_locations : numpy.ndarray
+            An array of size (3,N_sourcepoints) with the coordinates of the
+            locations of the point sources used to discretise the acoustic source.
+        source_weights : numpy.ndarray
+            An array of size (N_sourcepoints,) with the weighting assigned
+            to each point source.
+        field_locations : numpy.ndarray
+            An array of size (3,N_observationpoints) with the coordinates of the
+            locations at which the incident field is evaluated.
+        normals : numpy.ndarray
+            An array of size (3,N_observationpoints) with the coordinates of the
+            normal vectors for evaluation of the pressure normal gradient on the
+            surface of scatterers.
 
         Sets the following class attributes.
         ----------
-        pressure: np.ndarray of size (N_observationpoints,)+
-            The pressure in the observation points.
-        normal_pressure_gradient: np.ndarray of size (3, N_observationpoints)
-            The normal gradient of the pressure in the observation points.
+        pressure: numpy.ndarray
+            An array of size (N_observationpoints,) with the pressure in the
+            observation points.
+        normal_pressure_gradient: numpy.ndarray
+            An array of size (3,N_observationpoints) with the normal gradient
+            of the pressure in the observation points.
         """
 
         pressure_value, pressure_gradient = calc_field_from_point_sources(
@@ -462,24 +471,27 @@ def calc_greens_functions_in_observation_points_numba(
 
     Parameters
     ----------
-    locations_source : np.ndarray of size (3, N_sourcepoints)
-        The locations of the source points.
-    locations_observation : np.ndarray of size (3, N_observationpoints)
-        The locations of the observation points.
+    locations_source : numpy.ndarray
+        An array of size (3,N_sourcepoints) with the locations of the source points.
+    locations_observation : numpy.ndarray
+        An array of size (3,N_observationpoints) with the locations of the
+        observation points.
     wavenumber : complex
         The wavenumber of the wave field.
-    source_weights : np.ndarray of size (N_sourcepoints,)
-        Weights of each source element.
+    source_weights : numpy.ndarray
+        An array of size (N_sourcepoints,) with the weights of each source element.
 
     Returns
     -------
-    greens_function_in_observation_points : np.ndarray of size (N_observationpoints,)
-        The Green's function of the wave field at the observation points
-        with contribution of all source locations.
-    greens_gradient_in_observation_points : np.ndarray of size (3, N_observationpoints)
-        The gradient of Green's function of the wave field at the
-        observation points with contribution of all source locations.
-        When normals is None, gradient related quantities are not evaluated.
+    greens_function_in_observation_points : numpy.ndarray
+        An array of size (N_observationpoints,) with the Green's function of
+        the wave field at the observation points with contribution of all
+        source locations.
+    greens_gradient_in_observation_points : numpy.ndarray
+        An array of size (3,N_observationpoints) with the gradient of Green's
+        function of the wave field at the observation points with contribution
+        of all source locations. When normals is None, gradient related quantities
+        are not evaluated.
     """
     greens_function_in_observation_points_scaled = _np.zeros_like(
         locations_observation[0], dtype=_np.complex128
@@ -565,25 +577,28 @@ def calc_field_from_point_sources(
 
     Parameters
     ----------
-    locations_source : np.ndarray of size (3, N_sourcepoints)
-        The locations of the source points.
-    locations_observation : np.ndarray of size (3, N_observationpoints)
-        The locations of the observation points.
+    locations_source : numpy.ndarray
+        An array of size (3,N_sourcepoints) with the locations of the source points.
+    locations_observation : numpy.ndarray
+        An array of size (3,N_observationpoints) with the locations of the
+        observation points.
     frequency : float
         The frequency of the wave field.
     density : float
         The density of the propagating medium.
     wavenumber : complex
         The wavenumber of the wave field.
-    source_weights : np.ndarray of size (N_sourcepoints,)
-        Weights of each source element.
+    source_weights : numpy.ndarray
+        An array of size (N_sourcepoints,) with the weights of each source element.
 
     Returns
     -------
-    pressure : np.ndarray of size (N_observationpoints,)
-        The pressure of the wave field in the observation points.
-    gradient : np.ndarray of size (3, N_observationpoints)
-        The gradient of the pressure field in the observation points.
+    pressure : numpy.ndarray
+        An array of size (N_observationpoints,) with the pressure of the
+        wave field in the observation points.
+    gradient : numpy.ndarray
+        An array of size (3,N_observationpoints) with the gradient of the
+        pressure field in the observation points.
     """
 
     if locations_source.ndim == 1:
@@ -624,25 +639,28 @@ def calc_field_from_point_sources_numpy(
 
     Parameters
     ----------
-    locations_source : np.ndarray of size (3, N_sourcepoints)
-        The locations of the source points.
-    locations_observation : np.ndarray of size (3, N_observationpoints)
-        The locations of the observation points.
+    locations_source : numpy.ndarray
+        An array of size (3,N_sourcepoints) with the locations of the source points.
+    locations_observation : numpy.ndarray
+        An array of size (3,N_observationpoints) with the locations of the
+        observation points.
     frequency : float
         The frequency of the wave field.
     density : float
         The density of the propagating medium.
     wavenumber : complex
         The wavenumber of the wave field.
-    source_weights : np.ndarray of (size N_sourcepoints,)
-        Weights of each source element.
+    source_weights : numpy.ndarray
+        An array of size (N_sourcepoints,) with the weights of each source element.
 
     Returns
     -------
-    pressure : np.ndarray of size (N_observationpoints,)
-        The pressure of the wave field in the observation points.
-    gradient : np.ndarray of size (3, N_observationpoints)
-        The gradient of the pressure field in the observation points.
+    pressure : numpy.ndarray
+        An array of size (N_observationpoints,) with the pressure of the
+        wave field in the observation points.
+    gradient : numpy.ndarray
+        An array of size (3,N_observationpoints) with the gradient of the
+        pressure field in the observation points.
     """
 
     if locations_source.ndim == 1:

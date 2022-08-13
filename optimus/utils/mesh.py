@@ -72,7 +72,7 @@ def get_geometries_stats(geometries, verbose=False):
 
     Parameters
     ----------
-    geometries : list or tuple
+    geometries : optimus.geometry.common.Geometry, tuple[optimus.geometry.common.Geometry]
         The Optimus geometry object(s).
     verbose: boolean
         Print the results.
@@ -216,11 +216,12 @@ def plane_grid(x_axis_lims, y_axis_lims, rotation_axis, rotation_angle, element_
 
     Parameters
     ----------
-    x_axis_lims : list of two float numbers
-        The bounding values along the x-axis of plane.
-    y_axis_lims : list of two float numbers
-        The bounding values along the y-axis of plane.
-    rotation_axis : a list of size three populated with 0 or 1,
+    x_axis_lims : tuple[float], list[float]
+        A list of length two for the bounding values along the x-axis of plane.
+    y_axis_lims : tuple[float], list[float]
+        A list of length two for the bounding values along the y-axis of plane.
+    rotation_axis : tuple[int], list[int]
+        A list of length three populated with 0 or 1.
         It defines the axis of rotation so to construct the desired plane
         from an x-y plane.
     rotation_angle : str
@@ -230,7 +231,7 @@ def plane_grid(x_axis_lims, y_axis_lims, rotation_axis, rotation_angle, element_
 
     Returns
     ----------
-    grid : Grid
+    grid : bempp.api.Grid
         The triangular mesh on the plane.
     """
     stub = """
@@ -305,7 +306,7 @@ def create_grid_points(resolution, plane_axes, plane_offset, bounding_box, mode)
 
     Returns
     -------
-    points : np.ndarray
+    points : numpy.ndarray
         The visualisation points.
     plane : Any
         The grid, with format depending on the algorithm.
