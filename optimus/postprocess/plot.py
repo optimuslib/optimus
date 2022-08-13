@@ -16,6 +16,7 @@ def plot_pressure_field(
         The options are:
             1. total, total_field, or total_pressure;
             2. scattered, scattered_pressure, or scattered_field.
+            3. incident, incident_pressure, or incident_field.
     unit: string
         Pressure unit. the pressure fields are scaled accordingly.
         Options are: Pa, kPa, MPa and GPa.
@@ -40,8 +41,12 @@ def plot_pressure_field(
         pressure_field = _copy.deepcopy(postprocess_obj.total_field_imshow)
     elif field.lower() in ["scattered", "scattered_field", "scattered_pressure"]:
         pressure_field = _copy.deepcopy(postprocess_obj.scattered_field_imshow)
+    elif field.lower() in ["incident", "incident_field", "incident_pressure"]:
+        pressure_field = _copy.deepcopy(postprocess_obj.incident_field_imshow)
     else:
-        raise ValueError("Undefined pressure field, options are total and scattered.")
+        raise ValueError(
+            "Undefined pressure field, options are total, scattered, and incident."
+        )
 
     scaling_factor, pressure_unit = _convert_pressure_unit(unit)
     pressure_field *= scaling_factor
