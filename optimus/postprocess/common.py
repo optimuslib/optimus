@@ -130,12 +130,16 @@ def find_int_ext_points(domains_grids, points, verbose):
     points_interior = []
     idx_interior = []
     idx_exterior = _np.full(points.shape[1], True)
+
     if verbose:
         start_time_int_ext = _time.time()
         print(
             "\n Identifying the exterior and interior points Started at: ",
             _time.strftime("%a, %d %b %Y %H:%M:%S", _time.localtime()),
         )
+    else:
+        start_time_int_ext = None
+
     for grid in domains_grids:
         (
             points_interior_temp,
@@ -228,6 +232,7 @@ def compute_pressure_fields(
         _bempp.global_parameters.hmat.max_block_size = (
             global_parameters.postprocessing.hmat_max_block_size
         )
+        _bempp.global_parameters.assembly.potential_operator_assembly_type = "hmat"
     elif global_parameters.postprocessing.assembly_type.lower() == "dense":
         _bempp.global_parameters.assembly.potential_operator_assembly_type = "dense"
     else:
@@ -235,7 +240,7 @@ def compute_pressure_fields(
             "Supported operator assembly methods are "
             + bold_ul_text("dense")
             + " and "
-            + bold_ul_text("h-matrix.")
+            + bold_ul_text("hmat")
         )
 
     start_time_pot_ops = _time.time()
@@ -253,6 +258,7 @@ def compute_pressure_fields(
         exterior_values = _np.zeros((1, points_exterior.shape[1]), dtype="complex128")
         ext_calc_flag = True
     else:
+        exterior_values = None
         ext_calc_flag = False
 
     i = 0

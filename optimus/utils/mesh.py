@@ -82,14 +82,19 @@ def get_geometries_stats(geometries, verbose=False):
     stats : dict
         The mesh statistics.
     """
-    elements_min = []
-    elements_max = []
-    elements_avg = []
-    elements_med = []
-    elements_std = []
-    number_of_nodes = []
+
     if isinstance(geometries, (list, tuple)):
+
+        labels = []
+        elements_min = []
+        elements_max = []
+        elements_avg = []
+        elements_med = []
+        elements_std = []
+        number_of_nodes = []
+
         for geometry in geometries:
+            labels.append(geometry.label)
             stats = _get_mesh_stats(geometry.grid, verbose=False)
             elements_min.append(stats["elements_min"])
             elements_max.append(stats["elements_max"])
@@ -100,6 +105,7 @@ def get_geometries_stats(geometries, verbose=False):
         total_number_of_nodes = _np.sum(number_of_nodes)
 
         stats_total = {
+            "label": labels,
             "elements_min": elements_min,
             "elements_max": elements_max,
             "elements_avg": elements_avg,
@@ -112,18 +118,18 @@ def get_geometries_stats(geometries, verbose=False):
             print("\n", 70 * "*")
             for i, geometry in enumerate(geometries):
                 print(
-                    "Number of nodes in geometry {0} is {1}.\n".format(
-                        i + 1, number_of_nodes[i]
+                    "Number of nodes in geometry '{0}' is {1}.\n".format(
+                        labels[i], number_of_nodes[i]
                     )
                 )
                 print(
                     (
                         "Statistics about the element size in the triangular surface "
-                        "grid of geometry {0}:\n"
+                        "grid of geometry '{0}':\n"
                         " Min: {1:.2e}\n Max: {2:.2e}\n AVG: {3:.2e}\n"
                         " MED: {4:.2e}\n STD: {5:.2e}\n"
                     ).format(
-                        i + 1,
+                        labels[i],
                         elements_min[i],
                         elements_max[i],
                         elements_avg[i],
@@ -138,6 +144,7 @@ def get_geometries_stats(geometries, verbose=False):
             )
             print("\n", 70 * "*")
     else:
+
         stats_total = _get_mesh_stats(geometries.grid, verbose=verbose)
 
     return stats_total

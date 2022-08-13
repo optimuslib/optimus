@@ -2,7 +2,11 @@
 
 
 def plot_pressure_field(
-    postprocess_obj, field="total", unit="Pa", display_edges=True, clim=None
+    postprocess_obj,
+    field="total",
+    unit="Pa",
+    display_edges=True,
+    clim=None,
 ):
     """
     2D contour plotting of pressure fields of an optimus post process object

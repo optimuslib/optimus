@@ -171,7 +171,7 @@ class VisualiseCloudPoints(_PostProcess):
 
 
 class VisualisePlaneAndBoundary(_PostProcess):
-    def __init__(self, model, verbose=True):
+    def __init__(self, model, verbose=False):
         """
         Create a PostProcess optimus object where the visualisation grid is
         a union of a plane and surface meshes of the domains.
@@ -276,13 +276,13 @@ class VisualisePlaneAndBoundary(_PostProcess):
             for i in range(self.model.n_subdomains)
         ]
         domain_solutions_all.append(self.total_field)
-        plot3D_ptot_all = _bempp.GridFunction(
+        plot3d_ptot_all = _bempp.GridFunction(
             space_union_all,
             coefficients=_np.concatenate(
                 [domain_solutions_all[i] for i in range(self.model.n_subdomains + 1)]
             ),
         )
-        plot3D_ptot_abs_all = _bempp.GridFunction(
+        plot3d_ptot_abs_all = _bempp.GridFunction(
             space_union_all,
             coefficients=_np.concatenate(
                 [
@@ -292,8 +292,10 @@ class VisualisePlaneAndBoundary(_PostProcess):
             ),
         )
         _bempp.export(
-            file_name=file_name + "_ptot_complex.msh", grid_function=plot3D_ptot_all
+            file_name=file_name + "_ptot_complex.msh",
+            grid_function=plot3d_ptot_all,
         )
         _bempp.export(
-            file_name=file_name + "_ptot_abs.msh", grid_function=plot3D_ptot_abs_all
+            file_name=file_name + "_ptot_abs.msh",
+            grid_function=plot3d_ptot_abs_all,
         )

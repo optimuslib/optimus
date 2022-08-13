@@ -5,7 +5,12 @@ import pandas as pd
 import os
 
 
-def get_excel_database(database="default", header_format=(0, 1), index_col=None):
+def get_excel_database(
+    database="default",
+    sheet_name=0,
+    header_format=(0, 1),
+    index_col=None,
+):
     """
     Read excel database file as a pandas dataframe
 
@@ -34,7 +39,12 @@ def get_excel_database(database="default", header_format=(0, 1), index_col=None)
 
     datadir = os.path.dirname(__file__)
     database_file = os.path.join(datadir, file_name)
-    dataframe = pd.read_excel(database_file, header=header_format, index_col=index_col)
+    dataframe = pd.read_excel(
+        database_file,
+        sheet_name=sheet_name,
+        header=header_format,
+        index_col=index_col,
+    )
     return dataframe
 
 
@@ -87,7 +97,6 @@ def get_material_properties(name):
 
 
 def write_material_database(properties):
-
     """
     Write a pandas dataframe of user-defined properties to the user-defined
     material database Excel file.
@@ -100,13 +109,14 @@ def write_material_database(properties):
     Output
     ----------
     None
-
     """
 
     user_database_file = "Material_database_user-defined.xls"
     dataframe_default = get_excel_database(database="default")
     dataframe_user = get_excel_database(
-        database="user-defined", header_format=[0, 1], index_col=0
+        database="user-defined",
+        header_format=(0, 1),
+        index_col=0,
     )
     dataframe_both = pd.concat([dataframe_default, dataframe_user], axis=0, sort=False)
 
