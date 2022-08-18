@@ -21,6 +21,7 @@ class RegularSphere(_Geometry):
         super().__init__(grid, label="regular_sphere")
 
         self.refinement = refinement_level
+        self._correct_elements_group_bempp_grids()
 
 
 class Sphere(_Geometry):
@@ -45,6 +46,7 @@ class Sphere(_Geometry):
         self.radius = radius
         self.origin = origin
         self.meshwidth = element_size
+        self._correct_elements_group_bempp_grids()
 
 
 class Ellipsoid(_Geometry):

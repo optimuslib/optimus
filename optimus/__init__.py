@@ -5,6 +5,7 @@ from . import material
 from . import model
 from . import source
 from . import utils
+from . import postprocess
 
 
 def _get_version():

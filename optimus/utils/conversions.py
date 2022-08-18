@@ -55,12 +55,14 @@ def convert_to_float(value, label="variable"):
 def convert_to_positive_float(value, label="variable"):
     """
     Check if the input value can be converted into a positive float.
+
     Parameters
     ----------
     value : Any
         The input value to be converted into a positive float.
     label : str
         The name of the variable.
+
     Returns
     -------
     value : float
@@ -117,7 +119,7 @@ def convert_to_array(vector, shape=None, label="variable"):
         return array
 
 
-def convert_scalar_to_complex_array(input, shape=None, label="variable"):
+def convert_to_complex_array(vector, shape=None, label="variable"):
     """
     Check if the input vector can be converted into an array for the specified
     shape, and perform the conversion.
@@ -137,15 +139,17 @@ def convert_scalar_to_complex_array(input, shape=None, label="variable"):
         The output array with the specified shape.
     """
 
-    if not isinstance(input, (int, float, complex, list, tuple, _np.ndarray)):
+    if not isinstance(vector, (int, float, complex, list, tuple, _np.ndarray)):
         raise TypeError(
-            label + " needs to be a scalar or an array type, not " + str(type(input))
+            label + " needs to be a scalar or an array type, not " + str(type(vector))
         )
 
     if shape is not None:
         size = _np.prod(shape)
+    else:
+        size = None
 
-    if not isinstance(input, (list, tuple, _np.ndarray)):
+    if not isinstance(vector, (list, tuple, _np.ndarray)):
         if shape is None:
             raise TypeError(
                 "If "
@@ -154,62 +158,21 @@ def convert_scalar_to_complex_array(input, shape=None, label="variable"):
                 + "specified"
             )
         else:
-            return _np.ones(size, dtype=complex) * input
+            return _np.ones(size, dtype=complex) * vector
 
     else:
         if shape is not None:
-            if input.size != size:
+            if vector.size != size:
                 raise ValueError(
                     label
                     + " needs to have size "
                     + str(size)
                     + ", not "
-                    + str(input.size)
+                    + str(vector.size)
                 )
-            return _np.reshape(input, shape).astype(complex)
+            return _np.reshape(vector, shape).astype(complex)
         else:
-            return input.astype(complex)
-
-
-def convert_to_complex_array(vector, shape=None, label="variable"):
-    """
-    Check if the input vector can be converted into a complex array for the specified
-    shape, and perform the conversion.
-
-    Parameters
-    ----------
-    vector : Any
-        The input vector to be converted into a Numpy array.
-    shape : tuple
-        The output shape of the vector.
-    label : str
-        The name of the variable.
-
-    Returns
-    -------
-    array : np.ndarray
-        The output array with the specified shape.
-    """
-
-    if not isinstance(vector, (list, tuple, _np.ndarray)):
-        raise TypeError(label + " needs to be an array type, not " + str(type(vector)))
-
-    array = _np.array(vector)
-
-    if array.dtype not in (complex, float, int):
-        raise TypeError(
-            label + " needs to be of type float or int, not " + str(array.dtype)
-        )
-
-    if shape is not None:
-        size = _np.prod(shape)
-        if array.size != size:
-            raise ValueError(
-                label + " needs to have size " + str(size) + ", not " + str(array.size)
-            )
-        return _np.reshape(array, shape).astype(complex)
-    else:
-        return array.astype(complex)
+            return vector.astype(complex)
 
 
 def convert_to_3n_array(array, label="variable"):

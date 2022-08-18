@@ -50,8 +50,6 @@ def transducer_field(
     else:
         raise NotImplementedError
 
-    transducer.generate_source_points()
-
     transducer.calc_pressure_field()
 
     return transducer
@@ -71,8 +69,7 @@ class _Transducer:
         self.frequency = source.frequency
         self.verbose = verbose
 
-        self.source_locations = None
-        self.source_weights = None
+        self.source_locations, self.source_weights = self.generate_source_points()
 
         self.pressure = None
         self.normal_pressure_gradient = None
@@ -83,7 +80,7 @@ class _Transducer:
         any transducer is modelled by a collection of point sources, each
         with weighting for its amplitude.
 
-        Sets the following class attributes.
+        Returns
         ----------
         source_locations : np.ndarray of size (3, N_sourcepoints)
             The 3D location of each point source.
@@ -93,46 +90,46 @@ class _Transducer:
 
         if self.source.type == "piston":
             (
-                source_locations_inside_element,
+                source_locations_inside_transducer,
                 surface_area_weighting,
             ) = self.define_source_points_in_reference_piston(self.source.radius)
         elif self.source.type == "bowl":
             (
-                source_locations_inside_element,
+                source_locations_inside_transducer,
                 surface_area_weighting,
             ) = self.define_source_points_in_reference_bowl()
         elif self.source.type == "array":
             (
-                source_locations_inside_element,
+                source_locations_inside_transducer,
                 surface_area_weighting,
-            ) = self.define_source_points_in_reference_array(self.source.element_radius)
+            ) = self.define_source_points_in_reference_array()
         else:
             raise NotImplementedError
 
-        n_sources_per_element = source_locations_inside_element.shape[1]
-
         if self.verbose:
             print(
-                "Number of point sources per element:",
-                n_sources_per_element,
+                "Number of point sources in transducer:",
+                source_locations_inside_transducer.shape[1],
             )
 
-        self.source_locations = self.transform_source_points(
-            source_locations_inside_element
+        source_locations = self.transform_source_points(
+            source_locations_inside_transducer
         )
 
-        if self.source.type != "array":
-            n_sources = self.source_locations.shape[1]
-            velocity_weighting = _np.full(n_sources, self.source.velocity)
-        elif self.source.type == "array":
+        if self.source.type == "array":
             number_of_sources_per_element = (
-                self.source_locations.shape[1] / self.source.number_of_elements
+                source_locations.shape[1] / self.source.number_of_elements
             )
             velocity_weighting = _np.repeat(
                 self.source.velocity, number_of_sources_per_element
             )
+        else:
+            n_sources = source_locations.shape[1]
+            velocity_weighting = _np.full(n_sources, self.source.velocity)
 
-        self.source_weights = surface_area_weighting * velocity_weighting
+        source_weights = surface_area_weighting * velocity_weighting
+
+        return source_locations, source_weights
 
     def define_source_points_in_reference_piston(self, radius):
         """
@@ -147,17 +144,22 @@ class _Transducer:
 
         The surface area weighting is uniform.
 
+        Parameters
+        ----------
+        radius : float
+            The radius of piston.
+
         Returns
         -------
-        source_locations_inside_element : np.ndarray of size (3, N_points)
+        locations_inside_transducer : np.ndarray of size (3, N_points)
             The locations of the point source inside the reference element.
-        surface_area_weighting : np.ndarray of size (N_points,)
+        surface_area_weighting : float
             The surface area weighting associated to each point source.
         """
 
         if self.source.number_of_point_sources_per_wavelength == 0:
 
-            source_locations_inside_element = _np.zeros((3, 1))
+            locations_inside_transducer = _np.zeros((3, 1))
 
         else:
 
@@ -189,13 +191,13 @@ class _Transducer:
             )
             distance = _np.linalg.norm(source_vector[:2, :], axis=0)
             inside = distance <= radius
-            source_locations_inside_element = source_vector[:, inside]
+            locations_inside_transducer = source_vector[:, inside]
 
-        n_sources = source_locations_inside_element.shape[1]
+        n_sources = locations_inside_transducer.shape[1]
 
         surface_area_weighting = _np.pi * radius**2 / n_sources
 
-        return source_locations_inside_element, surface_area_weighting
+        return locations_inside_transducer, surface_area_weighting
 
     def define_source_points_in_reference_bowl(self):
         """
@@ -215,9 +217,9 @@ class _Transducer:
 
         Returns
         -------
-        source_locations_inside_element : np.ndarray of size (3, N_points)
+        locations_inside_transducer : np.ndarray of size (3, N_points)
             The locations of the point source inside the reference element.
-        surface_area_weighting : np.ndarray of size (N_points,)
+        surface_area_weighting : float
             The surface area weighting associated to each point source.
         """
 
@@ -299,7 +301,7 @@ class _Transducer:
         y_source = _np.array(y_source)
         z_source = _np.array(z_source) + self.source.radius_of_curvature
 
-        source_locations_inside_element = _np.vstack((x_source, y_source, z_source))
+        locations_inside_transducer = _np.vstack((x_source, y_source, z_source))
 
         if self.verbose:
 
@@ -316,45 +318,64 @@ class _Transducer:
 
             actual_area = 2 * _np.pi * self.source.radius_of_curvature * radius_section
             estimated_area = (
-                source_locations_inside_element.shape[1] * surface_area_weighting
+                locations_inside_transducer.shape[1] * surface_area_weighting
             )
 
             print("Actual transducer area (m^2): {:.14f}".format(actual_area))
             print("Approximated transducer area (m^2): {:.14f}".format(estimated_area))
 
-        return source_locations_inside_element, surface_area_weighting
+        return locations_inside_transducer, surface_area_weighting
 
-    def define_source_points_in_reference_array(self, radius):
+    def define_source_points_in_reference_array(self):
+        """
+        Define the source points for a reference spherical section
+        array transducer, that is, the source points on a spherical
+        section bowl whose apex is in contact with the z=0 plane,
+        at the global origin and whose axis is the Cartesian x-axis.
+        The array is defined by the location of the element centroids
+        and the radius of the elements.
+
+        The resolution of the points is determined by the specified
+        number of point sources per wavelength which must be strictly
+        positive.
+
+        The surface area weighting is uniform.
+
+        Returns
+        -------
+        locations_inside_transducer : np.ndarray of size (3, N_points)
+            The locations of the point source inside the reference array.
+        surface_area_weighting : float
+            The surface area weighting associated to each point source.
+        """
 
         (
-            source_locations_inside_element,
+            locations_inside_transducer,
             surface_area_weighting,
-        ) = self.define_source_points_in_reference_piston(radius)
+        ) = self.define_source_points_in_reference_piston(self.source.element_radius)
 
-        reference_piston_location = [0, 0, -self.source.radius_of_curvature]
-
-        # Translate reference piston source to reference piston location
-        source_locations_inside_element = _translate(
-            source_locations_inside_element, reference_piston_location
-        )
-        source_locations = tuple()
+        n_points_piston = locations_inside_transducer.shape[1]
+        n_points_array = n_points_piston * self.source.number_of_elements
+        source_locations_array = _np.empty((3, n_points_array), dtype="float")
 
         for element_number in range(self.source.number_of_elements):
-            # Compute rotation matrix
-            MxMy = self.get_transformation_matrix(element_number)
 
-            # Carry out coordinate transfornation
-            source_locations_transformed = MxMy @ source_locations_inside_element
+            source_locations_directed = _rotate(
+                locations_inside_transducer,
+                self.source.element_normals[:, element_number],
+            )
+            source_locations_transformed = _translate(
+                source_locations_directed,
+                self.source.centroid_locations[:, element_number],
+            )
+            indices = range(
+                element_number * n_points_piston, (element_number + 1) * n_points_piston
+            )
+            source_locations_array[:, indices] = source_locations_transformed
 
-            # Generate array of point source locations for each element
-            source_locations += (source_locations_transformed,)
+        source_locations_array[2, :] += self.source.radius_of_curvature
 
-        # Stack data in tuple to array
-        array_source_locations = _np.hstack(source_locations)
-
-        array_source_locations = self.add_radius_of_curvature(array_source_locations)
-
-        return (array_source_locations, surface_area_weighting)
+        return source_locations_array, surface_area_weighting
 
     def transform_source_points(self, source_locations_on_reference_source):
         """
@@ -383,80 +404,6 @@ class _Transducer:
         )
 
         return source_locations_transformed
-
-    def get_transformation_matrix(self, transducer_element=None):
-        """
-        Calculate the transformation matrix required to rotate the reference piston
-        element to the locations of the element centroids on the surface of the array
-        transducer.
-
-        Parameters
-        ----------
-        transducer_element : int (default: None)
-            The element in the transducer array. For a single transducer
-            element, specify None.
-
-        Returns
-        -------
-        transformation : np.ndarray of size (3, 3)
-            The 3D transformation matrix.
-        """
-        if self.source.type != "array" and transducer_element is None:
-
-            return _np.identity(3)
-
-        elif self.source.type == "array" and transducer_element is not None:
-
-            x, y = self.source.centroid_locations[:2, transducer_element]
-            beta = _np.arcsin(-x / self.source.radius_of_curvature)
-            alpha = _np.arcsin(y / (self.source.radius_of_curvature * _np.cos(beta)))
-
-            mx = _np.array(
-                [
-                    [1, 0, 0],
-                    [0, _np.cos(alpha), -_np.sin(alpha)],
-                    [0, _np.sin(alpha), _np.cos(alpha)],
-                ]
-            )
-
-            my = _np.array(
-                [
-                    [_np.cos(beta), 0, _np.sin(beta)],
-                    [0, 1, 0],
-                    [-_np.sin(beta), 0, _np.cos(beta)],
-                ]
-            )
-
-            return mx @ my
-
-        else:
-
-            raise NotImplementedError
-
-    def add_radius_of_curvature(
-        self,
-        source_locations,
-    ):
-        """
-        Apply the radius of curvature to the points.
-
-        Parameters
-        ----------
-        locations : np.ndarray of size (3, N_points)
-            The locations of the points to be transformed.
-        radius_of_curvature : float
-            The radius of curvature.
-        origin_of_curvature : array like
-            The origin of the curvature.
-
-        Returns
-        -------
-        locations_curved : np.ndarray of size (3, N_points)
-            The transformed locations of the points.
-
-        """
-        source_locations[2, :] += self.source.radius_of_curvature
-        return source_locations
 
     def calc_pressure_field(self):
         """

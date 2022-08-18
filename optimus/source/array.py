@@ -7,9 +7,7 @@ from ..utils.conversions import convert_to_positive_int as _convert_to_positive_
 from ..utils.conversions import convert_to_positive_float as _convert_to_positive_float
 from ..utils.conversions import convert_to_array as _convert_to_array
 from ..utils.conversions import convert_to_3n_array as _convert_to_3n_array
-from ..utils.conversions import (
-    convert_scalar_to_complex_array as _convert_scalar_to_complex_array,
-)
+from ..utils.conversions import convert_to_complex_array as _convert_to_complex_array
 from ..utils.linalg import normalize_vector as _normalize_vector
 from .transducers import transducer_field as _transducer_field
 
@@ -23,8 +21,6 @@ def create_array(
     location=(0, 0, 0),
     centroid_locations=None,
     centroid_locations_filename=None,
-    radius_of_curvature=None,
-    number_of_elements=None,
 ):
     """
     Create an array source consisting of circular piston elements distributed on a
@@ -54,13 +50,6 @@ def create_array(
         positive z-axis and the focus of the transducer is (0,0,0).
     centroid_locations_filename : str with ".dat" extension
         Path and filename containing the centroid locations data.
-    radius_of_curvature : float
-        The radius of curvature of the array. For the default value, this is calculated
-        from the locations of the element centroids.
-        Default : None
-    number_of_elements : int
-        The number of array elements.
-        Default : None
     """
     return _Array(
         frequency,
@@ -71,8 +60,6 @@ def create_array(
         location,
         centroid_locations,
         centroid_locations_filename,
-        radius_of_curvature,
-        number_of_elements,
     )
 
 
@@ -87,8 +74,6 @@ class _Array(_Source):
         location,
         centroid_locations,
         centroid_locations_filename,
-        radius_of_curvature,
-        number_of_elements,
     ):
 
         super().__init__("array", frequency)
@@ -111,15 +96,17 @@ class _Array(_Source):
             centroid_locations, centroid_locations_filename
         )
 
-        self.number_of_elements = self._calc_number_of_elements(number_of_elements)
+        self.number_of_elements = self.centroid_locations.shape[1]
 
-        self.velocity = _convert_scalar_to_complex_array(
+        self.velocity = _convert_to_complex_array(
             velocity, shape=(self.number_of_elements,), label="velocity"
         )
 
         self.radius_of_curvature = self._calc_radius_of_curvature(
-            self.centroid_locations, radius_of_curvature
+            self.centroid_locations
         )
+
+        self.element_normals = -_normalize_vector(self.centroid_locations)
 
     def _calc_centroid_locations(self, centroid_locations, centroid_locations_filename):
         """
@@ -156,38 +143,7 @@ class _Array(_Source):
                 )
         return centroid_locations
 
-    def _calc_number_of_elements(self, number_of_elements):
-        """
-        Calculates the number of element of the array.
-        If number_of_elements is not specified, it is inferred from the number of
-        element centroids. If number_of_elements is specified, the value is checked
-        against the number of element centroids for consistency.
-
-        Parameters
-        ----------
-        number_of_elements : int
-            The number of array elements.
-
-        Returns
-        ----------
-        number_of_elements : int
-            The number of array elements.
-        """
-
-        calc_number_of_elements = self.centroid_locations.shape[1]
-        if number_of_elements:
-            number_of_elements = _convert_to_positive_int(number_of_elements)
-            if number_of_elements != calc_number_of_elements:
-                raise ValueError(
-                    "The specified number of elements does not match the number of "
-                    + "centroid locations."
-                )
-        else:
-            number_of_elements = calc_number_of_elements
-
-        return number_of_elements
-
-    def _calc_radius_of_curvature(self, centroid_locations, radius_of_curvature):
+    def _calc_radius_of_curvature(self, centroid_locations):
         """
         Calculates the radius of curvature of the array transducer from centroid
         locations.
@@ -196,8 +152,6 @@ class _Array(_Source):
         ----------
         centroid_locations : np.ndarray of size (3, N)
             The locations of the centroids of the piston elements.
-        radius_of_curvature : float
-            The radius of curvature of the array.
 
         Returns
         ----------
@@ -206,9 +160,6 @@ class _Array(_Source):
         """
 
         centroid_locations_l2_norm = _np.linalg.norm(centroid_locations, axis=0)
-        radius_of_curvature_from_centroid_locations = _np.mean(
-            centroid_locations_l2_norm
-        )
         centroid_locations_l2_norm_std = _np.std(centroid_locations_l2_norm)
         radius_of_curvature_from_centroid_locations = _np.mean(
             centroid_locations_l2_norm
@@ -219,25 +170,8 @@ class _Array(_Source):
             raise ValueError(
                 "Array element centroid locations do not appear to lie on a sphere."
             )
-        if radius_of_curvature:
-            radius_of_curvature = _convert_to_positive_float(radius_of_curvature)
-            if (
-                _np.isclose(
-                    radius_of_curvature_from_centroid_locations,
-                    radius_of_curvature,
-                )
-                == False
-            ):
-                raise ValueError(
-                    "The specified value of the array radius of curvature is"
-                    + " inconsistent with the centroid locations."
-                )
-            else:
-                radius_of_curvature = radius_of_curvature
-        else:
-            radius_of_curvature = radius_of_curvature_from_centroid_locations
 
-        return radius_of_curvature
+        return radius_of_curvature_from_centroid_locations
 
     def pressure_field(self, medium, locations):
         """
