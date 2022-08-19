@@ -257,6 +257,10 @@ def compute_pressure_fields(
             + bold_ul_text("h-matrix.")
         )
 
+    _bempp.global_parameters.quadrature.near.single_order = (
+        global_parameters.postprocessing.quadrature_order
+    )
+
     start_time_pot_ops = _time.time()
     if verbose:
         print(
@@ -370,14 +374,14 @@ def compute_pressure_fields(
             dirichlet_solution = model.solution[2 * subdomain_number].coefficients
             subdomain_boundary_points = points_boundary[subdomain_number]
 
-            total_field[index_boundary[subdomain_number]] = pressure_boundary_calc(
+            total_field[index_boundary[subdomain_number]] = compute_pressure_boundary(
                 grid, subdomain_boundary_points, dirichlet_solution
             )
 
     return total_field, scattered_field, incident_exterior_field
 
 
-def pressure_boundary_calc(grid, boundary_points, dirichlet_solution):
+def compute_pressure_boundary(grid, boundary_points, dirichlet_solution):
     """
     Calculate pressure for points near or at the boundary of a domain. When the solid
     angle associated with a boundary vertex is below 0.1, it is assumed to lie on the
