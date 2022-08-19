@@ -68,7 +68,7 @@ def plot_pressure_field(
     if hasattr(postprocess_obj, "domains_edges") and display_edges:
         domains_edges = postprocess_obj.domains_edges
     else:
-        domains_edges = False
+        domains_edges = None
 
     fig_p_real = surface_plot(
         _np.real(pressure_field),
@@ -108,7 +108,7 @@ def surface_plot(
     colormap,
     colormap_lims,
     colorbar_unit,
-    domains_edges=False,
+    domains_edges=None,
 ):
     """
     2D surface plotting of a mesh grid quantity
@@ -128,7 +128,7 @@ def surface_plot(
         The limit values of the colormap.
     colorbar_unit : string
         the label for colorbar
-    domains_edges : bool, list[bool]
+    domains_edges : None, list[numpy.ndarray]
         if the intersection points of the domains and the visualisation plane
         is passed as a list, they are overlaid to the field plot.
 
@@ -157,10 +157,9 @@ def surface_plot(
         interpolation="bilinear",
     )
 
-    if domains_edges:
-        if len(domains_edges):
-            for i, j in domains_edges:
-                plt.plot(i, j, color="black", linestyle="-", linewidth=2)
+    if domains_edges is not None:
+        for i, j in domains_edges:
+            plt.plot(i, j, color="black", linestyle="-", linewidth=2)
 
     ax.set_xlabel(haxis_label, size=18)
     ax.set_ylabel(vaxis_label, size=18)
