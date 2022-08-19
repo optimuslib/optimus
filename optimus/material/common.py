@@ -83,7 +83,7 @@ def get_material_properties(name):
     else:
         material = dataframe.loc[data_mask]
         density = material[("Density (kg/m3)", "Average")].get_values()[0]
-        speed_of_sound = material[("Speed of Sound [m/s]", "Average")].get_values()[0]
+        speed_of_sound = material[("Speed of Sound (m/s)", "Average")].get_values()[0]
         attenuation_coeff_a = material[
             ("Attenuation Constant", "a [Np/m/MHz]")
         ].get_values()[0]
@@ -135,8 +135,8 @@ def write_material_database(properties):
         cols = [
             ("Tissue", "Name"),
             ("Density (kg/m3)", "Average"),
-            ("Speed of Sound [m/s]", "Average"),
-            ("Nonlinearity Prameter B/A", "Average"),
+            ("Speed of Sound (m/s)", "Average"),
+            ("Nonlinearity Parameter B/A", "Average"),
             ("Attenuation Constant", "a [Np/m/MHz]"),
             ("Attenuation Constant", "b"),
             ("Heat Capacity (J/kg/°C)", "Average"),
@@ -149,7 +149,7 @@ def write_material_database(properties):
             {
                 ("Tissue", "Name"): properties["name"],
                 ("Density (kg/m3)", "Average"): properties["density"],
-                ("Speed of Sound [m/s]", "Average"): properties["speed_of_sound"],
+                ("Speed of Sound (m/s)", "Average"): properties["speed_of_sound"],
                 ("Attenuation Constant", "a [Np/m/MHz]"): properties[
                     "attenuation_coeff_a"
                 ],
