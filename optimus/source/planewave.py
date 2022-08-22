@@ -17,7 +17,7 @@ def create_planewave(frequency, direction=(1, 0, 0), amplitude=1.0):
     ----------
     frequency : float
         The frequency of the acoustic field.
-    direction : tuple[fooat]
+    direction : numpy.ndarray, tuple[float], list[float]
         The direction of the plane wave.
         Default: positive x direction
     amplitude : float

@@ -179,7 +179,7 @@ class Material:
             A dictionary of the material properties with the keys
             as defined below.
             density : float
-                The mass density in [kg/m3]
+                The mass density in [kg/m^3]
             speed_of_sound : float
                 The speed of sound in [m/s]
             attenuation_coeff_a: float
