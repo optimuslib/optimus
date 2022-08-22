@@ -2,7 +2,11 @@
 
 
 def plot_pressure_field(
-    postprocess_obj, field="total", unit="Pa", display_edges=True, clim=None
+    postprocess_obj,
+    field="total",
+    unit="Pa",
+    display_edges=True,
+    clim=None,
 ):
     """
     2D contour plotting of pressure fields of an optimus post process object
@@ -16,18 +20,19 @@ def plot_pressure_field(
         The options are:
             1. total, total_field, or total_pressure;
             2. scattered, scattered_pressure, or scattered_field.
+            3. incident, incident_pressure, or incident_field.
     unit: string
         Pressure unit. the pressure fields are scaled accordingly.
         Options are: Pa, kPa, MPa and GPa.
-    display_edges : boolean (default is True)
-        To display domains edges, i.e. domains and plane interfaces, or not.
+    display_edges : boolean
+        Display domains edges, i.e. domains and plane interfaces.
     clim : tuple[float, int]
         The color limits: (clim_min, clim_max).
         Must be of the same units as pressure fields.
 
     Returns
     ----------
-    fig_p_real, fig_p_tot
+    fig_p_real, fig_p_tot : matplotlib.Figure
         Contour plots of the real and absolute value of the pressure field.
     """
     import numpy as _np
@@ -40,8 +45,12 @@ def plot_pressure_field(
         pressure_field = _copy.deepcopy(postprocess_obj.total_field_imshow)
     elif field.lower() in ["scattered", "scattered_field", "scattered_pressure"]:
         pressure_field = _copy.deepcopy(postprocess_obj.scattered_field_imshow)
+    elif field.lower() in ["incident", "incident_field", "incident_pressure"]:
+        pressure_field = _copy.deepcopy(postprocess_obj.incident_field_imshow)
     else:
-        raise ValueError("Undefined pressure field, options are total and scattered.")
+        raise ValueError(
+            "Undefined pressure field, options are total, scattered, and incident."
+        )
 
     scaling_factor, pressure_unit = _convert_pressure_unit(unit)
     pressure_field *= scaling_factor
@@ -59,7 +68,7 @@ def plot_pressure_field(
     if hasattr(postprocess_obj, "domains_edges") and display_edges:
         domains_edges = postprocess_obj.domains_edges
     else:
-        domains_edges = False
+        domains_edges = None
 
     fig_p_real = surface_plot(
         _np.real(pressure_field),
@@ -99,7 +108,7 @@ def surface_plot(
     colormap,
     colormap_lims,
     colorbar_unit,
-    domains_edges=False,
+    domains_edges=None,
 ):
     """
     2D surface plotting of a mesh grid quantity
@@ -119,13 +128,13 @@ def surface_plot(
         The limit values of the colormap.
     colorbar_unit : string
         the label for colorbar
-    domains_edges : bool, list[bool]
+    domains_edges : None, list[numpy.ndarray]
         if the intersection points of the domains and the visualisation plane
         is passed as a list, they are overlaid to the field plot.
 
     Returns
     ----------
-    fig : plt.figure
+    fig : matplotlib.Figure
         A Matplotlib figure.
     """
     from mpl_toolkits.axes_grid1 import make_axes_locatable
@@ -148,10 +157,9 @@ def surface_plot(
         interpolation="bilinear",
     )
 
-    if domains_edges:
-        if len(domains_edges):
-            for i, j in domains_edges:
-                plt.plot(i, j, color="black", linestyle="-", linewidth=2)
+    if domains_edges is not None:
+        for i, j in domains_edges:
+            plt.plot(i, j, color="black", linestyle="-", linewidth=2)
 
     ax.set_xlabel(haxis_label, size=18)
     ax.set_ylabel(vaxis_label, size=18)

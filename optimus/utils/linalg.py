@@ -10,13 +10,14 @@ def normalize_vector(vector):
 
     Parameters
     ------
-    vector : np.ndarray of size (n,) or (n,m)
-        The input vectors of dimension n.
+    vector : numpy.ndarray
+        An array of size (n,) or (n,m) with the m input vectors of dimension n.
 
     Returns
     -------
-    unit_vector : np.ndarray of size (n,) or (n,m)
-        The vectors scaled to unit Euclidean length.
+    unit_vector : numpy.ndarray
+        Array of size (n,) or (n,m) with the m vectors of dimension n scaled
+        to unit Euclidean length.
     """
 
     if not isinstance(vector, _np.ndarray):
@@ -46,15 +47,15 @@ def theta_phi_point(point):
 
     Parameters
     ------
-    point : 1D array of size 3
-      Rotation axis.
+    point : numpy.ndarray
+        Array of size (3,) with the rotation axis.
 
     Returns
     -------
     theta : float
-      angle on the xy plane measured from the positive x-axis
+        The angle on the xy plane measured from the positive x-axis.
     phi: float
-      angle towards z from the xy plane from the plane upwards.
+        The angle towards z from the xy plane from the plane upwards.
 
     Example
     -------
@@ -86,15 +87,15 @@ def rotate(locations, source_axis):
 
     Parameters
     ------
-    locations : np.ndarray of size (3, N)
-      Coordinates of the point sources.
-    source_axis: np.ndarray of size (3,)
-      Axis of propagation.
+    locations : numpy.ndarray
+        Array of size (3,N) with the coordinates of the point sources.
+    source_axis: numpy.ndarray
+        Array of size (3,) with the axis of propagation.
 
     Returns
     -------
-    locations : np.ndarray of size (3, N)
-        Locations rotated by the axis of propagation.
+    locations : numpy.ndarray
+        Array of size (3,N) with the locations rotated by the axis of propagation.
     """
 
     source_axis = _np.array(source_axis).flatten()
@@ -158,15 +159,15 @@ def translate(locations, translation):
 
     Parameters
     ------
-    locations : np.ndarray of size (3, N)
-      The point locations to be translated.
-    translation: np.ndarray of size (3, 1)
-      The displacement desired to perform.
+    locations : numpy.ndarray
+        Array of size (3,N) with the point locations to be translated.
+    translation: numpy.ndarray
+        Array of size (3,) with the displacement desired to perform.
 
     Returns
     -------
-    locations : np.ndarray of size (3, N)
-        Positions translated by the required shift.
+    locations : numpy.ndarray
+        Array of size (3,N) with the positions translated by the required shift.
     """
 
     translation_array = _np.array(translation).reshape(3, 1)

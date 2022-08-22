@@ -13,7 +13,7 @@ class PostProcess:
 
         Parameters
         ----------
-        model: optimus model object
+        model: optimus.Model
             The model object must include the solution vectors, i.e.,
             the solve() function must have been executed.
         verbose: boolean
@@ -32,7 +32,8 @@ class PostProcess:
 
         Parameters
         ---------
-            **kwargs : to be specified for different types of postprocessing.
+        kwargs : dict
+            Options to be specified for different types of postprocessing.
         """
         raise NotImplementedError
 
@@ -74,10 +75,11 @@ def calculate_bounding_box(domains_grids, plane_axes):
 
     Parameters
     ---------
-    domains_grids : a list of optimus grids
+    domains_grids : list[optimus.Grid]
         The grids of the subdomains.
-    plane_axes : a list/tuple of two int numbers
-        The boundary plane. possible values are 0,1,2 for x,y,z axes, respectively.
+    plane_axes : tuple[int]
+        The two indices of the boundary plane.
+        Possible values are 0,1,2 for x,y,z axes, respectively.
 
     Returns
     ----------
@@ -105,28 +107,34 @@ def find_int_ext_points(domains_grids, points, verbose):
 
     Parameters
     ---------
-    domains_grids : a list of optimus grids
+    domains_grids : list[optimus.Grid]
         The grids of the subdomains.
-    points : numpy ndarray of size (3,N)
+    points : numpy.ndarray
         The field points.
+        The size of the array should be (3,N).
     verbose : boolean
-        to display the logs or not
+        Display the logs.
 
     Returns
     -----------
-    points_interior : list of numpy ndarrays of size (3,N)
+    points_interior : list[numpy.ndarray]
+        A list of numpy arrays of size (3,N), where
         element i of the list is an array of coordinates of the
-        interior points for domain i, i=1,...,no_subdomains
-    points_exterior : numpy ndarray of size (3,N)
-        visualisation points in the exterior domain
-    points_boundary : numpy ndarray of size (3,N)
-        visualisation points at, or close to, grid boundaries
-    index_interior : list of boolean arrays of size (1,N)
-        to identify the interior points
-    index_exterior : boolean array of size (1,N)
-        to identify the exterior points
-    index_boundary : boolean array of size (1,N)
-        to identify the boundary points
+        interior points for domain i, i=1,...,no_subdomains.
+    points_exterior : numpy.ndarray
+        An array of size (3,N) with visualisation points in the exterior domain
+    points_boundary : numpy.ndarray
+        An array of size (3,N) with visualisation points at, or close to,
+        grid boundaries
+    index_interior : list[numpy.ndarray]
+        A list of arrays of size (1,N) with boolean values,
+        identifying the interior points for each domain.
+    index_exterior : numpy.ndarray
+        An array of size (1,N) with boolean values,
+        identifying the exterior points.
+    index_boundary : numpy.ndarray
+        An array of size (1,N) with boolean values,
+        identifying the boundary points.
     """
 
     from .exterior_interior_points_eval import exterior_interior_points_eval
@@ -137,12 +145,16 @@ def find_int_ext_points(domains_grids, points, verbose):
     idx_interior = []
     idx_boundary = []
     idx_exterior = _np.full(points.shape[1], True)
+
     if verbose:
         start_time_int_ext = _time.time()
         print(
             "\n Identifying the exterior and interior points Started at: ",
             _time.strftime("%a, %d %b %Y %H:%M:%S", _time.localtime()),
         )
+    else:
+        start_time_int_ext = None
+
     for grid in domains_grids:
         (
             points_interior_temp,
@@ -199,35 +211,40 @@ def compute_pressure_fields(
 
     Parameters
     ----------
-    model : optimus model object
-        a model object which has solution attributes already computed
-    points : numpy ndarray of size (3,N)
-        visualisation points
-    points_exterior : numpy ndarray of size (3,N)
-        visualisation points in the exterior domain
-    index_exterior : boolean array of size (1,N)
-        to identify the exterior points
-    points_interior : list of numpy ndarrays of size (3,N)
+    model : optimus.Model
+        A model object which has solution attributes already computed.
+    points : numpy.ndarray
+        An array of size (3,N) with the visualisation points.
+    points_exterior : numpy.ndarray
+        An array of size (3,N) with the visualisation points in the exterior domain.
+    index_exterior : numpy.ndarray
+        An array of size (1,N) with boolean values indentifying the exterior points.
+    points_interior : list[numpy.ndarray]
+        A list of arrays of size (3,N), where
         element i of the list is an array of coordinates of the
         interior points for domain i, i=1,...,no_subdomains
-    index_interior : list of boolean arrays of size (1,N)
-        to identify the interior points
-    points_boundary : list of numpy ndarrays of size (3,N)
+    index_interior : list[numpy.ndarray]
+        A list of arrays of size (1,N) with boolean values indentifying
+        the interior points.
+    points_boundary : list[numpy.ndarray]
+        A list of arrays of size (3,N), where
         element i of the list is an array of coordinates of the
         boundary points for domain i, i=1,...,no_subdomains
-    index_boundary : list of boolean arrays of size (1,N)
-        to identify the boundary points
+    index_boundary : list[numpy.ndarray]
+        A list of boolean arrays of size (1,N),
+        identifying the boundary points.
     verbose : bool
         Display the logs.
 
     Returns
     -----------
-    total_field : complex numpy array of size (1,N)
-        complex total pressure values
-    scattered_field : complex numpy array of size (1,N)
-        complex scattered pressure values
-    incident_exterior_field : complex numpy array
-        complex incident pressure values of size (1,N)
+    total_field : numpy.ndarray
+        An array of size (1,N) with complex values of the total pressure field.
+    scattered_field : numpy.ndarray
+        An array of size (1,N) with complex values of the scatterd pressure field.
+    incident_exterior_field : numpy.ndarray
+        An array of size (1,N) with complex values of the incident pressure field
+        in the exterior domain.
     """
 
     from ..utils.generic import chunker, bold_ul_text
@@ -247,6 +264,7 @@ def compute_pressure_fields(
         _bempp.global_parameters.hmat.max_block_size = (
             global_parameters.postprocessing.hmat_max_block_size
         )
+        _bempp.global_parameters.assembly.potential_operator_assembly_type = "hmat"
     elif global_parameters.postprocessing.assembly_type.lower() == "dense":
         _bempp.global_parameters.assembly.potential_operator_assembly_type = "dense"
     else:
@@ -254,7 +272,7 @@ def compute_pressure_fields(
             "Supported operator assembly methods are "
             + bold_ul_text("dense")
             + " and "
-            + bold_ul_text("h-matrix.")
+            + bold_ul_text("hmat")
         )
 
     _bempp.global_parameters.quadrature.near.single_order = (
@@ -276,6 +294,7 @@ def compute_pressure_fields(
         exterior_values = _np.zeros((1, points_exterior.shape[1]), dtype="complex128")
         ext_calc_flag = True
     else:
+        exterior_values = None
         ext_calc_flag = False
 
     if index_boundary:
@@ -512,7 +531,8 @@ def ppi_calculator(bounding_box, resolution):
 
     Returns
     -----------
-    resolution in ppi : real number
+    resolution : float
+        resolution in ppi
     """
     diagonal_length_meter = _np.sqrt(
         (bounding_box[1] - bounding_box[0]) ** 2
@@ -526,12 +546,12 @@ def ppi_calculator(bounding_box, resolution):
 
 def domain_edge(points_interior, plane_axes, alpha=0.001, only_outer=True):
     """
-    To determine the points on the edges of the domains using the Concave Hull method.
+    Determine the points on the edges of the domains using the Concave Hull method.
 
     Parameters
     ----------
-    points_interior : numpy ndarray of size (3,N)
-        The interior points.
+    points_interior : list[numpy.ndarray]
+        List of arrays of size (3,N) with the interior points for each domain.
     plane_axes : list[int]
         The axes of the plane.
     alpha : float
@@ -541,7 +561,7 @@ def domain_edge(points_interior, plane_axes, alpha=0.001, only_outer=True):
 
     Returns
     -----------
-    domains_edge_points : list[np.ndarray]
+    domains_edge_points : list[numpy.ndarray]
         list of numpy arrays of coordinates of points on the edges
     """
 
@@ -567,12 +587,12 @@ def array_to_imshow(field_array):
 
     Parameters
     ----------
-    field_array : np.ndarray
+    field_array : numpy.ndarray
         The two-dimensional array with grid values.
 
     Returns
     -------
-    field_imshow : np.ndarray
+    field_imshow : numpy.ndarray
         The two-dimensional array for imshow plots.
     """
     return _np.flipud(field_array.T)

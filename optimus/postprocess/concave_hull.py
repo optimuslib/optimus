@@ -8,7 +8,7 @@ def concave_hull(points, alpha, only_outer=True):
 
     Parameters
     ----------
-    points : numpy ndarray of size (2,N)
+    points : numpy.ndarray
         Array of shape (2,N) with the points.
     alpha : float
         The alpha value.

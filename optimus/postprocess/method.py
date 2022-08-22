@@ -11,10 +11,10 @@ class VisualisePlane(_PostProcess):
 
         Parameters
         ----------
-        model : an optimus model object
-            optimus model object includes the solution fields on the boundaries
+        model : optimus.Model
+            An optimus model object that includes the solution fields on the boundaries.
         verbose : boolean
-            to display the log information or not
+            Display the log information.
         """
         super().__init__(model, verbose)
 
@@ -122,10 +122,10 @@ class VisualiseCloudPoints(_PostProcess):
 
         Parameters
         ----------
-        model : an optimus model object
-            optimus model object includes the solution fields on the boundaries
+        model : optimus.Model
+            An optimus model object that includes the solution fields on the boundaries.
         verbose : boolean
-            to display the log information or not
+            Display the log information.
         """
         super().__init__(model, verbose)
 
@@ -135,8 +135,8 @@ class VisualiseCloudPoints(_PostProcess):
 
         Parameters
         ----------
-        points: numpy ndarray of size (3,N)
-            The 3D points on which to calculate the pressure field.
+        points: numpy.ndarray
+            Array of size (3,N) with points on which to calculate the pressure field.
         """
 
         from .common import find_int_ext_points
@@ -179,17 +179,17 @@ class VisualiseCloudPoints(_PostProcess):
 
 
 class VisualisePlaneAndBoundary(_PostProcess):
-    def __init__(self, model, verbose=True):
+    def __init__(self, model, verbose=False):
         """
         Create a PostProcess optimus object where the visualisation grid is
         a union of a plane and surface meshes of the domains.
 
         Parameters
         ----------
-        model : an optimus model object
-            optimus model object includes the solution fields on the boundaries
+        model : optimus.Model
+            An optimus model object that includes the solution fields on the boundaries.
         verbose : boolean
-            to display the log information or not
+            Display the log information.
         """
         super().__init__(model, verbose)
 
@@ -288,13 +288,13 @@ class VisualisePlaneAndBoundary(_PostProcess):
             for i in range(self.model.n_subdomains)
         ]
         domain_solutions_all.append(self.total_field)
-        plot3D_ptot_all = _bempp.GridFunction(
+        plot3d_ptot_all = _bempp.GridFunction(
             space_union_all,
             coefficients=_np.concatenate(
                 [domain_solutions_all[i] for i in range(self.model.n_subdomains + 1)]
             ),
         )
-        plot3D_ptot_abs_all = _bempp.GridFunction(
+        plot3d_ptot_abs_all = _bempp.GridFunction(
             space_union_all,
             coefficients=_np.concatenate(
                 [
@@ -304,8 +304,10 @@ class VisualisePlaneAndBoundary(_PostProcess):
             ),
         )
         _bempp.export(
-            file_name=file_name + "_ptot_complex.msh", grid_function=plot3D_ptot_all
+            file_name=file_name + "_ptot_complex.msh",
+            grid_function=plot3d_ptot_all,
         )
         _bempp.export(
-            file_name=file_name + "_ptot_abs.msh", grid_function=plot3D_ptot_abs_all
+            file_name=file_name + "_ptot_abs.msh",
+            grid_function=plot3d_ptot_abs_all,
         )
