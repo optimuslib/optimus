@@ -123,17 +123,17 @@ def find_int_ext_points(domains_grids, points, verbose):
         interior points for domain i, i=1,...,no_subdomains.
     points_exterior : numpy.ndarray
         An array of size (3,N) with visualisation points in the exterior domain
-    points_boundary : numpy.ndarray
-        An array of size (3,N) with visualisation points at, or close to,
-        grid boundaries
+    points_boundary : list[numpy.ndarray]
+        A list of arrays of size (3,N) with visualisation points at, or close to,
+        grid boundaries.
     index_interior : list[numpy.ndarray]
         A list of arrays of size (1,N) with boolean values,
         identifying the interior points for each domain.
     index_exterior : numpy.ndarray
         An array of size (1,N) with boolean values,
         identifying the exterior points.
-    index_boundary : numpy.ndarray
-        An array of size (1,N) with boolean values,
+    index_boundary : list[numpy.ndarray]
+        A list of arrays of size (1,N) with boolean values,
         identifying the boundary points.
     """
 
@@ -408,16 +408,19 @@ def compute_pressure_boundary(grid, boundary_points, dirichlet_solution):
 
     Parameters
     -----------
-    grid : optimus model object
-        a model object which has solution attributes already computed
-    boundary_points : np.ndarray of size (3, N)
-        coordinates of vertices on the domain boundary
-    dirichlet_solution : np.array of size (N, )
-        Dirichlet component of the solution vector on the boundary.
+    grid : bempp.api.Grid
+        The surface mesh of bempp.
+    boundary_points : numpy.ndarray
+        An array of size (3,N) with the coordinates of vertices
+        on the domain boundary.
+    dirichlet_solution : numpy.ndarray
+        An array of size (N,) with the Dirichlet component of the
+        solution vector on the boundary.
 
     Returns
     -----------
-    total_boundary_pressure : complex np.array of size (N, )
+    total_boundary_pressure : numpy.ndarray
+        An array of size (N,) with complex values of the pressure field.
     """
 
     vertices = grid.leaf_view.vertices
