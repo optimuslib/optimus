@@ -67,8 +67,10 @@ class VisualisePlane(_PostProcess):
         (
             self.points_interior,
             self.points_exterior,
+            self.points_boundary,
             self.index_interior,
             self.index_exterior,
+            self.index_boundary,
         ) = find_int_ext_points(self.domains_grids, self.points, self.verbose)
 
         self.domains_edges = domain_edge(
@@ -95,6 +97,8 @@ class VisualisePlane(_PostProcess):
             self.index_exterior,
             self.points_interior,
             self.index_interior,
+            self.points_boundary,
+            self.index_boundary,
             self.verbose,
         )
 
@@ -143,8 +147,10 @@ class VisualiseCloudPoints(_PostProcess):
         (
             self.points_interior,
             self.points_exterior,
+            self.points_boundary,
             self.index_interior,
             self.index_exterior,
+            self.index_boundary,
         ) = find_int_ext_points(self.domains_grids, self.points, self.verbose)
 
     def compute_fields(self):
@@ -164,6 +170,8 @@ class VisualiseCloudPoints(_PostProcess):
             self.index_exterior,
             self.points_interior,
             self.index_interior,
+            self.points_boundary,
+            self.index_boundary,
             self.verbose,
         )
 
@@ -234,8 +242,10 @@ class VisualisePlaneAndBoundary(_PostProcess):
         (
             self.points_interior,
             self.points_exterior,
+            self.points_boundary,
             self.index_interior,
             self.index_exterior,
+            self.index_boundary,
         ) = find_int_ext_points(self.domains_grids, self.points, self.verbose)
 
     def compute_fields(self, file_name="planar_and_surface"):
@@ -263,6 +273,8 @@ class VisualisePlaneAndBoundary(_PostProcess):
             self.index_exterior,
             self.points_interior,
             self.index_interior,
+            self.points_boundary,
+            self.index_boundary,
             self.verbose,
         )
 

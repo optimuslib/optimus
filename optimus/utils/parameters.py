@@ -98,7 +98,8 @@ class PostProcessingParameters:
         self.hmat_max_rank = 10000
         self.hmat_max_block_size = 10000
         self.assembly_type = "dense"
-        self.solid_angle_tolerance = 0.01
+        self.solid_angle_tolerance = 0.1
+        self.quadrature_order = 4
         self.concave_hull_alpha = 0.1
 
     def print(self, prefix=""):
