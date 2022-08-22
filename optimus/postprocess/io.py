@@ -9,7 +9,7 @@ def export_to_file(
     file_format="db",
 ):
     """
-    To export the simulation results into a file.
+    Export the simulation results into a file.
 
     Parameters
     -------------
@@ -20,7 +20,7 @@ def export_to_file(
     global_parameters : Any
         The global parameters of the simulation.
     file_name : str
-        the export path and the file name in one string.
+        The export path and the file name in one string.
     file_format : str
         'mat': to save ONLY the post_process results into a MATLAB file.
         'db': (default) to save all the attributes of global parameters,
@@ -66,18 +66,18 @@ def export_to_file(
 
 def import_from_file(file_name):
     """
-    To import the saved data from a file.
+    Import the saved data from a file.
 
     Parameters
     ------------
     file_name : str
-        this string includes the file name (with path) and the file extension
+        This string includes the file name (with path) and the file extension
         in one string. The supported extensions are 'mat' and 'db'.
 
     Returns
     ------------
     imported_data : dict
-        dictionary of different objects imported from the data file.
+        A dictionary of different objects imported from the data file.
     """
 
     import os

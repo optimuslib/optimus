@@ -29,25 +29,25 @@ def create_bowl(
     frequency : float
         The frequency of the acoustic field.
     outer_radius : float
-        The outer radius of the spherical section bowl
+        The outer radius of the spherical section bowl.
     radius_of_curvature : float
-        The radius of curvature of the bowl
-    inner_radius : float
-        The radius of the bowl aperture.
-        Default: None
-    source_axis : array like
+        The radius of curvature of the bowl.
+    source_axis : tuple[float]
         The axis of the bowl.
         Default: positive x direction
     number_of_point_sources_per_wavelength : integer
         The number of point sources per wavelength used to discretise
         the bowl source.
         Default: 6
-    location : array like
+    location : tuple[float]
         The location of the centroid of the bowl.
         Default: global origin
     velocity : complex
         Normal velocity of the bowl.
         Default : 1 m/s
+    inner_radius : float, None
+        The radius of the bowl aperture.
+        Default: None
     """
     return _Bowl(
         frequency,
@@ -107,13 +107,14 @@ class _Bowl(_Source):
         ----------
         medium : optimus.material.Material
             The propagating medium.
-        locations : np.ndarray of size (3, N)
-            Locations on which to evaluate the pressure field.
+        locations : numpy.ndarray
+            Array of size (3,N) with the locations on which to evaluate
+            the pressure field.
 
         Returns
         ----------
-        pressure : np.ndarray of size (N,)
-            The pressure in the locations.
+        pressure : numpy.ndarray
+            Array of size (N,) with the pressure in the locations.
         """
 
         points = _convert_to_3n_array(locations)
@@ -131,16 +132,18 @@ class _Bowl(_Source):
         ----------
         medium : optimus.material.Material
             The propagating medium.
-        locations : np.ndarray of size (3, N)
-            Locations on which to evaluate the pressure field.
-        normals : np.ndarray of size (3, N)
-            Unit normal vectors at the locations on which to evaluate the
-            pressure field.
+        locations : numpy.ndarray
+            Array of size (3,N) with the locations on which to evaluate
+            the pressure field.
+        normals : numpy.ndarray
+            Array of size (3,N) with the unit normal vectors at the locations
+            on which to evaluate the pressure field.
 
         Returns
         ----------
-        gradient : np.ndarray of size (3, N)
-            The normal gradient of the pressure in the locations.
+        gradient : numpy.ndarray
+            Array of size (3,N) with the normal gradient of the pressure
+            in the locations.
         """
 
         points = _convert_to_3n_array(locations)
@@ -161,18 +164,20 @@ class _Bowl(_Source):
         ----------
         medium : optimus.material.Material
             The propagating medium.
-        locations : np.ndarray of size (3, N)
-            Locations on which to evaluate the pressure field.
-        normals : np.ndarray of size (3, N)
-            Unit normal vectors at the locations on which to evaluate the
-            pressure field.
+        locations : numpy.ndarray
+            An array of size (3,N) with the locations on which to evaluate
+            the pressure field.
+        normals : numpy.ndarray
+            An array of size (3,N) with the unit normal vectors at the locations
+            on which to evaluate the pressure field.
 
         Returns
         ----------
-        pressure : np.ndarray of size (N,)
-            The pressure in the locations.
-        gradient : np.ndarray of size (3, N)
-            The normal gradient of the pressure in the locations.
+        pressure : numpy.ndarray
+            An array of size (N,) with the pressure in the locations.
+        gradient : numpy.ndarray
+            An array of size (3,N) with the normal gradient of the pressure
+            in the locations.
         """
 
         points = _convert_to_3n_array(locations)

@@ -31,7 +31,7 @@ class Geometry:
 
         Parameters
         ----------
-        filename : str
+        filename : str, None
             The name of the file for export.
         """
 

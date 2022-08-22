@@ -6,36 +6,37 @@ import multiprocessing as _mp
 
 def exterior_interior_points_eval(grid, points, solid_angle_tolerance, verbose=False):
     """
-    To evaluate whether a field point is within a domain or not using a
+    Evaluate whether a field point is within a domain or not using a
     solid angle method.
 
     Parameters
     ------------
-    grid : bempp grid
+    grid : bempp.api.Grid
         surface grid defining a domain
-    points : np.ndarray
+    points : numpy.ndarray
         Field points to be evaluated if they are inside the volume defined by
         the surface grid or not.
         Array of size (3,N).
-    solid_angle_tolerance : float and None
+    solid_angle_tolerance : float, None
         the tolerance in solid angle method. If set to None/zero boundary points are not identified, otherwise they are.
     verbose : boolean
-        to display the log or not
+        display the log
 
     Returns
     ------------
-    points_interior : numpy array 3xN
-        coordinates of the interior points
-    points_exterior : numpy array 3xN
-        coordinates of the exterior points
-    points_boundary : numpy array 3xN
-        coordinates of the points lie on the surface of the domain
-    index_interior : boolean numpy array 1xN
-        indices of the interior points
-    index_exterior : boolean numpy array 1xN
-        indices of the exterior points
-    index_boundary : boolean numpy array 1xN
-        indices of the surface points
+    points_interior : numpy.ndarray
+        Array of size (3,N) with coordinates of the interior points.
+    points_exterior : numpy.ndarray
+        Array of size (3,N) with coordinates of the exterior points.
+    points_boundary : numpy.ndarray
+        Array of size (3,N) with coordinates of the points that lie on the
+        surface of the domain.
+    index_interior : numpy.ndarray
+        Array of size (1,N) with boolean values identifying the interior points.
+    index_exterior : numpy.ndarray
+        Array of size (1,N) with boolean values identifying the exterior points.
+    index_boundary : numpy.ndarray
+        Array of size (1,N) with boolean values identifying the surface points.
     """
     elements = grid.leaf_view.elements
     vertices = grid.leaf_view.vertices
@@ -75,7 +76,8 @@ def exterior_interior_points_eval(grid, points, solid_angle_tolerance, verbose=F
             elements_x_coordinate[k, :] = vertices[0, elements_trunc[k, :]]
             elements_y_coordinate[k, :] = vertices[1, elements_trunc[k, :]]
             elements_z_coordinate[k, :] = vertices[2, elements_trunc[k, :]]
-        # Obtain coordinates of triangular elements centroielements_surface_area through barycentric method
+        # Obtain coordinates of triangular elements centroielements_surface_area
+        # through barycentric method.
         elements_barycent_x_coordinate = _np.mean(elements_x_coordinate, axis=0)
         elements_barycent_y_coordinate = _np.mean(elements_y_coordinate, axis=0)
         elements_barycent_z_coordinate = _np.mean(elements_z_coordinate, axis=0)
@@ -166,7 +168,21 @@ def compute_solid_angle(
     point_index,
 ):
     """
-    To compute the solid angle value for a triangular element
+    Compute the solid angle value for a triangular element.
+
+    Parameters
+    ------------
+    elements_barycent_x_coordinate : numpy.ndarray
+    elements_barycent_y_coordinate : numpy.ndarray
+    elements_barycent_z_coordinate : numpy.ndarray
+    points : numpy.ndarray
+    normals : numpy.ndarray
+    elements_surface_area : numpy.ndarray
+    point_index : numpy.ndarray
+
+    Returns
+    ------------
+    solid_angle : numpy.ndarray
     """
 
     elements_barycen_dist = _np.array(

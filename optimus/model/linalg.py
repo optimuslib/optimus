@@ -11,9 +11,9 @@ def linear_solve(
 
     Parameters
     ----------
-    lhs_system : Numpy array or bempp.api.discreteBoundaryOperator
+    lhs_system : numpy.ndarray, bempp.api.DiscreteBoundaryOperator
         The system of linear equations.
-    rhs_system : Numpy array
+    rhs_system : numpy.ndarray
         The right-hand-side vector.
     return_iteration_count : bool
         Return the number of iterations of the linear solver.
@@ -21,7 +21,7 @@ def linear_solve(
 
     Returns
     ----------
-    solution : Numpy array
+    solution : numpy.ndarray
         The solution vector.
     it_count : int
         The number of iterations (optional).
@@ -51,9 +51,9 @@ class GmresSolver:
 
         Parameters
         ----------
-        lhs_system : Numpy array or bempp.api.discreteBoundaryOperator
+        lhs_system : numpy.ndarray, bempp.api.DiscreteBoundaryOperator
             The system of linear equations.
-        rhs_system : Numpy array
+        rhs_system : numpy.ndarray
             The right-hand-side vector of the system.
         """
         self.lhs_matrix = lhs_system
