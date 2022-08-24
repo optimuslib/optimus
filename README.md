@@ -16,7 +16,7 @@ To start the container on your machine, run:
 ```bash
 docker run -it -v $(pwd):/home/optimus/localwork --workdir /home/optimus/localwork -p 8888:8888 optimuslib/optimus:latest
 ```
-On the output you will see the url and token to access the[jupyter notebook interface](http://localhost:8888).
+On the output you will see the url and token to access the jupyter notebook interface.
 
 When accessing there you can execute the notebooks available on the `notebook` directory.
 
