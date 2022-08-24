@@ -69,7 +69,7 @@ Gélat, P., Haqshenas, S. R., and van ′t Wout, E. (2022), OptimUS: A Python li
 **BibTeX**
 ```
 @software{Gelat_OptimUS,
-author = {Gelat, Pierre and Haqshenas, Reza and van't Wout, Elwin},
+author = {Gélat, Pierre and Haqshenas, Reza and van't Wout, Elwin},
 title = {{OptimUS}},
 url = {hhttps://github.com/optimuslib/optimus},
 version = {0.1.0}
