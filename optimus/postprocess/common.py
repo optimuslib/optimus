@@ -584,7 +584,7 @@ def ppi_calculator(bounding_box, resolution):
 #     return domains_edge_points
 
 
-def domain_edge(model, plane_axes, plane_offset, bounding_box):
+def domain_edge(model, plane_axes, plane_offset):
     """
     Determine the points on the edges of the domains by computing the intersection of
     the grid triangular elements with planes of constant x, y or z. The intersection
