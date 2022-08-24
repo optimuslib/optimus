@@ -1,5 +1,6 @@
 # OptimUS
 [![Documentation Status](https://readthedocs.org/projects/optimuslib/badge/?version=latest)](https://readthedocs.org/projects/optimuslib/)
+
 An open-source Python library for solving 3D acoustic wave propagation.
 
 The OptimUS library provides functionality to simulate acoustic wave propagation in an unbounded domain with multiple scatterers. OptimUS solves Helmholtz equation in multiple domains with homogeneous material parametersusing a boundary element method (BEM). The library targets general acoustical simulation and has functionality for focused ultrasound in biomedical engineering.
@@ -32,7 +33,7 @@ In the terminal, you can execute your python files by running:
 python3 <file_name.py>
 ```
 
-* Depending on the config of your machine's OS, you may need to run the above docker commands as a super user. *
+*Note: depending on the config of your machine's OS, you may need to run the above docker commands as a super user.*
 
 ## Documentation
 Examples are available on the `notebook` directory. Automatically generated documentation of the Python API
@@ -58,7 +59,7 @@ The main references describing the BEM formulations and preconditioners implemen
 
 
 ## Citation
-If you use OptimUS in your work, please cite us as:
+If you use OptimUS in your work, please cite us as [follows](CITATION.cff):
 
 > Gélat, P., Haqshenas, S. R., and van ′t Wout, E. (2022), OptimUS: A Python library for solving 3D acoustic wave propagation, https://github.com/optimuslib/optimus
 

@@ -1,0 +1,16 @@
+cff-version: 1.2.0
+message: "If you use OptimUS in your work, please cite it as below."
+authors:
+- family-names: "Gelat"
+  given-names: "Pierre"
+  orcid: "https://orcid.org/0000-0002-4462-2421"
+- family-names: "Haqshenas"
+  given-names: "Reza"
+  orcid: "https://orcid.org/0000-0002-3082-0232"
+- family-names: "van't Wout"
+  given-names: "Elwin"
+  orcid: "https://orcid.org/0000-0002-9096-5054"
+title: "OptimUS"
+version: 0.1.0
+doi: 
+url: "hhttps://github.com/optimuslib/optimus"
