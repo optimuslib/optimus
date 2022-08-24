@@ -18,16 +18,16 @@ To start the container on your machine, run:
 ```bash
 docker run -it -v $(pwd):/home/optimus/localwork --workdir /home/optimus/localwork -p 8888:8888 optimuslib/optimus:latest
 ```
-On the output you will see the url and token to access the jupyter notebook interface.
+The output will provide the URL and token to access the Jupyter notebook interface.
 
-When accessing there you can execute the notebooks available on the `notebook` directory.
+Upon accessing Jupyter, you can execute the notebooks available in the `notebook` directory.
 
-If you want to get a bash terminal within the container you can either launch one through the [jupyter notebook interface](http://localhost:8888) or via docker as:
+If you want to get a bash terminal within the container, you can either launch one through the [jupyter notebook interface](http://localhost:8888) or via docker as:
 
 ```bash
 docker run -it --rm -v $(pwd):/home/optimus/localwork --workdir /home/optimus/localwork optimuslib/optimus:latest 
 ```
-In the terminal, you can execute your python files by running:
+In the terminal, you can execute your Python files by running:
 
 ```bash
 python3 <file_name.py>
@@ -36,8 +36,8 @@ python3 <file_name.py>
 *Note: depending on the config of your machine's OS, you may need to run the above docker commands as a super user.*
 
 ## Documentation
-Examples are available on the `notebook` directory. Automatically generated documentation of the Python API
-can be found on [Read the Docs optimus project](https://readthedocs.org/projects/optimuslib/).
+Examples are available in the `notebook` directory. Automatically generated documentation of the Python API
+can be found in [Read the Docs optimus project](https://readthedocs.org/projects/optimuslib/).
 
 ## Getting help
 Questions about the library and its use can be directed to [optimuslib slack channel]().
@@ -79,6 +79,6 @@ version = {0.1.0}
 
 ## Acknowledgement
 - The OptimUS library uses the bempp-legacy from [BEMPP project](https://github.com/bempp) as the computational backend. 
-- Tissue properties database is based on [Tissue Properties Database V4.1 of IT'IS Foundation](https://itis.swiss/virtual-population/tissue-properties/downloads/database-v4-1/).
+- The tissue properties database is based on [Tissue Properties Database V4.1 of IT'IS Foundation](https://itis.swiss/virtual-population/tissue-properties/downloads/database-v4-1/).
 
 
