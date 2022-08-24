@@ -16,6 +16,7 @@ doi:
 url: "hhttps://github.com/optimuslib/optimus"
 preferred-citation:
   type: software-code
+  title: "optimuslib"
   authors:
   - family-names: "Gélat"
     given-names: "Pierre"
@@ -26,6 +27,5 @@ preferred-citation:
   - family-names: "van't Wout"
     given-names: "Elwin"
     orcid: "https://orcid.org/0000-0002-9096-5054"
-  title: "optimuslib"
   doi:
   year: 2022
