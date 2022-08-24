@@ -61,7 +61,21 @@ The main references describing the BEM formulations and preconditioners implemen
 ## Citation
 If you use OptimUS in your work, please cite us as [follows](CITATION.cff):
 
-> Gélat, P., Haqshenas, S. R., and van ′t Wout, E. (2022), OptimUS: A Python library for solving 3D acoustic wave propagation, https://github.com/optimuslib/optimus
+**APA**
+```
+Gélat, P., Haqshenas, S. R., and van ′t Wout, E. (2022), OptimUS: A Python library for solving 3D acoustic wave propagation, https://github.com/optimuslib/optimus
+```
+
+**BibTeX**
+```
+@software{Gelat_OptimUS,
+author = {Gelat, Pierre and Haqshenas, Reza and van't Wout, Elwin},
+title = {{OptimUS}},
+url = {hhttps://github.com/optimuslib/optimus},
+version = {0.1.0}
+}
+```
+
 
 ## Acknowledgement
 - The OptimUS library uses the bempp-legacy from [BEMPP project](https://github.com/bempp) as the computational backend. 
