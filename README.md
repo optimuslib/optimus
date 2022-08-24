@@ -22,7 +22,7 @@ The output will provide the URL and token to access the Jupyter notebook interfa
 
 Upon accessing Jupyter, you can execute the notebooks available in the `notebook` directory.
 
-If you want to get a bash terminal within the container, you can either launch one through the [jupyter notebook interface](http://localhost:8888) or via docker as:
+If you want to get a bash terminal within the container, you can either launch one through the [Jupyter notebook interface](http://localhost:8888) or via docker as:
 
 ```bash
 docker run -it --rm -v $(pwd):/home/optimus/localwork --workdir /home/optimus/localwork optimuslib/optimus:latest 
