@@ -83,8 +83,7 @@ class VisualisePlane(_PostProcess):
         self.domains_edges = domain_edge(
             self.model,
             self.plane_axes,
-            self.plane_offset,
-            self.bounding_box,
+            self.plane_offset,            
         )
 
     def compute_fields(self):
