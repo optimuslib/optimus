@@ -43,7 +43,7 @@ Questions about the library and its use can be directed to [optimuslib slack cha
 Errors in the library should be added to the [GitHub issue tracker](https://github.com/optimuslib/optimus/issues).
 
 ## Citation
-If you use OptimUS in your work, please cite it as [follows](CITATION.cff):
+If you use OptimUS in your work, please cite it as follows:
 
 **APA**
 ```
