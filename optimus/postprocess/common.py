@@ -547,46 +547,9 @@ def ppi_calculator(bounding_box, resolution):
     return diagonal_points / diagonal_length_inches
 
 
-# def domain_edge(points_interior, plane_axes, alpha=0.001, only_outer=True):
-#     """
-#     Determine the points on the edges of the domains using the Concave Hull method.
-
-#     Parameters
-#     ----------
-#     points_interior : list[numpy.ndarray]
-#         List of arrays of size (3,N) with the interior points for each domain.
-#     plane_axes : list[int]
-#         The axes of the plane.
-#     alpha : float
-#         The threshold parameter in the Concave Hell method.
-#     only_outer : boolean
-#         Specify if we keep only the points on the outer border or also inner edges.
-
-#     Returns
-#     -----------
-#     domains_edge_points : list[numpy.ndarray]
-#         list of numpy arrays of coordinates of points on the edges
-#     """
-
-#     from .concave_hull import concave_hull as _concave_hull
-
-#     domains_edge_points = []
-#     for k in range(len(points_interior)):
-#         if points_interior[k].any():
-#             points_int_planar = points_interior[k][plane_axes, :]
-#             edges = _concave_hull(points_int_planar.T, alpha, only_outer)
-#             for i, j in edges:
-#                 domains_edge_points.append(
-#                     _np.vstack(
-#                         [points_int_planar[0, [i, j]], points_int_planar[1, [i, j]]]
-#                     )
-#                 )
-#     return domains_edge_points
-
-
 def domain_edge(model, plane_axes, plane_offset):
     """
-    Determine the points on the edges of the domains by computing the intersection of
+    Determine the points at the edges of the domains by computing the intersection of
     the grid triangular elements with planes of constant x, y or z. The intersection
     points are then sorted by proximity to one another.
 
@@ -611,10 +574,10 @@ def domain_edge(model, plane_axes, plane_offset):
     warnings.filterwarnings("ignore")
 
     comb = _np.array(list(combinations([0, 1, 2], 2)))
-    axes_0 = plane_axes[0]
-    axes_1 = plane_axes[1]
+    axis_0 = plane_axes[0]
+    axis_1 = plane_axes[1]
     axes = (0, 1, 2)
-    axes_2 = list(set(axes) - set(plane_axes))
+    axis_2 = list(set(axes) - set(plane_axes))
 
     domains_edge_points = list()
 
@@ -624,80 +587,80 @@ def domain_edge(model, plane_axes, plane_offset):
         vertices = model.geometry[subdomain_number].grid.leaf_view.vertices
         elements = model.geometry[subdomain_number].grid.leaf_view.elements
 
-        axes_0_patch = vertices[axes_0, elements]
-        axes_1_patch = vertices[axes_1, elements]
-        axes_2_patch = vertices[axes_2, elements]
+        axis_0_patch = vertices[axis_0, elements]
+        axis_1_patch = vertices[axis_1, elements]
+        axis_2_patch = vertices[axis_2, elements]
 
-        axes_0_intersect = list()
-        axes_1_intersect = list()
+        axis_0_intersect = list()
+        axis_1_intersect = list()
 
         for i in range(comb.shape[0]):
-            plane_crossing_condition = (axes_2_patch[comb[i, 1], :] - plane_offset) * (
-                axes_2_patch[comb[i, 0], :] - plane_offset
+            plane_crossing_condition = (axis_2_patch[comb[i, 1], :] - plane_offset) * (
+                axis_2_patch[comb[i, 0], :] - plane_offset
             )
             idx = plane_crossing_condition <= 0
-            denominator = axes_2_patch[comb[i, 1], idx] - axes_2_patch[comb[i, 0], idx]
+            denominator = axis_2_patch[comb[i, 1], idx] - axis_2_patch[comb[i, 0], idx]
 
-            line_param = (plane_offset - axes_2_patch[comb[i, 0], idx]) / denominator
-            axes_0_values = axes_0_patch[comb[i, 0], idx] + line_param * (
-                axes_0_patch[comb[i, 1], idx] - axes_0_patch[comb[i, 0], idx]
+            line_param = (plane_offset - axis_2_patch[comb[i, 0], idx]) / denominator
+            axis_0_values = axis_0_patch[comb[i, 0], idx] + line_param * (
+                axis_0_patch[comb[i, 1], idx] - axis_0_patch[comb[i, 0], idx]
             )
-            axes_1_values = axes_1_patch[comb[i, 0], idx] + line_param * (
-                axes_1_patch[comb[i, 1], idx] - axes_1_patch[comb[i, 0], idx]
+            axis_1_values = axis_1_patch[comb[i, 0], idx] + line_param * (
+                axis_1_patch[comb[i, 1], idx] - axis_1_patch[comb[i, 0], idx]
             )
-            if len(axes_0_values):
-                axes_0_intersect.append(axes_0_values[~_np.isnan(axes_0_values)])
-                axes_1_intersect.append(axes_1_values[~_np.isnan(axes_1_values)])
+            if len(axis_0_values):
+                axis_0_intersect.append(axis_0_values[~_np.isnan(axis_0_values)])
+                axis_1_intersect.append(axis_1_values[~_np.isnan(axis_1_values)])
 
-        axes_0_edge = _np.concatenate(axes_0_intersect)
-        axes_1_edge = _np.concatenate(axes_1_intersect)
+        axis_0_edge = _np.concatenate(axis_0_intersect)
+        axis_1_edge = _np.concatenate(axis_1_intersect)
 
         # Sort above intersection points by proximity to one another.
-        axes_0_axes_1_vstack = _np.vstack((axes_0_edge, axes_1_edge))
-        axes_0_axes_1_unique = _np.unique(axes_0_axes_1_vstack, axis=1)
-        axes_0_unique = axes_0_axes_1_unique[0, :]
-        axes_1_unique = axes_0_axes_1_unique[1, :]
-        number_of_edge_points = len(axes_0_unique) + 1
-        axes_0_edge_sorted = _np.zeros(number_of_edge_points, dtype=float)
-        axes_1_edge_sorted = _np.zeros(number_of_edge_points, dtype=float)
-        axes_0_edge_sorted[0] = axes_0_unique[0]
-        axes_1_edge_sorted[0] = axes_1_unique[0]
-        axes_0_unique = _np.delete(axes_0_unique, 0)
-        axes_1_unique = _np.delete(axes_1_unique, 0)
+        axis_0_axis_1_vstack = _np.vstack((axis_0_edge, axis_1_edge))
+        axis_0_axis_1_unique = _np.unique(axis_0_axis_1_vstack, axis=1)
+        axis_0_unique = axis_0_axis_1_unique[0, :]
+        axis_1_unique = axis_0_axis_1_unique[1, :]
+        number_of_edge_points = len(axis_0_unique) + 1
+        axis_0_edge_sorted = _np.zeros(number_of_edge_points, dtype=float)
+        axis_1_edge_sorted = _np.zeros(number_of_edge_points, dtype=float)
+        axis_0_edge_sorted[0] = axis_0_unique[0]
+        axis_1_edge_sorted[0] = axis_1_unique[0]
+        axis_0_unique = _np.delete(axis_0_unique, 0)
+        axis_1_unique = _np.delete(axis_1_unique, 0)
 
         for i in range(number_of_edge_points - 2):
             distance = _np.sqrt(
-                (axes_0_edge_sorted[i] - axes_0_unique) ** 2
-                + (axes_1_edge_sorted[i] - axes_1_unique) ** 2
+                (axis_0_edge_sorted[i] - axis_0_unique) ** 2
+                + (axis_1_edge_sorted[i] - axis_1_unique) ** 2
             )
             idx = distance == _np.min(distance[distance != 0])
             if i < number_of_edge_points - 2:
-                axes_0_edge_sorted[i + 1] = axes_0_unique[idx]
-                axes_1_edge_sorted[i + 1] = axes_1_unique[idx]
+                axis_0_edge_sorted[i + 1] = axis_0_unique[idx]
+                axis_1_edge_sorted[i + 1] = axis_1_unique[idx]
                 domains_edge_points.append(
                     _np.array(
                         [
-                            [axes_0_edge_sorted[i], axes_0_edge_sorted[i + 1]],
-                            [axes_1_edge_sorted[i], axes_1_edge_sorted[i + 1]],
+                            [axis_0_edge_sorted[i], axis_0_edge_sorted[i + 1]],
+                            [axis_1_edge_sorted[i], axis_1_edge_sorted[i + 1]],
                         ]
                     )
                 )
-            axes_0_unique = axes_0_unique[~idx]
-            axes_1_unique = axes_1_unique[~idx]
+            axis_0_unique = axis_0_unique[~idx]
+            axis_1_unique = axis_1_unique[~idx]
 
-        axes_0_edge_sorted[number_of_edge_points - 1] = axes_0_edge_sorted[0]
-        axes_1_edge_sorted[number_of_edge_points - 1] = axes_1_edge_sorted[0]
+        axis_0_edge_sorted[number_of_edge_points - 1] = axis_0_edge_sorted[0]
+        axis_1_edge_sorted[number_of_edge_points - 1] = axis_1_edge_sorted[0]
 
         domains_edge_points.append(
             _np.array(
                 [
                     [
-                        axes_0_edge_sorted[number_of_edge_points - 2],
-                        axes_0_edge_sorted[number_of_edge_points - 1],
+                        axis_0_edge_sorted[number_of_edge_points - 2],
+                        axis_0_edge_sorted[number_of_edge_points - 1],
                     ],
                     [
-                        axes_1_edge_sorted[number_of_edge_points - 2],
-                        axes_1_edge_sorted[number_of_edge_points - 1],
+                        axis_1_edge_sorted[number_of_edge_points - 2],
+                        axis_1_edge_sorted[number_of_edge_points - 1],
                     ],
                 ]
             )
