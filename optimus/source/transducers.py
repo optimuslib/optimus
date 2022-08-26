@@ -613,6 +613,8 @@ def calc_field_from_point_sources(
 
     if parallelisation_method == "numba":
 
+        print("Parallelisation method: numba")
+
         def apply_amplitude(values):
             return (2j * _np.pi * frequency * density) * values
 
@@ -630,6 +632,8 @@ def calc_field_from_point_sources(
         gradient = apply_amplitude(greens_gradient_in_observation_points)
 
     elif parallelisation_method == "multiprocessing":
+
+        print("Parallelisation method: multiprocessing")
 
         (
             chunks_index_source,
@@ -654,6 +658,8 @@ def calc_field_from_point_sources(
         # TODO: print out stats in verbose mode
         if source_parallelisation:
 
+            print("Parallelisation of incident field calculation over source locations")
+
             number_of_parallel_jobs = _np.arange(0, number_of_source_chunks - 1)
 
             result = pool.starmap(
@@ -673,6 +679,10 @@ def calc_field_from_point_sources(
             )
 
         else:
+
+            print(
+                "Parallelisation of incident field calculation over observer locations"
+            )
 
             number_of_parallel_jobs = _np.arange(0, number_of_field_chunks - 1)
 
