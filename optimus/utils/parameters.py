@@ -16,6 +16,7 @@ class DefaultParameters:
         self.verbosity = False
 
         self.linalg = LinalgParameters()
+        self.incident_field = IncidentFieldParameters()
         self.preconditioning = PreconditioningParameters()
         self.postprocessing = PostProcessingParameters()
 
@@ -28,6 +29,8 @@ class DefaultParameters:
         print("\n" + bold_ul_red_text("Verbosity parameter:"), self.verbosity)
         print("\n" + bold_ul_red_text("Linear algebra parameters:"))
         self.linalg.print(prefix=" ")
+        print("\n" + bold_ul_red_text("Incident field parameters:"))
+        self.incident_field.print(prefix=" ")
         print("\n" + bold_ul_red_text("Preconditioning parameters:"))
         self.preconditioning.print(prefix=" ")
         print("\n" + bold_ul_red_text("Postprocessing parameters:"))
@@ -52,6 +55,26 @@ class LinalgParameters:
         print(prefix + "Tolerance:", self.tol)
         print(prefix + "Maximum number of iterations:", self.maxiter)
         print(prefix + "Number of iterations before restart:", self.restart)
+
+
+class IncidentFieldParameters:
+    def __init__(self):
+        """
+        Initialize the default parameters for incident field parallelisation.
+        """
+        import multiprocessing as _mp
+
+        self.cpu_count = _mp.cpu_count()
+        self.mem_per_core = 2e7
+        self.parallelisation_method = "multiprocessing"
+
+    def print(self, prefix=""):
+        """
+        Print all parameters.
+        """
+        print(prefix + "Number of CPU used in parallelisation:", self.cpu_count)
+        print(prefix + "Memory allocation per core:", int(self.mem_per_core), "bytes")
+        print(prefix + "Parallelisation method:", self.parallelisation_method)
 
 
 class PreconditioningParameters:
