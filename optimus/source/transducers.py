@@ -575,7 +575,7 @@ def calc_field_from_point_sources(
     Calculate the pressure field and its gradient of a point source,
     according to the Rayleigh integral formula.
 
-    Use Numba acceleration.
+    Use Numba or Multiprocessing acceleration.
 
     Parameters
     ----------
