@@ -74,10 +74,9 @@ class VisualisePlane(_PostProcess):
         ) = find_int_ext_points(self.domains_grids, self.points, self.verbose)
 
         self.domains_edges = domain_edge(
-            self.points_interior,
+            self.model,
             self.plane_axes,
-            global_parameters.postprocessing.concave_hull_alpha,
-            only_outer=True,
+            self.plane_offset,
         )
 
     def compute_fields(self):

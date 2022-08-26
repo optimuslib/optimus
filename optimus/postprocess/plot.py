@@ -149,6 +149,11 @@ def surface_plot(
 
     fig = plt.figure(figsize=(10, 8))
     ax = plt.gca()
+
+    if domains_edges is not None:
+        for i, j in domains_edges:
+            plt.plot(i, j, color="black", linestyle="-", linewidth=2)
+
     ax_image = ax.imshow(
         quantity,
         cmap=colormap,
@@ -156,10 +161,6 @@ def surface_plot(
         extent=axes_lims,
         interpolation="bilinear",
     )
-
-    if domains_edges is not None:
-        for i, j in domains_edges:
-            plt.plot(i, j, color="black", linestyle="-", linewidth=2)
 
     ax.set_xlabel(haxis_label, size=18)
     ax.set_ylabel(vaxis_label, size=18)
