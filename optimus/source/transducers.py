@@ -3,6 +3,8 @@
 import numpy as _np
 from numba import njit as _njit
 from numba import prange as _prange
+from itertools import repeat
+import multiprocessing as _mp
 
 from ..utils.linalg import translate as _translate
 from ..utils.linalg import rotate as _rotate
@@ -600,27 +602,108 @@ def calc_field_from_point_sources(
         An array of size (3,N_observationpoints) with the gradient of the
         pressure field in the observation points.
     """
+    from optimus import global_parameters
 
     if locations_source.ndim == 1:
         locations_source.reshape((3, 1))
     if locations_observation.ndim == 1:
         locations_source.reshape((3, 1))
 
-    def apply_amplitude(values):
-        return (2j * _np.pi * frequency * density) * values
+    parallelisation_method = global_parameters.incident_field.parallelisation_method
 
-    (
-        greens_function_in_observation_points,
-        greens_gradient_in_observation_points,
-    ) = calc_greens_functions_in_observation_points_numba(
-        locations_source,
-        locations_observation,
-        wavenumber,
-        source_weights,
-    )
+    if parallelisation_method == "numba":
 
-    pressure = apply_amplitude(greens_function_in_observation_points)
-    gradient = apply_amplitude(greens_gradient_in_observation_points)
+        def apply_amplitude(values):
+            return (2j * _np.pi * frequency * density) * values
+
+        (
+            greens_function_in_observation_points,
+            greens_gradient_in_observation_points,
+        ) = calc_greens_functions_in_observation_points_numba(
+            locations_source,
+            locations_observation,
+            wavenumber,
+            source_weights,
+        )
+
+        pressure = apply_amplitude(greens_function_in_observation_points)
+        gradient = apply_amplitude(greens_gradient_in_observation_points)
+
+    elif parallelisation_method == "multiprocessing":
+
+        (
+            chunks_index_source,
+            chunks_index_field,
+            number_of_source_chunks,
+            number_of_field_chunks,
+        ) = chunk_size_index(
+            locations_source,
+            locations_observation,
+        )
+
+        number_of_workers = global_parameters.incident_field.cpu_count
+
+        number_of_observation_locations = locations_observation.shape[1]
+        number_of_source_locations = locations_source.shape[1]
+
+        pool = _mp.Pool(number_of_workers)
+
+        source_parallelisation = (
+            number_of_source_locations > number_of_observation_locations
+        )
+        # TODO: print out stats in verbose mode
+        if source_parallelisation:
+
+            number_of_parallel_jobs = _np.arange(0, number_of_source_chunks - 1)
+
+            result = pool.starmap(
+                calc_field_from_point_sources_mp_source_para,
+                zip(
+                    number_of_parallel_jobs,
+                    repeat(locations_source),
+                    repeat(locations_observation),
+                    repeat(frequency),
+                    repeat(density),
+                    repeat(wavenumber),
+                    repeat(source_weights),
+                    repeat(chunks_index_source),
+                    repeat(chunks_index_field),
+                    repeat(number_of_observation_locations),
+                ),
+            )
+
+        else:
+
+            number_of_parallel_jobs = _np.arange(0, number_of_field_chunks - 1)
+
+            result = pool.starmap(
+                calc_field_from_point_sources_mp_field_para,
+                zip(
+                    number_of_parallel_jobs,
+                    repeat(locations_source),
+                    repeat(locations_observation),
+                    repeat(frequency),
+                    repeat(density),
+                    repeat(wavenumber),
+                    repeat(source_weights),
+                    repeat(chunks_index_source),
+                    repeat(chunks_index_field),
+                ),
+            )
+
+        pool.close()
+
+        if source_parallelisation:
+            pressure_result = _np.stack([r[0] for r in result])
+            gradient_result = _np.stack([r[1] for r in result], axis=2)
+
+            pressure = pressure_result.sum(axis=0, dtype=_np.complex)
+            gradient = gradient_result.sum(axis=2, dtype=_np.complex)
+        else:
+            result_as_array = _np.asarray(result)
+
+            pressure = _np.hstack(result_as_array[..., 0])
+            gradient = _np.hstack(result_as_array[..., 1])
 
     return pressure, gradient
 
@@ -709,3 +792,247 @@ def calc_field_from_point_sources_numpy(
     gradient = apply_amplitude(greens_gradient_in_observation_points)
 
     return pressure, gradient
+
+
+def calc_field_from_point_sources_mp_source_para(
+    parallelisation_index,
+    locations_source,
+    locations_observation,
+    frequency,
+    density,
+    wavenumber,
+    source_weight,
+    chunks_index_source,
+    chunks_index_field,
+    number_of_observation_locations,
+):
+    """
+    Computes the pressure and normal pressure gradient at field locations for
+    selected source and field positions based on output from chunk_size_index. Used to
+    calculate the incident field using multiprocessing and when parallelising over
+    source locations.
+
+    Parameters
+    ----------
+    parallelisation_index : integer
+        Index corresponding to the parallel job.
+    locations_source : numpy.ndarray
+        An array of size (3,N_sourcepoints) with the locations of the source points.
+    locations_observation : numpy.ndarray
+        An array of size (3,N_observationpoints) with the locations of the
+        observation points.
+    frequency : float
+        The frequency of the wave field.
+    density : float
+        The density of the propagating medium.
+    wavenumber : complex
+        The wavenumber of the wave field.
+    source_weights : numpy.ndarray
+        An array of size (N_sourcepoints,) with the weights of each source element.
+    chunks_index_source : numpy.ndarray
+        An array of integers containing the indices to infer the source location chunks.
+    chunks_index_field : numpy.ndarray
+        An array of integers containing the indices to infer the field location chunks.
+    number_of_observation_points : integer
+        The total number of observation points.
+
+    Returns
+    -------
+    pressure : numpy.ndarray
+        An array of size (N_observationpoints,) with the pressure of the
+        wave field in the observation points.
+    gradient : numpy.ndarray
+        An array of size (3,N_observationpoints) with the gradient of the
+        pressure field in the observation points.
+    """
+
+    pressure = _np.empty(number_of_observation_locations, dtype=_np.complex)
+    gradient = _np.empty((3, number_of_observation_locations), dtype=_np.complex)
+
+    i1, i2 = chunks_index_source[parallelisation_index : parallelisation_index + 2]
+
+    for i in range(len(chunks_index_field) - 1):
+
+        j1, j2 = chunks_index_field[i : i + 2]
+
+        (pressure[j1:j2], gradient[:, j1:j2],) = calc_field_from_point_sources_numpy(
+            locations_source[:, i1:i2],
+            locations_observation[:, j1:j2],
+            frequency,
+            density,
+            wavenumber,
+            source_weight[i1:i2],
+        )
+
+    return pressure, gradient
+
+
+def calc_field_from_point_sources_mp_field_para(
+    parallelisation_index,
+    locations_source,
+    locations_observation,
+    frequency,
+    density,
+    wavenumber,
+    source_weight,
+    chunks_index_source,
+    chunks_index_field,
+):
+    """
+    Computes the pressure and normal pressure gradient at field locations for
+    selected source and field positions based on output from chunk_size_index. Used to
+    calculate the incident field using multiprocessing and when parallelising over
+    field locations.
+
+    Parameters
+    ----------
+    parallelisation_index : integer
+        Index corresponding to the parallel job.
+    locations_source : numpy.ndarray
+        An array of size (3,N_sourcepoints) with the locations of the source points.
+    locations_observation : numpy.ndarray
+        An array of size (3,N_observationpoints) with the locations of the
+        observation points.
+    frequency : float
+        The frequency of the wave field.
+    density : float
+        The density of the propagating medium.
+    wavenumber : complex
+        The wavenumber of the wave field.
+    source_weights : numpy.ndarray
+        An array of size (N_sourcepoints,) with the weights of each source element.
+    chunks_index_source : numpy.ndarray
+        An array of integers containing the indices to infer the source location chunks.
+    chunks_index_field : numpy.ndarray
+        An array of integers containing the indices to infer the field location chunks.
+
+    Returns
+    -------
+    pressure : numpy.ndarray
+        An array of size (N_observationpoints,) with the pressure of the
+        wave field in the observation points.
+    gradient : numpy.ndarray
+        An array of size (3,N_observationpoints) with the gradient of the
+        pressure field in the observation points.
+    """
+
+    j1, j2 = chunks_index_field[parallelisation_index : parallelisation_index + 2]
+
+    pressure_tmp = _np.ndarray(
+        shape=(j2 - j1, len(chunks_index_source) - 1), dtype=_np.complex
+    )
+    gradient_tmp = _np.ndarray(
+        shape=(3, j2 - j1, len(chunks_index_source) - 1), dtype=_np.complex
+    )
+
+    for i in range(len(chunks_index_source) - 1):
+        i1, i2 = chunks_index_source[i : i + 2]
+
+        (
+            pressure_tmp[:, i],
+            gradient_tmp[:, :, i],
+        ) = calc_field_from_point_sources_numpy(
+            locations_source[:, i1:i2],
+            locations_observation[:, j1:j2],
+            frequency,
+            density,
+            wavenumber,
+            source_weight[i1:i2],
+        )
+
+    pressure = pressure_tmp.sum(axis=1, dtype=_np.complex)
+    gradient = gradient_tmp.sum(axis=2, dtype=_np.complex)
+
+    return pressure, gradient
+
+
+def chunk_size_index(locations_source, locations_observation):
+    """
+    Computes the chunk sizes and indices used to calculate the incident field using
+    multiprocessing and when parallelising over source or observation locations. The
+    chunks are allocated based on the global_parameters.incident_field.mem_per_core
+    parameter.
+
+    Parameters
+    ----------
+    locations_source : numpy.ndarray
+        An array of size (3,N_sourcepoints) with the locations of the source points.
+    locations_observation : numpy.ndarray
+        An array of size (3,N_observationpoints) with the locations of the
+        observation points.
+
+    Returns
+    -------
+    chunks_index_source : numpy.ndarray
+        An array of integers describing the source point indices corresponding to each
+        chunk for parallelisation.
+    chunks_index_observation : numpy.ndarray
+        An array of integers describing the observation point indices corresponding to each
+        chunk for parallelisation.
+    number_of_source_chunks : integer
+        The number of source chunks used for parallelisation over source locations.
+    number_of_observation_chunks : integer
+        The number of source chunks used for parallelisation over observation locations.
+    """
+
+    from optimus import global_parameters
+
+    mem_per_core = global_parameters.incident_field.mem_per_core
+
+    number_of_bytes_for_complex_numpy_type = 16
+
+    total_dimension_source = locations_source.shape[1]
+    total_dimension_field = locations_observation.shape[1]
+    chunk_size = int(
+        _np.ceil(
+            mem_per_core
+            / (total_dimension_source * number_of_bytes_for_complex_numpy_type)
+        )
+    )
+
+    number_of_source_chunks, chunks_index_source = break_in_chunks(
+        total_dimension_source, chunk_size
+    )
+    number_of_observation_chunks, chunks_index_observation = break_in_chunks(
+        total_dimension_field, chunk_size
+    )
+
+    return [
+        chunks_index_source,
+        chunks_index_observation,
+        number_of_source_chunks,
+        number_of_observation_chunks,
+    ]
+
+
+def break_in_chunks(number_of_locations, chunk_size):
+    """
+    Computes the chunk sizes and indices used to calculate the incident field using
+    multiprocessing and when parallelising over source or observation locations. The
+    chunks are allocated based on the global_parameters.incident_field.mem_per_core
+    parameter.
+
+    Parameters
+    ----------
+    number_of_locations : integer
+        The total number of source or observer locations.
+    chunk_size :  integer
+        The size of the chunks the source or observation points are broken down into.
+    Returns
+    -------
+    number_of_chunks : integer
+        The number of chunks the source or observation points are broken into.
+    chunks_index : numpy.ndarray
+        An array of size (N,) containing the indices of the limits of the source or
+        observation point chunks.
+    """
+
+    minimum_number_of_chunks = 2
+    number_of_chunks = max(
+        int(_np.ceil(number_of_locations / chunk_size)), minimum_number_of_chunks
+    )
+    chunks_index = _np.linspace(
+        0, number_of_locations, max(2, number_of_chunks), dtype=int
+    )
+
+    return number_of_chunks, chunks_index
