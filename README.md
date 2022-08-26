@@ -39,7 +39,7 @@ Examples are available in the `notebook` directory on this GitHub page. Automati
 can be found in [Read the Docs optimus project](https://readthedocs.org/projects/optimuslib/).
 
 ## Getting help
-Questions about the library and its use can be directed to [optimuslib slack channel]().
+Enquiries about the library and questions should be asked on the [GitHub discussion page](https://github.com/optimuslib/optimus/discussions).
 Errors in the library should be added to the [GitHub issue tracker](https://github.com/optimuslib/optimus/issues).
 
 ## Citation
