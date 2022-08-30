@@ -667,8 +667,8 @@ def domain_edge(model, plane_axes, plane_offset):
                 )
             )
 
-        else:
-            domains_edge_points = None
+        # else:
+        #     domains_edge_points = []
 
     return domains_edge_points
 
