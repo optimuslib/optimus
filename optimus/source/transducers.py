@@ -199,6 +199,12 @@ class _Transducer:
 
         n_sources = locations_inside_transducer.shape[1]
 
+        if n_sources < 1:
+            raise TypeError(
+                "Number of point sources inside piston transducer must be greater " +
+                " 0: increase number_of_point_sources_per_wavelength"
+            )
+
         surface_area_weighting = _np.pi * radius**2 / n_sources
 
         return locations_inside_transducer, surface_area_weighting
@@ -307,6 +313,12 @@ class _Transducer:
         z_source = _np.array(z_source) + self.source.radius_of_curvature
 
         locations_inside_transducer = _np.vstack((x_source, y_source, z_source))
+
+        if locations_inside_transducer.shape[1] < 1:
+            raise TypeError(
+                "Number of point sources inside bowl transducer must be greater than" + 
+                " 0: increase number_of_point_sources_per_wavelength"
+            )
 
         if self.verbose:
 
@@ -714,6 +726,9 @@ def calc_field_from_point_sources(
 
             pressure = _np.hstack(result_as_array[..., 0])
             gradient = _np.hstack(result_as_array[..., 1])
+
+    else:
+        raise NotImplementedError
 
     return pressure, gradient
 
