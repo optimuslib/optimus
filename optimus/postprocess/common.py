@@ -1,5 +1,6 @@
 """Common functionality for postprocessing and visualising results."""
 
+from unicodedata import decimal
 import numpy as _np
 import bempp.api as _bempp
 import time as _time
@@ -612,13 +613,15 @@ def domain_edge(model, plane_axes, plane_offset):
                 axis_0_intersect.append(axis_0_values[~_np.isnan(axis_0_values)])
                 axis_1_intersect.append(axis_1_values[~_np.isnan(axis_1_values)])
 
-        if axis_0_intersect:
+        if axis_0_intersect and axis_1_intersect:
             axis_0_edge = _np.concatenate(axis_0_intersect)
             axis_1_edge = _np.concatenate(axis_1_intersect)
 
             # Sort above intersection points by proximity to one another.
             axis_0_axis_1_vstack = _np.vstack((axis_0_edge, axis_1_edge))
-            axis_0_axis_1_unique = _np.unique(axis_0_axis_1_vstack, axis=1)
+            axis_0_axis_1_unique = _np.unique(
+                _np.round(axis_0_axis_1_vstack, decimals=16), axis=1
+            )
             axis_0_unique = axis_0_axis_1_unique[0, :]
             axis_1_unique = axis_0_axis_1_unique[1, :]
             number_of_edge_points = len(axis_0_unique) + 1
@@ -666,9 +669,6 @@ def domain_edge(model, plane_axes, plane_offset):
                     ]
                 )
             )
-
-        # else:
-        #     domains_edge_points = []
 
     return domains_edge_points
 
