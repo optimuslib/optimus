@@ -3,7 +3,6 @@
 import numpy as _np
 from numba import njit as _njit
 from numba import prange as _prange
-from itertools import repeat
 import multiprocessing as _mp
 
 from ..utils.linalg import translate as _translate
@@ -462,6 +461,7 @@ class _Transducer:
             self.density,
             self.wavenumber,
             self.source_weights,
+            self.verbose,
         )
         if self.normals is not None:
             normal_pressure_gradient = _np.sum(pressure_gradient * self.normals, axis=0)
@@ -582,6 +582,7 @@ def calc_field_from_point_sources(
     density,
     wavenumber,
     source_weights,
+    verbose,
 ):
     """
     Calculate the pressure field and its gradient of a point source,
@@ -604,6 +605,8 @@ def calc_field_from_point_sources(
         The wavenumber of the wave field.
     source_weights : numpy.ndarray
         An array of size (N_sourcepoints,) with the weights of each source element.
+    verbose : boolean
+        Display output.
 
     Returns
     -------
@@ -615,6 +618,7 @@ def calc_field_from_point_sources(
         pressure field in the observation points.
     """
     from optimus import global_parameters
+    from itertools import repeat
 
     if locations_source.ndim == 1:
         locations_source.reshape((3, 1))
@@ -625,7 +629,8 @@ def calc_field_from_point_sources(
 
     if parallelisation_method == "numba":
 
-        print("Parallelisation method: numba")
+        if verbose:
+            print("Parallelisation method: numba")
 
         def apply_amplitude(values):
             return (2j * _np.pi * frequency * density) * values
@@ -645,7 +650,8 @@ def calc_field_from_point_sources(
 
     elif parallelisation_method == "multiprocessing":
 
-        print("Parallelisation method: multiprocessing")
+        if verbose:
+            print("Parallelisation method: multiprocessing")
 
         (
             chunks_index_source,
@@ -667,10 +673,12 @@ def calc_field_from_point_sources(
         source_parallelisation = (
             number_of_source_locations > number_of_observation_locations
         )
-        # TODO: print out stats in verbose mode
+
         if source_parallelisation:
 
-            print("Parallelisation of incident field calculation over source locations")
+            if verbose:
+                print("Parallelisation of incident field calculation "
+                      "over source locations")
 
             number_of_parallel_jobs = _np.arange(0, number_of_source_chunks - 1)
 
@@ -692,9 +700,11 @@ def calc_field_from_point_sources(
 
         else:
 
-            print(
-                "Parallelisation of incident field calculation over observer locations"
-            )
+            if verbose:
+                print(
+                    "Parallelisation of incident field calculation "
+                    "over observer locations"
+                )
 
             number_of_parallel_jobs = _np.arange(0, number_of_field_chunks - 1)
 
@@ -826,7 +836,7 @@ def calc_field_from_point_sources_mp_source_para(
     frequency,
     density,
     wavenumber,
-    source_weight,
+    source_weights,
     chunks_index_source,
     chunks_index_field,
     number_of_observation_locations,
@@ -858,7 +868,7 @@ def calc_field_from_point_sources_mp_source_para(
         An array of integers containing the indices to infer the source location chunks.
     chunks_index_field : numpy.ndarray
         An array of integers containing the indices to infer the field location chunks.
-    number_of_observation_points : integer
+    number_of_observation_locations : integer
         The total number of observation points.
 
     Returns
@@ -886,7 +896,7 @@ def calc_field_from_point_sources_mp_source_para(
             frequency,
             density,
             wavenumber,
-            source_weight[i1:i2],
+            source_weights[i1:i2],
         )
 
     return pressure, gradient
@@ -899,7 +909,7 @@ def calc_field_from_point_sources_mp_field_para(
     frequency,
     density,
     wavenumber,
-    source_weight,
+    source_weights,
     chunks_index_source,
     chunks_index_field,
 ):
@@ -962,7 +972,7 @@ def calc_field_from_point_sources_mp_field_para(
             frequency,
             density,
             wavenumber,
-            source_weight[i1:i2],
+            source_weights[i1:i2],
         )
 
     pressure = pressure_tmp.sum(axis=1, dtype=_np.complex)
