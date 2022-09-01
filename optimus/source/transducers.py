@@ -200,8 +200,8 @@ class _Transducer:
 
         if n_sources < 1:
             raise TypeError(
-                "Number of point sources inside piston transducer must be greater " +
-                " 0: increase number_of_point_sources_per_wavelength"
+                "Number of point sources inside piston transducer must be greater "
+                + " 0: increase number_of_point_sources_per_wavelength"
             )
 
         surface_area_weighting = _np.pi * radius**2 / n_sources
@@ -315,8 +315,8 @@ class _Transducer:
 
         if locations_inside_transducer.shape[1] < 1:
             raise TypeError(
-                "Number of point sources inside bowl transducer must be greater than" + 
-                " 0: increase number_of_point_sources_per_wavelength"
+                "Number of point sources inside bowl transducer must be greater than"
+                + " 0: increase number_of_point_sources_per_wavelength"
             )
 
         if self.verbose:
@@ -625,12 +625,14 @@ def calc_field_from_point_sources(
     if locations_observation.ndim == 1:
         locations_source.reshape((3, 1))
 
-    parallelisation_method = global_parameters.incident_field.parallelisation_method
+    parallelisation_method = (
+        global_parameters.incident_field_parallelisation.parallelisation_method
+    )
 
-    if parallelisation_method == "numba":
+    if parallelisation_method.lower() == "numba":
 
         if verbose:
-            print("Parallelisation method: numba")
+            print("Parallelisation library is: numba")
 
         def apply_amplitude(values):
             return (2j * _np.pi * frequency * density) * values
@@ -648,10 +650,14 @@ def calc_field_from_point_sources(
         pressure = apply_amplitude(greens_function_in_observation_points)
         gradient = apply_amplitude(greens_gradient_in_observation_points)
 
-    elif parallelisation_method == "multiprocessing":
+    elif parallelisation_method.lower() in [
+        "multiprocessing",
+        "mp",
+        "multi-processing",
+    ]:
 
         if verbose:
-            print("Parallelisation method: multiprocessing")
+            print("Parallelisation library is: multiprocessing")
 
         (
             chunks_index_source,
@@ -663,7 +669,7 @@ def calc_field_from_point_sources(
             locations_observation,
         )
 
-        number_of_workers = global_parameters.incident_field.cpu_count
+        number_of_workers = global_parameters.incident_field_parallelisation.cpu_count
 
         number_of_observation_locations = locations_observation.shape[1]
         number_of_source_locations = locations_source.shape[1]
@@ -677,8 +683,10 @@ def calc_field_from_point_sources(
         if source_parallelisation:
 
             if verbose:
-                print("Parallelisation of incident field calculation "
-                      "over source locations")
+                print(
+                    "Parallelisation of incident field calculation "
+                    "over source locations"
+                )
 
             number_of_parallel_jobs = _np.arange(0, number_of_source_chunks - 1)
 
@@ -1012,7 +1020,7 @@ def chunk_size_index(locations_source, locations_observation):
 
     from optimus import global_parameters
 
-    mem_per_core = global_parameters.incident_field.mem_per_core
+    mem_per_core = global_parameters.incident_field_parallelisation.mem_per_core
 
     number_of_bytes_for_complex_numpy_type = 16
 
