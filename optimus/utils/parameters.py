@@ -67,8 +67,8 @@ class IncidentFieldParallelProcessingParameters:
         import multiprocessing as _mp
 
         self.cpu_count = _mp.cpu_count()
-        self.mem_per_core = 2e7
-        self.parallelisation_method = "multiprocessing"
+        self.mem_per_core = 1.108895e8
+        self.parallelisation_method = "numba"
 
     def print(self, prefix=""):
         """
