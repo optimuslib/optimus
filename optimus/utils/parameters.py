@@ -16,6 +16,9 @@ class DefaultParameters:
         self.verbosity = False
 
         self.linalg = LinalgParameters()
+        self.incident_field_parallelisation = (
+            IncidentFieldParallelProcessingParameters()
+        )
         self.preconditioning = PreconditioningParameters()
         self.postprocessing = PostProcessingParameters()
 
@@ -28,6 +31,8 @@ class DefaultParameters:
         print("\n" + bold_ul_red_text("Verbosity parameter:"), self.verbosity)
         print("\n" + bold_ul_red_text("Linear algebra parameters:"))
         self.linalg.print(prefix=" ")
+        print("\n" + bold_ul_red_text("Incident field parallel processing parameters:"))
+        self.incident_field_parallelisation.print(prefix=" ")
         print("\n" + bold_ul_red_text("Preconditioning parameters:"))
         self.preconditioning.print(prefix=" ")
         print("\n" + bold_ul_red_text("Postprocessing parameters:"))
@@ -52,6 +57,34 @@ class LinalgParameters:
         print(prefix + "Tolerance:", self.tol)
         print(prefix + "Maximum number of iterations:", self.maxiter)
         print(prefix + "Number of iterations before restart:", self.restart)
+
+
+class IncidentFieldParallelProcessingParameters:
+    def __init__(self):
+        """
+        Initialize the default parameters for incident field parallelisation.
+        """
+        import multiprocessing as _mp
+
+        self.cpu_count = _mp.cpu_count()
+        self.mem_per_core = 1.108895e8
+        self.parallelisation_method = "numba"
+
+    def print(self, prefix=""):
+        """
+        Print all parameters.
+        """
+        print(prefix + "Parallelisation method is: ", self.parallelisation_method)
+        if self.parallelisation_method.lower() in [
+            "multiprocessing",
+            "mp",
+            "multi-processing",
+        ]:
+            print(prefix + "Number of CPU used in parallelisation:", self.cpu_count)
+            print(
+                prefix + "Memory allocation per core [MB]:",
+                int(self.mem_per_core / 1e6),
+            )
 
 
 class PreconditioningParameters:
