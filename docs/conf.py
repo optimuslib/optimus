@@ -13,7 +13,7 @@ extensions = [
     "sphinx.ext.autodoc",
     "sphinx.ext.coverage",
     "sphinx.ext.mathjax",
-#     "autoapi.extension",
+    "autoapi.extension",
 ]
 
 templates_path = ["_templates"]
