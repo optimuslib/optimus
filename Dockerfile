@@ -46,8 +46,8 @@ RUN pip3 install --no-cache-dir k3d joblib
 # RUN pip3 install --no-cache-dir pyvista==0.24.0
 
 ### to install optimus package from the local drive, uncomment the below 2 lines and amend the path and the name of the whl file
-# COPY /dist/*.whl /tmp/optimus-0.1.0-py3-none-any.whl
-# RUN pip3 install --no-cache-dir /tmp/optimus-0.1.0-py3-none-any.whl
+COPY /dist/*.whl /tmp/optimus-0.1.0-py3-none-any.whl
+RUN pip3 install --no-cache-dir /tmp/optimus-0.1.0-py3-none-any.whl
 
 ### to install optimus package from deployed testpypi website, uncomment and use below command
 # RUN pip3 install --extra-index-url https://test.pypi.org/simple/ optimus

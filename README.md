@@ -67,15 +67,13 @@ version = {0.1.0}
 ## Licence
 OptimUS is licensed under an MIT licence. Full text of the licence can be found [here](LICENSE.md).
 
-## References
+## Bibliography
 The main references describing the BEM formulations and preconditioners implemented in OptimUS are as follows:
 
-> Haqshenas, S. R., Gélat, P., van 't Wout, E., Betcke, T., & Saffari, N. (2021). A fast full-wave solver for calculating ultrasound propagation in the body. Ultrasonics, 110, 106240. doi:10.1016/j.ultras.2020.106240
+> Haqshenas, S. R., Gélat, P., van 't Wout, E., Betcke, T., & Saffari, N. (2021). A fast full-wave solver for calculating ultrasound propagation in the body. Ultrasonics, 110, 106240. [doi:10.1016/j.ultras.2020.106240](https://doi.org/10.1016/j.ultras.2020.106240)
 
-> van 't Wout, E., Haqshenas, S. R., Gélat, P., Betcke, T., & Saffari, N. (2021). Benchmarking preconditioned boundary integral formulations for acoustics. International Journal for Numerical Methods in Engineering, nme.6777. doi:10.1002/nme.6777
+> van 't Wout, E., Haqshenas, S. R., Gélat, P., Betcke, T., & Saffari, N. (2021). Benchmarking preconditioned boundary integral formulations for acoustics. International Journal for Numerical Methods in Engineering, nme.6777. [doi:10.1002/nme.6777](https://doi.org/10.1002/nme.6777)
 
-> van 't Wout, E., Haqshenas, S. R., Gélat, P., Betcke, T., & Saffari, N. (2022). Boundary integral formulations for acoustic modelling of high-contrast media. Computers & Mathematics with Applications, 105, 136-149. doi:10.1016/j.camwa.2021.11.021
+> van 't Wout, E., Haqshenas, S. R., Gélat, P., Betcke, T., & Saffari, N. (2022). Boundary integral formulations for acoustic modelling of high-contrast media. Computers & Mathematics with Applications, 105, 136-149. [doi:10.1016/j.camwa.2021.11.021](https://doi.org/10.1016/j.camwa.2021.11.021)
 
-> van 't Wout, E., Haqshenas, S. R., Gélat, P., Betcke, T., & Saffari, N. (2022). Frequency-robust preconditioning of boundary integral equations for acoustic transmission. Journal of Computational Physics, 111229. doi:10.1016/j.jcp.2022.111229
-
-
+> van 't Wout, E., Haqshenas, S. R., Gélat, P., Betcke, T., & Saffari, N. (2022). Frequency-robust preconditioning of boundary integral equations for acoustic transmission. Journal of Computational Physics, 111229. [doi:10.1016/j.jcp.2022.111229](https://doi.org/10.1016/j.jcp.2022.111229)
