@@ -87,14 +87,14 @@ def convert_to_array(vector, shape=None, label="variable"):
     ----------
     vector : Any
         The input vector to be converted into a Numpy array.
-    shape : tuple
+    shape : tuple[int], None
         The output shape of the vector.
     label : str
         The name of the variable.
 
     Returns
     -------
-    array : np.ndarray
+    array : numpy.ndarray
         The output array with the specified shape.
     """
 
@@ -128,14 +128,14 @@ def convert_to_complex_array(vector, shape=None, label="variable"):
     ----------
     vector : Any
         The input vector to be converted into a Numpy array.
-    shape : tuple
+    shape : tuple[int], None
         The output shape of the vector.
     label : str
         The name of the variable.
 
     Returns
     -------
-    array : np.ndarray
+    array : numpy.ndarray[complex]
         The output array with the specified shape.
     """
 
@@ -181,15 +181,15 @@ def convert_to_3n_array(array, label="variable"):
 
     Parameters
     ----------
-    array : list, tuple, array
+    array : Any
         The input vector to be converted into a 3xN Numpy array.
     label : str
         The name of the variable.
 
     Returns
     -------
-    array : np.ndarray
-        The output array with the shape of 3xN.
+    array : numpy.ndarray
+        The output array with the shape (3,N).
     """
 
     array_np = convert_to_array(array)

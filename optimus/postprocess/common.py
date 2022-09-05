@@ -1,8 +1,10 @@
 """Common functionality for postprocessing and visualising results."""
 
+from unicodedata import decimal
 import numpy as _np
 import bempp.api as _bempp
 import time as _time
+from ..utils.linalg import normalize_vector as _normalize_vector
 
 
 class PostProcess:
@@ -12,7 +14,7 @@ class PostProcess:
 
         Parameters
         ----------
-        model: optimus model object
+        model: optimus.Model
             The model object must include the solution vectors, i.e.,
             the solve() function must have been executed.
         verbose: boolean
@@ -31,7 +33,8 @@ class PostProcess:
 
         Parameters
         ---------
-            **kwargs : to be specified for different types of postprocessing.
+        kwargs : dict
+            Options to be specified for different types of postprocessing.
         """
         raise NotImplementedError
 
@@ -73,10 +76,11 @@ def calculate_bounding_box(domains_grids, plane_axes):
 
     Parameters
     ---------
-    domains_grids : a list of optimus grids
+    domains_grids : list[optimus.Grid]
         The grids of the subdomains.
-    plane_axes : a list/tuple of two int numbers
-        The boundary plane. possible values are 0,1,2 for x,y,z axes, respectively.
+    plane_axes : tuple[int]
+        The two indices of the boundary plane.
+        Possible values are 0,1,2 for x,y,z axes, respectively.
 
     Returns
     ----------
@@ -104,38 +108,54 @@ def find_int_ext_points(domains_grids, points, verbose):
 
     Parameters
     ---------
-    domains_grids : a list of optimus grids
+    domains_grids : list[optimus.Grid]
         The grids of the subdomains.
-    points : numpy ndarray of size (3,N)
+    points : numpy.ndarray
         The field points.
+        The size of the array should be (3,N).
     verbose : boolean
-        to display the logs or not
+        Display the logs.
 
     Returns
     -----------
-    points_interior : list of numpy ndarrays of size (3,N)
+    points_interior : list[numpy.ndarray]
+        A list of numpy arrays of size (3,N), where
         element i of the list is an array of coordinates of the
-        interior points for domain i, i=1,...,no_subdomains
-    points_exterior : numpy ndarray of size (3,N)
-        visualisation points in the exterior domain
-    index_interior : list of boolean arrays of size (1,N)
-        to identify the interior points
-    index_exterior : boolean array of size (1,N)
-        to identify the exterior points
+        interior points for domain i, i=1,...,no_subdomains.
+    points_exterior : numpy.ndarray
+        An array of size (3,N) with visualisation points in the exterior domain
+    points_boundary : list[numpy.ndarray]
+        A list of arrays of size (3,N) with visualisation points at, or close to,
+        grid boundaries.
+    index_interior : list[numpy.ndarray]
+        A list of arrays of size (1,N) with boolean values,
+        identifying the interior points for each domain.
+    index_exterior : numpy.ndarray
+        An array of size (1,N) with boolean values,
+        identifying the exterior points.
+    index_boundary : list[numpy.ndarray]
+        A list of arrays of size (1,N) with boolean values,
+        identifying the boundary points.
     """
 
     from .exterior_interior_points_eval import exterior_interior_points_eval
     from optimus import global_parameters
 
     points_interior = []
+    points_boundary = []
     idx_interior = []
+    idx_boundary = []
     idx_exterior = _np.full(points.shape[1], True)
+
     if verbose:
         start_time_int_ext = _time.time()
         print(
             "\n Identifying the exterior and interior points Started at: ",
             _time.strftime("%a, %d %b %Y %H:%M:%S", _time.localtime()),
         )
+    else:
+        start_time_int_ext = None
+
     for grid in domains_grids:
         (
             points_interior_temp,
@@ -153,6 +173,9 @@ def find_int_ext_points(domains_grids, points, verbose):
         points_interior.append(points_interior_temp[0])
         idx_interior.append(idx_interior_temp[0])
         idx_exterior[idx_exterior_temp == False] = False
+        if global_parameters.postprocessing.solid_angle_tolerance:
+            points_boundary.append(points_boundary_temp[0])
+            idx_boundary.append(idx_boundary_temp[0])
 
     if verbose:
         end_time_int_ext = _time.time()
@@ -166,8 +189,10 @@ def find_int_ext_points(domains_grids, points, verbose):
     return (
         points_interior,
         points_exterior,
+        points_boundary,
         idx_interior,
         idx_exterior,
+        idx_boundary,
     )
 
 
@@ -178,6 +203,8 @@ def compute_pressure_fields(
     index_exterior,
     points_interior,
     index_interior,
+    points_boundary,
+    index_boundary,
     verbose,
 ):
     """
@@ -185,30 +212,40 @@ def compute_pressure_fields(
 
     Parameters
     ----------
-    model : optimus model object
-        a model object which has solution attributes already computed
-    points : numpy ndarray of size (3,N)
-        visualisation points
-    points_exterior : numpy ndarray of size (3,N)
-        visualisation points in the exterior domain
-    index_exterior : boolean array of size (1,N)
-        to identify the exterior points
-    points_interior : list of numpy ndarrays of size (3,N)
+    model : optimus.Model
+        A model object which has solution attributes already computed.
+    points : numpy.ndarray
+        An array of size (3,N) with the visualisation points.
+    points_exterior : numpy.ndarray
+        An array of size (3,N) with the visualisation points in the exterior domain.
+    index_exterior : numpy.ndarray
+        An array of size (1,N) with boolean values indentifying the exterior points.
+    points_interior : list[numpy.ndarray]
+        A list of arrays of size (3,N), where
         element i of the list is an array of coordinates of the
         interior points for domain i, i=1,...,no_subdomains
-    index_interior : list of boolean arrays of size (1,N)
-        to identify the interior points
+    index_interior : list[numpy.ndarray]
+        A list of arrays of size (1,N) with boolean values indentifying
+        the interior points.
+    points_boundary : list[numpy.ndarray]
+        A list of arrays of size (3,N), where
+        element i of the list is an array of coordinates of the
+        boundary points for domain i, i=1,...,no_subdomains
+    index_boundary : list[numpy.ndarray]
+        A list of boolean arrays of size (1,N),
+        identifying the boundary points.
     verbose : bool
         Display the logs.
 
     Returns
     -----------
-    total_field : complex numpy array of size (1,N)
-        complex total pressure values
-    scattered_field : complex numpy array of size (1,N)
-        complex scattered pressure values
-    incident_exterior_field : complex numpy array
-        complex incident pressure values of size (1,N)
+    total_field : numpy.ndarray
+        An array of size (1,N) with complex values of the total pressure field.
+    scattered_field : numpy.ndarray
+        An array of size (1,N) with complex values of the scatterd pressure field.
+    incident_exterior_field : numpy.ndarray
+        An array of size (1,N) with complex values of the incident pressure field
+        in the exterior domain.
     """
 
     from ..utils.generic import chunker, bold_ul_text
@@ -228,6 +265,7 @@ def compute_pressure_fields(
         _bempp.global_parameters.hmat.max_block_size = (
             global_parameters.postprocessing.hmat_max_block_size
         )
+        _bempp.global_parameters.assembly.potential_operator_assembly_type = "hmat"
     elif global_parameters.postprocessing.assembly_type.lower() == "dense":
         _bempp.global_parameters.assembly.potential_operator_assembly_type = "dense"
     else:
@@ -235,8 +273,12 @@ def compute_pressure_fields(
             "Supported operator assembly methods are "
             + bold_ul_text("dense")
             + " and "
-            + bold_ul_text("h-matrix.")
+            + bold_ul_text("hmat")
         )
+
+    _bempp.global_parameters.quadrature.near.single_order = (
+        global_parameters.postprocessing.quadrature_order
+    )
 
     start_time_pot_ops = _time.time()
     if verbose:
@@ -253,7 +295,13 @@ def compute_pressure_fields(
         exterior_values = _np.zeros((1, points_exterior.shape[1]), dtype="complex128")
         ext_calc_flag = True
     else:
+        exterior_values = None
         ext_calc_flag = False
+
+    if index_boundary:
+        bound_calc_flag = True
+    else:
+        bound_calc_flag = False
 
     i = 0
     for (solution_pair, space, interior_point, interior_idx, interior_material,) in zip(
@@ -339,7 +387,139 @@ def compute_pressure_fields(
             scattered_field[index_exterior] + incident_exterior_field[index_exterior]
         )
 
+    if bound_calc_flag:
+        for subdomain_number in range(model.n_subdomains):
+
+            grid = model.geometry[subdomain_number].grid
+            dirichlet_solution = model.solution[2 * subdomain_number].coefficients
+            subdomain_boundary_points = points_boundary[subdomain_number]
+
+            total_field[index_boundary[subdomain_number]] = compute_pressure_boundary(
+                grid, subdomain_boundary_points, dirichlet_solution
+            )
+
     return total_field, scattered_field, incident_exterior_field
+
+
+def compute_pressure_boundary(grid, boundary_points, dirichlet_solution):
+    """
+    Calculate pressure for points near or at the boundary of a domain. When the solid
+    angle associated with a boundary vertex is below 0.1, it is assumed to lie on the
+    boundary.
+
+    Parameters
+    -----------
+    grid : bempp.api.Grid
+        The surface mesh of bempp.
+    boundary_points : numpy.ndarray
+        An array of size (3,N) with the coordinates of vertices
+        on the domain boundary.
+    dirichlet_solution : numpy.ndarray
+        An array of size (N,) with the Dirichlet component of the
+        solution vector on the boundary.
+
+    Returns
+    -----------
+    total_boundary_pressure : numpy.ndarray
+        An array of size (N,) with complex values of the pressure field.
+    """
+
+    vertices = grid.leaf_view.vertices
+    elements = grid.leaf_view.elements
+    centroids = _np.mean(vertices[:, elements], axis=1)
+
+    # Initialise arrays with None-values for the element indices
+    n = boundary_points.shape[1]
+    element_index = _np.repeat(None, n)
+
+    # Loop over all centroids and find the elements within which boundary points lie
+    for i in range(n):
+        eucl_norm = _np.linalg.norm(
+            centroids - _np.atleast_2d(boundary_points[:, i]).transpose(), axis=0
+        )
+
+        comp = _np.where(eucl_norm == _np.min(eucl_norm))[0]
+
+        if comp.size != 0:
+            element_index[i] = comp[0]
+
+    space = _bempp.function_space(grid, "P", 1)
+    grid_function = _bempp.GridFunction(space, coefficients=dirichlet_solution)
+    local_coords = _np.zeros((2, n), dtype=float)
+    total_boundary_pressure = _np.zeros(n, dtype="complex128")
+
+    # Loop over elements within which near points lie
+    for i in range(n):
+
+        # Obtain vertices of element
+        vertices_elem = vertices[:, elements[:, element_index[i]]].transpose()
+
+        # Translate element so that first vertex is global origin
+        vertices_translated = vertices_elem - vertices_elem[0, :]
+        boundary_point_translated = boundary_points[:, i] - vertices_elem[0, :]
+
+        # Compute element normal
+        vector_a = vertices_translated[1, :] - vertices_translated[0, :]
+        vector_b = vertices_translated[2, :] - vertices_translated[0, :]
+        vector_a_cross_vector_b = _np.cross(vector_a, vector_b)
+        element_normal = _normalize_vector(vector_a_cross_vector_b)
+
+        # Obtain first rotation matrix for coordinate transformation
+        h = _np.sqrt(element_normal[0] ** 2 + element_normal[1] ** 2)
+        if h != 0:
+            r_z = _np.array(
+                [
+                    [element_normal[0] / h, element_normal[1] / h, 0],
+                    [-element_normal[1] / h, element_normal[0] / h, 0],
+                    [0, 0, 1],
+                ]
+            )
+        else:
+            r_z = _np.identity(3, dtype=float)
+
+        # Obtain rotated element normal
+        element_normal_rotated = _np.matmul(r_z, element_normal)
+
+        # Obtain second rotation matrix for coordinate transformation
+        r_y = _np.array(
+            [
+                [element_normal_rotated[2], 0, -element_normal_rotated[0]],
+                [0, 1, 0],
+                [element_normal_rotated[0], 0, element_normal_rotated[2]],
+            ]
+        )
+
+        # Obtain total rotation matrix
+        r_y_mult_r_z = _np.matmul(r_y, r_z)
+        vertices_0_transformed = _np.matmul(r_y_mult_r_z, vertices_translated[0, :])
+        vertices_1_transformed = _np.matmul(r_y_mult_r_z, vertices_translated[1, :])
+        vertices_2_transformed = _np.matmul(r_y_mult_r_z, vertices_translated[2, :])
+        boundary_point_transformed = _np.matmul(r_y_mult_r_z, boundary_point_translated)
+
+        # Extract vertex coordinates in rotated coordinate system in x-y plane
+        x = boundary_point_transformed[0]
+        y = boundary_point_transformed[1]
+        x0 = vertices_0_transformed[0]
+        y0 = vertices_0_transformed[1]
+        x1 = vertices_1_transformed[0]
+        y1 = vertices_1_transformed[1]
+        x2 = vertices_2_transformed[0]
+        y2 = vertices_2_transformed[1]
+
+        # Obtain local coordinates in orthonormal system for element
+        transformation_matrix = _np.array([[x1 - x0, x2 - x0], [y1 - y0, y2 - y0]])
+        transformation_matrix_inv = _np.linalg.inv(transformation_matrix)
+        rhs = _np.vstack((x - x0, y - y0))
+        local_coords[:, i] = _np.matmul(transformation_matrix_inv, rhs).transpose()
+
+        # Required format for element and local coordinates for GridFunction.evaluate
+        elem = list(grid.leaf_view.entity_iterator(0))[element_index[i]]
+        coord = _np.array([[local_coords[0, i]], [local_coords[1, i]]])
+
+        # Calculate pressure phase and magnitude at near point
+        total_boundary_pressure[i] = grid_function.evaluate(elem, coord)
+
+    return total_boundary_pressure
 
 
 def ppi_calculator(bounding_box, resolution):
@@ -355,7 +535,8 @@ def ppi_calculator(bounding_box, resolution):
 
     Returns
     -----------
-    resolution in ppi : real number
+    resolution : float
+        resolution in ppi
     """
     diagonal_length_meter = _np.sqrt(
         (bounding_box[1] - bounding_box[0]) ** 2
@@ -367,40 +548,128 @@ def ppi_calculator(bounding_box, resolution):
     return diagonal_points / diagonal_length_inches
 
 
-def domain_edge(points_interior, plane_axes, alpha=0.001, only_outer=True):
+def domain_edge(model, plane_axes, plane_offset):
     """
-    To determine the points on the edges of the domains using the Concave Hull method.
+    Determine the points at the edges of the domains by computing the intersection of
+    the grid triangular elements with planes of constant x, y or z. The intersection
+    points are then sorted by proximity to one another.
 
     Parameters
     ----------
-    points_interior : numpy ndarray of size (3,N)
-        The interior points.
+    model : optimus.Model
+        A model object which has solution attributes already computed.
     plane_axes : list[int]
         The axes of the plane.
-    alpha : float
-        The threshold parameter in the Concave Hell method.
-    only_outer : boolean
-        Specify if we keep only the points on the outer border or also inner edges.
+    plane_offset : float
+        Offset of the visualisation plane defined along the third axis.
 
     Returns
     -----------
-    domains_edge_points : list[np.ndarray]
+    domains_edge_points : list[numpy.ndarray]
         list of numpy arrays of coordinates of points on the edges
     """
 
-    from .concave_hull import concave_hull as _concave_hull
+    import warnings
+    from itertools import combinations
 
-    domains_edge_points = []
-    for k in range(len(points_interior)):
-        if points_interior[k].any():
-            points_int_planar = points_interior[k][plane_axes, :]
-            edges = _concave_hull(points_int_planar.T, alpha, only_outer)
-            for i, j in edges:
-                domains_edge_points.append(
-                    _np.vstack(
-                        [points_int_planar[0, [i, j]], points_int_planar[1, [i, j]]]
-                    )
+    warnings.filterwarnings("ignore")
+
+    comb = _np.array(list(combinations([0, 1, 2], 2)))
+    axis_0 = plane_axes[0]
+    axis_1 = plane_axes[1]
+    axes = (0, 1, 2)
+    axis_2 = list(set(axes) - set(plane_axes))
+
+    domains_edge_points = list()
+
+    # Find points at which the triangular elements intersect the plane of constant x, y
+    # or z, for each subdomain.
+    for subdomain_number in range(model.n_subdomains):
+        vertices = model.geometry[subdomain_number].grid.leaf_view.vertices
+        elements = model.geometry[subdomain_number].grid.leaf_view.elements
+
+        axis_0_patch = vertices[axis_0, elements]
+        axis_1_patch = vertices[axis_1, elements]
+        axis_2_patch = vertices[axis_2, elements]
+
+        axis_0_intersect = list()
+        axis_1_intersect = list()
+
+        for i in range(comb.shape[0]):
+            plane_crossing_condition = (axis_2_patch[comb[i, 1], :] - plane_offset) * (
+                axis_2_patch[comb[i, 0], :] - plane_offset
+            )
+            idx = plane_crossing_condition <= 0
+            denominator = axis_2_patch[comb[i, 1], idx] - axis_2_patch[comb[i, 0], idx]
+
+            line_param = (plane_offset - axis_2_patch[comb[i, 0], idx]) / denominator
+            axis_0_values = axis_0_patch[comb[i, 0], idx] + line_param * (
+                axis_0_patch[comb[i, 1], idx] - axis_0_patch[comb[i, 0], idx]
+            )
+            axis_1_values = axis_1_patch[comb[i, 0], idx] + line_param * (
+                axis_1_patch[comb[i, 1], idx] - axis_1_patch[comb[i, 0], idx]
+            )
+            if len(axis_0_values):
+                axis_0_intersect.append(axis_0_values[~_np.isnan(axis_0_values)])
+                axis_1_intersect.append(axis_1_values[~_np.isnan(axis_1_values)])
+
+        if axis_0_intersect and axis_1_intersect:
+            axis_0_edge = _np.concatenate(axis_0_intersect)
+            axis_1_edge = _np.concatenate(axis_1_intersect)
+
+            # Sort above intersection points by proximity to one another.
+            axis_0_axis_1_vstack = _np.vstack((axis_0_edge, axis_1_edge))
+            axis_0_axis_1_unique = _np.unique(
+                _np.round(axis_0_axis_1_vstack, decimals=16), axis=1
+            )
+            axis_0_unique = axis_0_axis_1_unique[0, :]
+            axis_1_unique = axis_0_axis_1_unique[1, :]
+            number_of_edge_points = len(axis_0_unique) + 1
+            axis_0_edge_sorted = _np.zeros(number_of_edge_points, dtype=float)
+            axis_1_edge_sorted = _np.zeros(number_of_edge_points, dtype=float)
+            axis_0_edge_sorted[0] = axis_0_unique[0]
+            axis_1_edge_sorted[0] = axis_1_unique[0]
+            axis_0_unique = _np.delete(axis_0_unique, 0)
+            axis_1_unique = _np.delete(axis_1_unique, 0)
+
+            for i in range(number_of_edge_points - 2):
+                distance = _np.sqrt(
+                    (axis_0_edge_sorted[i] - axis_0_unique) ** 2
+                    + (axis_1_edge_sorted[i] - axis_1_unique) ** 2
                 )
+                idx = distance == _np.min(distance[distance != 0])
+                if i < number_of_edge_points - 2:
+                    axis_0_edge_sorted[i + 1] = axis_0_unique[idx]
+                    axis_1_edge_sorted[i + 1] = axis_1_unique[idx]
+                    domains_edge_points.append(
+                        _np.array(
+                            [
+                                [axis_0_edge_sorted[i], axis_0_edge_sorted[i + 1]],
+                                [axis_1_edge_sorted[i], axis_1_edge_sorted[i + 1]],
+                            ]
+                        )
+                    )
+                axis_0_unique = axis_0_unique[~idx]
+                axis_1_unique = axis_1_unique[~idx]
+
+            axis_0_edge_sorted[number_of_edge_points - 1] = axis_0_edge_sorted[0]
+            axis_1_edge_sorted[number_of_edge_points - 1] = axis_1_edge_sorted[0]
+
+            domains_edge_points.append(
+                _np.array(
+                    [
+                        [
+                            axis_0_edge_sorted[number_of_edge_points - 2],
+                            axis_0_edge_sorted[number_of_edge_points - 1],
+                        ],
+                        [
+                            axis_1_edge_sorted[number_of_edge_points - 2],
+                            axis_1_edge_sorted[number_of_edge_points - 1],
+                        ],
+                    ]
+                )
+            )
+
     return domains_edge_points
 
 
@@ -410,12 +679,12 @@ def array_to_imshow(field_array):
 
     Parameters
     ----------
-    field_array : np.ndarray
+    field_array : numpy.ndarray
         The two-dimensional array with grid values.
 
     Returns
     -------
-    field_imshow : np.ndarray
+    field_imshow : numpy.ndarray
         The two-dimensional array for imshow plots.
     """
     return _np.flipud(field_array.T)

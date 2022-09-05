@@ -78,14 +78,14 @@ def _vector_to_gridfunction(vector, spaces):
 
     Parameters
     ----------
-    vector : np.ndarray
+    vector : numpy.ndarray
         Vector of coefficients.
-    spaces : tuple of bempp.api.FunctionSpace
+    spaces : tuple[bempp.api.FunctionSpace]
         The function spaces.
 
     Returns
     ----------
-    gridfunctions : tuple of bempp.api.GridFunction
+    gridfunctions : tuple[bempp.api.GridFunction]
         The list of grid functions.
     """
 
