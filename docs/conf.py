@@ -73,4 +73,4 @@ epub_exclude_files = ["search.html"]
 # -- Extension configuration -------------------------------------------------
 autoapi_type = "python"
 autoapi_dirs = ["../optimus"]
-autoapi_root = "doc"
+autoapi_root = "docs"
