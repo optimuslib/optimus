@@ -67,7 +67,7 @@ version = {0.1.0}
 ## Licence
 OptimUS is licensed under an MIT licence. Full text of the licence can be found [here](LICENSE.md).
 
-## Bibliography
+## References
 The main references describing the BEM formulations and preconditioners implemented in OptimUS are as follows:
 
 > Haqshenas, S. R., Gélat, P., van 't Wout, E., Betcke, T., & Saffari, N. (2021). A fast full-wave solver for calculating ultrasound propagation in the body. Ultrasonics, 110, 106240. [doi:10.1016/j.ultras.2020.106240](https://doi.org/10.1016/j.ultras.2020.106240)
