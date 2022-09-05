@@ -36,7 +36,7 @@ python3 <file_name.py>
 
 ## Documentation
 Examples are available in the `notebook` directory on this GitHub page. Automatically generated documentation of the Python API
-can be found in [Read the Docs optimus project](https://readthedocs.org/projects/optimuslib/).
+can be found in [Read the Docs optimus project](https://optimuslib.readthedocs.io/en/latest/).
 
 ## Getting help
 Enquiries about the library and questions should be asked on the [GitHub discussion page](https://github.com/optimuslib/optimus/discussions).
