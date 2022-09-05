@@ -1,5 +1,5 @@
 # OptimUS
-[![Documentation Status](https://readthedocs.org/projects/optimuslib/badge/?version=latest)](https://readthedocs.org/projects/optimuslib/)
+[![Documentation Status](https://optimuslib.readthedocs.io/en/latest/)](https://optimuslib.readthedocs.io/en/latest/)
 
 An open-source Python library for solving 3D acoustic wave propagation.
 
