@@ -1,5 +1,6 @@
 # OptimUS
-[![Documentation Status](https://readthedocs.org/projects/optimuslib/badge/?version=latest)](https://readthedocs.org/projects/optimuslib/)
+
+[![Documentation Status](https://readthedocs.org/projects/optimuslib/badge/?version=latest)](https://optimuslib.readthedocs.io/en/latest/?badge=latest)
 
 An open-source Python library for solving 3D acoustic wave propagation.
 
@@ -36,7 +37,7 @@ python3 <file_name.py>
 
 ## Documentation
 Examples are available in the `notebook` directory on this GitHub page. Automatically generated documentation of the Python API
-can be found in [Read the Docs optimus project](https://readthedocs.org/projects/optimuslib/).
+can be found in [Read the Docs optimus project](https://optimuslib.readthedocs.io/en/latest/).
 
 ## Getting help
 Enquiries about the library and questions should be asked on the [GitHub discussion page](https://github.com/optimuslib/optimus/discussions).
@@ -67,7 +68,7 @@ version = {0.1.0}
 ## Licence
 OptimUS is licensed under an MIT licence. Full text of the licence can be found [here](LICENSE.md).
 
-## Bibliography
+## References
 The main references describing the BEM formulations and preconditioners implemented in OptimUS are as follows:
 
 > Haqshenas, S. R., Gélat, P., van 't Wout, E., Betcke, T., & Saffari, N. (2021). A fast full-wave solver for calculating ultrasound propagation in the body. Ultrasonics, 110, 106240. [doi:10.1016/j.ultras.2020.106240](https://doi.org/10.1016/j.ultras.2020.106240)
