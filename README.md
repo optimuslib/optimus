@@ -1,32 +1,42 @@
 # OptimUS
-[![Documentation Status](https://readthedocs.org/projects/optimuslib/badge/?version=latest)](https://readthedocs.org/projects/optimuslib/)
+[![Documentation Status](https://optimuslib.readthedocs.io/en/docs_build/)](https://readthedocs.org/projects/optimuslib/)
 
 An open-source Python library for solving 3D acoustic wave propagation.
 
 The OptimUS library provides functionality to simulate acoustic wave propagation in an unbounded domain with multiple scatterers. OptimUS solves the Helmholtz equation in multiple domains with homogeneous material parameters, using a boundary element method (BEM). The library targets general acoustical simulation and has functionality for focused ultrasound in biomedical engineering.
 
+
 ## Installation
+
 The OptimUS library and all dependencies are installed and tested in a Docker container. First, install the docker engine on your machine following the instruction on the [`docker`](https://docs.docker.com/engine/install/) website. Then, pull the docker container by running:
+
 
 ```bash
 docker pull optimuslib/optimus:latest
 ```
 
+
 To start the container on your machine, run:
+
 
 ```bash
 docker run -it -v $(pwd):/home/optimus/localwork --workdir /home/optimus/localwork -p 8888:8888 optimuslib/optimus:latest
 ```
 The output will provide the URL and token to access the Jupyter notebook interface from a web browser.
 
+
 Upon accessing Jupyter, you can execute the notebooks available in the `notebook` directory on this GitHub page.
 
+
 If you want to get a bash terminal within the container, you can either launch one through the [Jupyter notebook interface](http://localhost:8888) or via Docker as:
+
 
 ```bash
 docker run -it --rm -v $(pwd):/home/optimus/localwork --workdir /home/optimus/localwork optimuslib/optimus:latest 
 ```
+
 In the terminal, you can execute your Python files by running:
+
 
 ```bash
 python3 <file_name.py>
@@ -34,13 +44,16 @@ python3 <file_name.py>
 
 *Note: depending on the configuration of your machine's OS, you may need to run the above Docker commands as a super user (e.g. in a bash terminal: `sudo docker`).*
 
+
 ## Documentation
 Examples are available in the `notebook` directory on this GitHub page. Automatically generated documentation of the Python API
-can be found in [Read the Docs optimus project](https://readthedocs.org/projects/optimuslib/).
+can be found in [Read the Docs optimus project](https://optimuslib.readthedocs.io/en/docs_build/).
+
 
 ## Getting help
 Enquiries about the library and questions should be asked on the [GitHub discussion page](https://github.com/optimuslib/optimus/discussions).
 Errors in the library should be added to the [GitHub issue tracker](https://github.com/optimuslib/optimus/issues).
+
 
 ## Citation
 If you use OptimUS in your work, please cite it as follows:
@@ -60,12 +73,15 @@ version = {0.1.0}
 }
 ```
 
+
 ## Acknowledgement
 - The OptimUS library uses the bempp-legacy library from the [BEMPP project](https://github.com/bempp) as the computational backend. 
 - The tissue properties database is based on [Tissue Properties Database V4.1 of IT'IS Foundation](https://itis.swiss/virtual-population/tissue-properties/downloads/database-v4-1/).
 
+
 ## Licence
 OptimUS is licensed under an MIT licence. Full text of the licence can be found [here](LICENSE.md).
+
 
 ## References
 The main references describing the BEM formulations and preconditioners implemented in OptimUS are as follows:
