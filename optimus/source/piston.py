@@ -19,8 +19,7 @@ def create_piston(
     location=(0, 0, 0),
     velocity=1.0,
 ):
-    """
-    Create a plane circular piston source.
+    """Create a plane circular piston source.
 
     Parameters
     ----------
@@ -42,6 +41,7 @@ def create_piston(
         Normal velocity of the piston.
         Default : 1 m/s
     """
+
     return _Piston(
         frequency,
         radius,
@@ -94,7 +94,7 @@ class _Piston(_Source):
             the pressure field.
 
         Returns
-        ----------
+        -------
         pressure : np.ndarray
             An array of size (N,) with the pressure in the locations.
         """
@@ -122,7 +122,7 @@ class _Piston(_Source):
             on which to evaluate the pressure field.
 
         Returns
-        ----------
+        -------
         gradient : numpy.ndarray
             An array of size (3,N) with the normal gradient of the pressure
             in the locations.
@@ -154,7 +154,7 @@ class _Piston(_Source):
             on which to evaluate the pressure field.
 
         Returns
-        ----------
+        -------
         pressure : numpy.ndarray
             An array of size (N,) with the pressure in the locations.
         gradient : numpy.ndarray
@@ -193,10 +193,11 @@ class _Piston(_Source):
             Calculate the Dirichlet or Neumann trace of the field.
 
         Returns
-        ----------
+        -------
         trace : bempp.api.GridFunctions
             The surface traces.
         """
+
         return super()._calc_surface_traces_from_coefficients(
             medium,
             space_dirichlet,

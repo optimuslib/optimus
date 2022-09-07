@@ -1,6 +1,3 @@
-"""Utilities for input and output."""
-
-
 def export_to_file(
     model,
     post_process,
@@ -8,11 +5,10 @@ def export_to_file(
     file_name="optimus_exported_data",
     file_format="db",
 ):
-    """
-    Export the simulation results into a file.
+    """Export the simulation results into a file.
 
     Parameters
-    -------------
+    ----------
     model : optimus.model.Model
         An instance of the optimus model object.
     post_process : optimus.postprocess.PostProcess
@@ -25,6 +21,7 @@ def export_to_file(
         'mat': to save ONLY the post_process results into a MATLAB file.
         'db': (default) to save all the attributes of global parameters,
         source parameters, post processor and pickable objects of the model.
+
     """
     import shelve as _shelve
     import copy as _copy
@@ -65,19 +62,19 @@ def export_to_file(
 
 
 def import_from_file(file_name):
-    """
-    Import the saved data from a file.
+    """Import the saved data from a file.
 
     Parameters
-    ------------
+    ----------
     file_name : str
         This string includes the file name (with path) and the file extension
         in one string. The supported extensions are 'mat' and 'db'.
 
     Returns
-    ------------
+    -------
     imported_data : dict
         A dictionary of different objects imported from the data file.
+
     """
 
     import os

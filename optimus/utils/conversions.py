@@ -4,8 +4,7 @@ import numpy as _np
 
 
 def convert_to_positive_int(value, label="variable"):
-    """
-    Check if the input value can be converted into a positive integer.
+    """Check if the input value can be converted into a positive integer.
 
     Parameters
     ----------
@@ -30,8 +29,7 @@ def convert_to_positive_int(value, label="variable"):
 
 
 def convert_to_float(value, label="variable"):
-    """
-    Check if the input value can be converted into a float.
+    """Check if the input value can be converted into a float.
 
     Parameters
     ----------
@@ -53,8 +51,7 @@ def convert_to_float(value, label="variable"):
 
 
 def convert_to_positive_float(value, label="variable"):
-    """
-    Check if the input value can be converted into a positive float.
+    """Check if the input value can be converted into a positive float.
 
     Parameters
     ----------
@@ -79,8 +76,7 @@ def convert_to_positive_float(value, label="variable"):
 
 
 def convert_to_array(vector, shape=None, label="variable"):
-    """
-    Check if the input vector can be converted into an array for the specified
+    """Check if the input vector can be converted into an array for the specified
     shape, and perform the conversion.
 
     Parameters
@@ -120,8 +116,7 @@ def convert_to_array(vector, shape=None, label="variable"):
 
 
 def convert_to_complex_array(vector, shape=None, label="variable"):
-    """
-    Check if the input vector can be converted into an array for the specified
+    """Check if the input vector can be converted into an array for the specified
     shape, and perform the conversion.
 
     Parameters
@@ -176,8 +171,7 @@ def convert_to_complex_array(vector, shape=None, label="variable"):
 
 
 def convert_to_3n_array(array, label="variable"):
-    """
-    Convert the input array into a 3xN Numpy array, if possible.
+    """Convert the input array into a 3xN Numpy array, if possible.
 
     Parameters
     ----------

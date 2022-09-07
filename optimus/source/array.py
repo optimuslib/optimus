@@ -22,9 +22,7 @@ def create_array(
     centroid_locations=None,
     centroid_locations_filename=None,
 ):
-    """
-    Create an array source consisting of circular piston elements distributed on a
-    spherical section bowl.
+    """Create an array source consisting of circular piston elements distributed on a spherical section bowl.
 
     Parameters
     ----------
@@ -32,29 +30,20 @@ def create_array(
         The frequency of the acoustic field.
     element_radius : float
         The radius of elements which lie on the spherical section bowl.
-    velocity : complex, numpy.ndarray[complex]
-        Array of size (N,) with complex values for the normal velocities of
-        the array elements. If one value is specified, this will be repeated
-        for all array elements.
-        Default : 1 m/s
-    source_axis : tuple[float]
-        The direction vector of the axis of the bowl.
-        Default: positive x direction
+    velocity : complex, numpy.ndarray complex
+        Array of size (N,) with complex values for the normal velocities of the array elements. If one value is specified, this will be repeated for all array elements. Default : 1 m/s
+    source_axis : tuple float
+        The direction vector of the axis of the bowl. Default: positive x direction
     number_of_point_sources_per_wavelength : integer
-        The number of point sources per wavelength used to discretise each piston.
-        Default: 6
-    location : tuple[float]
-        The location of the centroid of the bowl.
-        Default: global origin
+        The number of point sources per wavelength used to discretise each piston. Default: 6
+    location : tuple float
+        The location of the centroid of the bowl. Default: global origin
     centroid_locations : numpy.ndarray
-        An array of size (3, N) with the locations of the centroids of the
-        piston elements. These must be specified in a local coordinate sytem
-        where the axis of the transducer is the Cartesian positive z-axis and
-        the focus of the transducer is (0,0,0).
+        An array of size (3, N) with the locations of the centroids of the piston elements. These must be specified in a local coordinate sytem where the axis of the transducer is the Cartesian positive z-axis and the focus of the transducer is (0,0,0).
     centroid_locations_filename : str
-        Path and filename containing the centroid locations data.
-        The file extension has to be ".dat".
+        Path and filename containing the centroid locations data. The file extension has to be ".dat".
     """
+
     return _Array(
         frequency,
         element_radius,
@@ -113,23 +102,19 @@ class _Array(_Source):
         self.element_normals = -_normalize_vector(self.centroid_locations)
 
     def _calc_centroid_locations(self, centroid_locations, centroid_locations_filename):
-        """
-        Calculates centroid locations.
+        """Calculates centroid locations.
 
         Parameters
         ----------
         centroid_locations : numpy.ndarray
-            An array of size (3, N) with the locations of the centroids of
-            the piston elements.
+            An array of size (3, N) with the locations of the centroids of the piston elements.
         centroid_locations_filename : str
-            Path and filename containing the centroid locations data.
-            The file extension has to be ".dat".
+            Path and filename containing the centroid locations data. The file extension has to be ".dat".
 
         Returns
-        ----------
+        -------
         centroid_locations : numpy.ndarray
-            An array of size (3, N) with the locations of the centroids of
-            the piston elements.
+            An array of size (3, N) with the locations of the centroids of the piston elements.
         """
 
         if centroid_locations is not None and centroid_locations_filename is not None:
@@ -151,18 +136,16 @@ class _Array(_Source):
         return centroid_locations
 
     def _calc_radius_of_curvature(self, centroid_locations):
-        """
-        Calculates the radius of curvature of the array transducer from centroid
+        """Calculates the radius of curvature of the array transducer from centroid
         locations.
 
         Parameters
         ----------
         centroid_locations : numpy.ndarray
-            An array of size (3, N) with the locations of the centroids of
-            the piston elements.
+            An array of size (3, N) with the locations of the centroids of the piston elements.
 
         Returns
-        ----------
+        -------
         radius of curvature : float
             The radius of curvature of the array.
         """
@@ -190,11 +173,10 @@ class _Array(_Source):
         medium : optimus.material.Material
             The propagating medium.
         locations : numpy.ndarray
-            An array of size (3,N) with the locations on which to evaluate
-            the pressure field.
+            An array of size (3,N) with the locations on which to evaluate the pressure field.
 
         Returns
-        ----------
+        -------
         pressure : np.ndarray
             An array of size (N,) with the pressure in the locations.
         """
@@ -206,8 +188,7 @@ class _Array(_Source):
         return pressure
 
     def normal_pressure_gradient(self, locations, normals, medium):
-        """
-        Calculate the normal gradient of the pressure field in the
+        """Calculate the normal gradient of the pressure field in the
         specified locations.
 
         Parameters
@@ -215,17 +196,14 @@ class _Array(_Source):
         medium : optimus.material.Material
             The propagating medium.
         locations : numpy.ndarray
-            An array of size (3,N) with the locations on which to evaluate
-            the pressure field.
+            An array of size (3,N) with the locations on which to evaluate the pressure field.
         normals : numpy.ndarray
-            An array of size (3,N) with the unit normal vectors at the locations
-            on which to evaluate the pressure field.
+            An array of size (3,N) with the unit normal vectors at the locations on which to evaluate the pressure field.
 
         Returns
-        ----------
+        -------
         gradient : numpy.ndarray
-            An array of size (3,N) with the normal gradient of the pressure
-            in the locations.
+            An array of size (3,N) with the normal gradient of the pressure in the locations.
         """
 
         points = _convert_to_3n_array(locations)
@@ -238,8 +216,7 @@ class _Array(_Source):
         return gradient
 
     def pressure_field_and_normal_gradient(self, medium, locations, normals):
-        """
-        Calculate the pressure field and the normal gradient of the pressure
+        """Calculate the pressure field and the normal gradient of the pressure
         field in the specified locations.
 
         Parameters
@@ -247,19 +224,16 @@ class _Array(_Source):
         medium : optimus.material.Material
             The propagating medium.
         locations : numpy.ndarray
-            An array of size (3,N) with the locations on which to evaluate
-            the pressure field.
+            An array of size (3,N) with the locations on which to evaluate the pressure field.
         normals : numpy.ndarray
-            An array of size (3,N) with the unit normal vectors at the locations
-            on which to evaluate the pressure field.
+            An array of size (3,N) with the unit normal vectors at the locations on which to evaluate the pressure field.
 
         Returns
-        ----------
+        -------
         pressure : numpy.ndarray
             An array of size (N,) with the pressure in the locations.
         gradient : numpy.ndarray
-            An array of size (3,N) with the normal gradient of the pressure
-            in the locations.
+            An array of size (3,N) with the normal gradient of the pressure in the locations.
         """
 
         points = _convert_to_3n_array(locations)
@@ -280,8 +254,7 @@ class _Array(_Source):
         dirichlet_trace=True,
         neumann_trace=True,
     ):
-        """
-        Calculate the surface traces of the source field on the mesh.
+        """Calculate the surface traces of the source field on the mesh.
 
         Parameters
         ----------
@@ -293,10 +266,11 @@ class _Array(_Source):
             Calculate the Dirichlet or Neumann trace of the field.
 
         Returns
-        ----------
+        -------
         trace : bempp.api.GridFunctions
             The surface traces.
         """
+
         return super()._calc_surface_traces_from_coefficients(
             medium,
             space_dirichlet,

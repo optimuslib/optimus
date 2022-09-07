@@ -1,6 +1,3 @@
-"""Functionality to plot pressure fields."""
-
-
 def plot_pressure_field(
     postprocess_obj,
     field="total",
@@ -8,33 +5,27 @@ def plot_pressure_field(
     display_edges=True,
     clim=None,
 ):
-    """
-    2D contour plotting of pressure fields of an optimus post process object
+    """2D contour plotting of pressure fields of an optimus post process object.
 
     Parameters
     ----------
     postprocess_obj : optimus.postprocess.PostProcess
-        optimus postprocess object that includes the visualisation pressure fields
+        Optimus postprocess object that includes the visualisation pressure fields
     field : string
-        The pressure field to be plotted.
-        The options are:
-            1. total, total_field, or total_pressure;
-            2. scattered, scattered_pressure, or scattered_field.
-            3. incident, incident_pressure, or incident_field.
-    unit: string
-        Pressure unit. the pressure fields are scaled accordingly.
-        Options are: Pa, kPa, MPa and GPa.
+        The pressure field to be plotted. The options are: 1. total, total_field, or total_pressure; 2. scattered, scattered_pressure, or scattered_field. 3. incident, incident_pressure, or incident_field.
+    unit : string
+        Pressure unit. the pressure fields are scaled accordingly - options are: Pa, kPa, MPa and GPa.
     display_edges : boolean
         Display domains edges, i.e. domains and plane interfaces.
-    clim : tuple[float, int]
-        The color limits: (clim_min, clim_max).
-        Must be of the same units as pressure fields.
+    clim : tuple (float, int)
+        The color limits: (clim_min, clim_max). Must be of the same units as pressure fields.
 
     Returns
-    ----------
+    -------
     fig_p_real, fig_p_tot : matplotlib.Figure
         Contour plots of the real and absolute value of the pressure field.
     """
+
     import numpy as _np
     import copy as _copy
 
@@ -110,33 +101,31 @@ def surface_plot(
     colorbar_unit,
     domains_edges=None,
 ):
-    """
-    2D surface plotting of a mesh grid quantity
+    """2D surface plotting of a mesh grid quantity.
 
     Parameters
     ----------
     quantity : np.ndarray
         the quantity to be plotted
-    axes_lims : list[float], tuple[float]
-        List of minima and maxima of h-axis and v-axis of the 2D contour plot,
-        in the form of [h_axis_min, h_axis_max, v_axis_min, v_axis_max].
-    axes_labels : list[str], tuple[str]
+    axes_lims : list float, tuple float
+        List of minima and maxima of h-axis and v-axis of the 2D contour plot, in the form of (h_axis_min, h_axis_max, v_axis_min, v_axis_max).
+    axes_labels : list str, tuple str
         the labels for h-axis and v-axis of the plot.
     colormap : string
         the name of colormap. all the matplotlib colormaps are supported.
-    colormap_lims : list[float], tuple[float]
+    colormap_lims : list float, tuple float
         The limit values of the colormap.
     colorbar_unit : string
         the label for colorbar
-    domains_edges : None, list[numpy.ndarray]
-        if the intersection points of the domains and the visualisation plane
-        is passed as a list, they are overlaid to the field plot.
+    domains_edges : None, list numpy.ndarray
+        if the intersection points of the domains and the visualisation plane is passed as a list, they are overlaid to the field plot.
 
     Returns
-    ----------
+    -------
     fig : matplotlib.Figure
         A Matplotlib figure.
     """
+
     from mpl_toolkits.axes_grid1 import make_axes_locatable
     from matplotlib import pylab as plt
     import numpy as _np

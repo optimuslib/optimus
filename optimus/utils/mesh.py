@@ -7,8 +7,7 @@ import numpy as _np
 
 
 def _get_mesh_stats(grid, verbose=False):
-    """
-    Compute the minimum, maximum, median, mean and standard deviation of
+    """Compute the minimum, maximum, median, mean and standard deviation of
     mesh elements for a grid object.
 
     Parameters
@@ -19,10 +18,11 @@ def _get_mesh_stats(grid, verbose=False):
         Print the results.
 
     Returns
-    ----------
+    -------
     stats : dict
         The mesh statistics.
     """
+
     elements = list(grid.leaf_view.entity_iterator(0))
     element_size = [
         _np.sqrt(
@@ -66,8 +66,7 @@ def _get_mesh_stats(grid, verbose=False):
 
 
 def get_geometries_stats(geometries, verbose=False):
-    """
-    Compute the minimum, maximum, median, mean and standard deviation of
+    """Compute the minimum, maximum, median, mean and standard deviation of
     mesh elements for optimus Geometries.
 
     Parameters
@@ -78,7 +77,7 @@ def get_geometries_stats(geometries, verbose=False):
         Print the results.
 
     Returns
-    ----------
+    -------
     stats : dict
         The mesh statistics.
     """
@@ -151,8 +150,7 @@ def get_geometries_stats(geometries, verbose=False):
 
 
 def scale_mesh(geometry, scaling_factor):
-    """
-    Scale elements sizes of a grid of an optimus Geometry by a factor.
+    """Scale elements sizes of a grid of an optimus Geometry by a factor.
     The number of nodes remains intact.
 
     Parameters
@@ -162,6 +160,7 @@ def scale_mesh(geometry, scaling_factor):
     scaling_factor : float
         Scaling factor of the sizes of the grid elements.
     """
+
     scaling = _convert_to_float(scaling_factor, "mesh scaling factor")
     vertices = geometry.grid.leaf_view.vertices * scaling
     elements = geometry.grid.leaf_view.elements
@@ -171,6 +170,7 @@ def scale_mesh(geometry, scaling_factor):
 
 def msh_from_string(geo_string):
     """Create a mesh from a string."""
+
     import os
     import subprocess
 
@@ -202,6 +202,7 @@ def msh_from_string(geo_string):
 
 def generate_grid_from_geo_string(geo_string):
     """Helper routine that implements the grid generation"""
+
     import os
 
     msh_name = msh_from_string(geo_string)
@@ -211,8 +212,7 @@ def generate_grid_from_geo_string(geo_string):
 
 
 def plane_grid(x_axis_lims, y_axis_lims, rotation_axis, rotation_angle, element_size):
-    """
-    Return a 2D square shaped plane.
+    """Return a 2D square shaped plane.
 
     Parameters
     ----------
@@ -230,10 +230,11 @@ def plane_grid(x_axis_lims, y_axis_lims, rotation_axis, rotation_angle, element_
         Element size.
 
     Returns
-    ----------
+    -------
     grid : bempp.api.Grid
         The triangular mesh on the plane.
     """
+
     stub = """
     Point(1) = {ax1_lim1, ax2_lim1, 0, cl};
     Point(2) = {ax1_lim2, ax2_lim1, 0, cl};
@@ -287,8 +288,7 @@ def plane_grid(x_axis_lims, y_axis_lims, rotation_axis, rotation_angle, element_
 
 
 def create_grid_points(resolution, plane_axes, plane_offset, bounding_box, mode):
-    """
-    Create a grid on a plane, either with Numpy or Gmsh.
+    """Create a grid on a plane, either with Numpy or Gmsh.
 
     Parameters
     ----------
@@ -311,6 +311,7 @@ def create_grid_points(resolution, plane_axes, plane_offset, bounding_box, mode)
     plane : Any
         The grid, with format depending on the algorithm.
     """
+
     from ..utils.generic import bold_ul_text
 
     ax1_min, ax1_max, ax2_min, ax2_max = bounding_box

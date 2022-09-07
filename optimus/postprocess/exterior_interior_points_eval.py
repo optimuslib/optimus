@@ -5,25 +5,21 @@ import multiprocessing as _mp
 
 
 def exterior_interior_points_eval(grid, points, solid_angle_tolerance, verbose=False):
-    """
-    Evaluate whether a field point is within a domain or not using a
-    solid angle method.
+    """Evaluate whether a field point is within a domain or not using a solid angle method.
 
     Parameters
-    ------------
+    ----------
     grid : bempp.api.Grid
         surface grid defining a domain
     points : numpy.ndarray
-        Field points to be evaluated if they are inside the volume defined by
-        the surface grid or not.
-        Array of size (3,N).
+        Field points to be evaluated if they are inside the volume defined by the surface grid or not. Array of size (3,N).
     solid_angle_tolerance : float, None
         the tolerance in solid angle method. If set to None/zero boundary points are not identified, otherwise they are.
     verbose : boolean
         display the log
 
     Returns
-    ------------
+    -------
     points_interior : numpy.ndarray
         Array of size (3,N) with coordinates of the interior points.
     points_exterior : numpy.ndarray
@@ -38,6 +34,7 @@ def exterior_interior_points_eval(grid, points, solid_angle_tolerance, verbose=F
     index_boundary : numpy.ndarray
         Array of size (1,N) with boolean values identifying the surface points.
     """
+
     elements = grid.leaf_view.elements
     vertices = grid.leaf_view.vertices
     number_of_elements = grid.leaf_view.entity_count(0)
@@ -167,22 +164,28 @@ def compute_solid_angle(
     elements_surface_area,
     point_index,
 ):
-    """
-    Compute the solid angle value for a triangular element.
+    """Compute the solid angle value for a triangular element.
 
     Parameters
-    ------------
+    ----------
     elements_barycent_x_coordinate : numpy.ndarray
+
     elements_barycent_y_coordinate : numpy.ndarray
+
     elements_barycent_z_coordinate : numpy.ndarray
+
     points : numpy.ndarray
+
     normals : numpy.ndarray
+
     elements_surface_area : numpy.ndarray
+
     point_index : numpy.ndarray
 
     Returns
-    ------------
+    -------
     solid_angle : numpy.ndarray
+
     """
 
     elements_barycen_dist = _np.array(

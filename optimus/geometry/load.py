@@ -5,8 +5,7 @@ from .common import ImportedGeometry as _ImportedGeometry
 
 
 def import_grid(filename, label="imported_grid"):
-    """
-    Import a grid from a file as geometry.
+    """Import a grid from a file as geometry.
 
     Parameters
     ----------
@@ -25,8 +24,7 @@ def import_grid(filename, label="imported_grid"):
 
 
 def bempp_grid(grid, label="bempp_grid"):
-    """
-    Import a BEMPP grid as geometry.
+    """Import a BEMPP grid as geometry.
 
     Parameters
     ----------
@@ -40,4 +38,5 @@ def bempp_grid(grid, label="bempp_grid"):
     geometry : optimus.geometry.Geometry
         The geometry based on the imported grid.
     """
+
     return _ImportedGeometry(grid, label)

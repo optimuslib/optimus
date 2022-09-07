@@ -16,8 +16,7 @@ def transducer_field(
     normals=None,
     verbose=False,
 ):
-    """
-    Calculate the field emitted by a transducer source.
+    """Calculate the field emitted by a transducer source.
 
     Parameters
     ----------
@@ -36,7 +35,7 @@ def transducer_field(
         Default: False
 
     Returns
-    ----------
+    -------
     transducer : _Transducer
         An object with the attributes 'pressure' and 'normal_pressure_gradient'.
     """
@@ -59,10 +58,8 @@ def transducer_field(
 
 class _Transducer:
     def __init__(self, source, medium, field_locations, normals, verbose):
-        """
-        Functionality to create different types of transducer sources
-        and calculate the pressure field emitted from them.
-        """
+        """Functionality to create different types of transducer sources and calculate the pressure field emitted from them."""
+
         self.source = source
         self.field_locations = field_locations
         self.normals = normals
@@ -77,13 +74,12 @@ class _Transducer:
         self.normal_pressure_gradient = None
 
     def generate_source_points(self):
-        """
-        Generate the source points of the transducer. The field emitted from
+        """Generate the source points of the transducer. The field emitted from
         any transducer is modelled by a collection of point sources, each
         with weighting for its amplitude.
 
         Returns
-        ----------
+        -------
         source_locations : numpy.ndarray
             An array of size (3,N_sourcepoints) with the location of each point source.
         source_weights : numpy.ndarray
@@ -134,17 +130,14 @@ class _Transducer:
         return source_locations, source_weights
 
     def define_source_points_in_reference_piston(self, radius):
-        """
-        Define the source points for a reference piston element,
+        """Define the source points for a reference piston element,
         that is, the source points on a rectangular grid, located
         in the plane z=0, centered at the origin, and inside a
         disk of the specified radius.
         The resolution of the points is determined by the specified
         number of point sources per wavelength. If zero points per
         wavelength is specified, return the center of the disk as
-        the only source point.
-
-        The surface area weighting is uniform.
+        the only source point. The surface area weighting is uniform.
 
         Parameters
         ----------
@@ -209,20 +202,15 @@ class _Transducer:
         return locations_inside_transducer, surface_area_weighting
 
     def define_source_points_in_reference_bowl(self):
-        """
-        Define the source points for a reference spherical section
+        """Define the source points for a reference spherical section
         bowl transducer, that is, the source points on a spherical
         section bowl whose apex is in contact with the z=0 plane,
         at the global origin and whose axis is the Cartesian x-axis.
         The bowl is defined by its outer radius and radius of
         curvature. A circular aperture may be defined by specifying
-        an inner radius.
-
-        The resolution of the points is determined by the specified
+        an inner radius. The resolution of the points is determined by the specified
         number of point sources per wavelength which must be strictly
-        positive.
-
-        The surface area weighting is uniform.
+        positive. The surface area weighting is uniform.
 
         Returns
         -------
@@ -343,19 +331,14 @@ class _Transducer:
         return locations_inside_transducer, surface_area_weighting
 
     def define_source_points_in_reference_array(self):
-        """
-        Define the source points for a reference spherical section
+        """Define the source points for a reference spherical section
         array transducer, that is, the source points on a spherical
         section bowl whose apex is in contact with the z=0 plane,
         at the global origin and whose axis is the Cartesian x-axis.
         The array is defined by the location of the element centroids
-        and the radius of the elements.
-
-        The resolution of the points is determined by the specified
+        and the radius of the elements. The resolution of the points is determined by the specified
         number of point sources per wavelength which must be strictly
-        positive.
-
-        The surface area weighting is uniform.
+        positive. The surface area weighting is uniform.
 
         Returns
         -------
@@ -395,8 +378,7 @@ class _Transducer:
         return source_locations_array, surface_area_weighting
 
     def transform_source_points(self, source_locations_on_reference_source):
-        """
-        Transform the source points from the reference transducer to the actual
+        """Transform the source points from the reference transducer to the actual
         location of the transducer, as specified by the source axis and the source
         location.
 
@@ -424,11 +406,10 @@ class _Transducer:
         return source_locations_transformed
 
     def calc_pressure_field(self):
-        """
-        Calculate the pressure field and the normal gradient of the
+        """Calculate the pressure field and the normal gradient of the
         transducer, in a collection of 3D observation points.
 
-        Uses the following class attributes.
+        Parameters
         ----------
         source_locations : numpy.ndarray
             An array of size (3,N_sourcepoints) with the coordinates of the
@@ -444,8 +425,8 @@ class _Transducer:
             normal vectors for evaluation of the pressure normal gradient on the
             surface of scatterers.
 
-        Sets the following class attributes.
-        ----------
+        Returns
+        -------
         pressure: numpy.ndarray
             An array of size (N_observationpoints,) with the pressure in the
             observation points.
@@ -476,12 +457,9 @@ class _Transducer:
 def calc_greens_functions_in_observation_points_numba(
     locations_source, locations_observation, wavenumber, source_weights
 ):
-    """
-    Calculate the pressure field and its gradient for a
+    """Calculate the pressure field and its gradient for a
     summation of point sources describing a transducer,
-    according to the Rayleigh integral formula.
-
-    Use Numba for acceleration and parallelisation.
+    according to the Rayleigh integral formula. Use Numba for acceleration and parallelisation.
 
     Parameters
     ----------
@@ -584,11 +562,8 @@ def calc_field_from_point_sources(
     source_weights,
     verbose,
 ):
-    """
-    Calculate the pressure field and its gradient of a point source,
-    according to the Rayleigh integral formula.
-
-    Use Numba or Multiprocessing acceleration.
+    """Calculate the pressure field and its gradient of a point source,
+    according to the Rayleigh integral formula. Use Numba or Multiprocessing acceleration.
 
     Parameters
     ----------
@@ -759,8 +734,7 @@ def calc_field_from_point_sources_numpy(
     wavenumber,
     source_weights,
 ):
-    """
-    Calculate the pressure field and its gradient of a point source,
+    """Calculate the pressure field and its gradient of a point source,
     according to the Rayleigh integral formula.
 
     Parameters
@@ -849,8 +823,7 @@ def calc_field_from_point_sources_mp_source_para(
     chunks_index_field,
     number_of_observation_locations,
 ):
-    """
-    Computes the pressure and normal pressure gradient at field locations for
+    """Computes the pressure and normal pressure gradient at field locations for
     selected source and field positions based on output from chunk_size_index. Used to
     calculate the incident field using multiprocessing and when parallelising over
     source locations.
@@ -921,8 +894,7 @@ def calc_field_from_point_sources_mp_field_para(
     chunks_index_source,
     chunks_index_field,
 ):
-    """
-    Computes the pressure and normal pressure gradient at field locations for
+    """Computes the pressure and normal pressure gradient at field locations for
     selected source and field positions based on output from chunk_size_index. Used to
     calculate the incident field using multiprocessing and when parallelising over
     field locations.
@@ -990,8 +962,7 @@ def calc_field_from_point_sources_mp_field_para(
 
 
 def chunk_size_index(locations_source, locations_observation):
-    """
-    Computes the chunk sizes and indices used to calculate the incident field using
+    """Computes the chunk sizes and indices used to calculate the incident field using
     multiprocessing and when parallelising over source or observation locations. The
     chunks are allocated based on the global_parameters.incident_field.mem_per_core
     parameter.
@@ -1049,8 +1020,7 @@ def chunk_size_index(locations_source, locations_observation):
 
 
 def break_in_chunks(number_of_locations, chunk_size):
-    """
-    Computes the chunk sizes and indices used to calculate the incident field using
+    """Computes the chunk sizes and indices used to calculate the incident field using
     multiprocessing and when parallelising over source or observation locations. The
     chunks are allocated based on the global_parameters.incident_field.mem_per_core
     parameter.
@@ -1061,6 +1031,7 @@ def break_in_chunks(number_of_locations, chunk_size):
         The total number of source or observer locations.
     chunk_size :  integer
         The size of the chunks the source or observation points are broken down into.
+
     Returns
     -------
     number_of_chunks : integer

@@ -17,13 +17,14 @@ def create_planewave(frequency, direction=(1, 0, 0), amplitude=1.0):
     ----------
     frequency : float
         The frequency of the acoustic field.
-    direction : numpy.ndarray, tuple[float], list[float]
+    direction : numpy.ndarray, tuple float, list float
         The direction of the plane wave.
         Default: positive x direction
     amplitude : float
         The amplitude of the plane wave.
         Default: 1 Pa
     """
+
     return _PlaneWave(frequency, direction, amplitude)
 
 
@@ -53,11 +54,10 @@ class _PlaneWave(_Source):
         medium : optimus.material.Material
             The propagating medium.
         locations : numpy.ndarray
-            An array of size (3,N) with the locations on which to evaluate
-            the pressure field.
+            An array of size (3,N) with the locations on which to evaluate the pressure field.
 
         Returns
-        ----------
+        -------
         pressure : np.ndarray
             An array of size (N,) with the pressure in the locations.
         """
@@ -88,7 +88,7 @@ class _PlaneWave(_Source):
             on which to evaluate the pressure field.
 
         Returns
-        ----------
+        -------
         gradient : numpy.ndarray
             An array of size (3,N) with the normal gradient of the pressure
             in the locations.
@@ -130,10 +130,11 @@ class _PlaneWave(_Source):
             Calculate the Dirichlet or Neumann trace of the field.
 
         Returns
-        ----------
+        -------
         trace : bempp.api.GridFunctions
             The surface traces.
         """
+
         return super()._calc_surface_traces_from_function(
             medium,
             space_dirichlet,

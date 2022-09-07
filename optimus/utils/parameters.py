@@ -1,13 +1,9 @@
-"""Set the global parameters."""
-
 import numpy as _np
 
 
 class DefaultParameters:
     def __init__(self):
-        """
-        Initialize the default global parameters
-        """
+        """Initialize the default global parameters"""
 
         from bempp.api import global_parameters as bempp_parameters
 
@@ -23,9 +19,8 @@ class DefaultParameters:
         self.postprocessing = PostProcessingParameters()
 
     def print(self):
-        """
-        Print all parameters.
-        """
+        """Print all parameters."""
+
         from .generic import bold_ul_red_text
 
         print("\n" + bold_ul_red_text("Verbosity parameter:"), self.verbosity)
@@ -41,18 +36,16 @@ class DefaultParameters:
 
 class LinalgParameters:
     def __init__(self):
-        """
-        Initialize the default parameters for linear algebra routines.
-        """
+        """Initialize the default parameters for linear algebra routines."""
+
         self.linsolver = "gmres"
         self.tol = 1e-5
         self.maxiter = 1000
         self.restart = 1000
 
     def print(self, prefix=""):
-        """
-        Print all parameters.
-        """
+        """Print all parameters."""
+
         print(prefix + "Linear solver:", self.linsolver)
         print(prefix + "Tolerance:", self.tol)
         print(prefix + "Maximum number of iterations:", self.maxiter)
@@ -61,9 +54,8 @@ class LinalgParameters:
 
 class IncidentFieldParallelProcessingParameters:
     def __init__(self):
-        """
-        Initialize the default parameters for incident field parallelisation.
-        """
+        """Initialize the default parameters for incident field parallelisation."""
+
         import multiprocessing as _mp
 
         self.cpu_count = _mp.cpu_count()
@@ -71,9 +63,8 @@ class IncidentFieldParallelProcessingParameters:
         self.parallelisation_method = "numba"
 
     def print(self, prefix=""):
-        """
-        Print all parameters.
-        """
+        """Print all parameters."""
+
         print(prefix + "Parallelisation method is: ", self.parallelisation_method)
         if self.parallelisation_method.lower() in [
             "multiprocessing",
@@ -89,33 +80,29 @@ class IncidentFieldParallelProcessingParameters:
 
 class PreconditioningParameters:
     def __init__(self):
-        """
-        Initialize the default parameters for the preconditioners.
-        """
+        """Initialize the default parameters for the preconditioners."""
+
         self.osrc = OsrcParameters()
 
     def print(self, prefix=""):
-        """
-        Print all parameters.
-        """
+        """Print all parameters."""
+
         print(prefix + "OSRC preconditioner.")
         self.osrc.print(prefix=prefix + " ")
 
 
 class OsrcParameters:
     def __init__(self):
-        """
-        Initialize the default parameters for the OSRC preconditioner.
-        """
+        """Initialize the default parameters for the OSRC preconditioner."""
+
         self.npade = 4
         self.theta = _np.pi / 3
         self.wavenumber = "int"
         self.damped_wavenumber = None
 
     def print(self, prefix=""):
-        """
-        Print all parameters.
-        """
+        """Print all parameters."""
+
         print(prefix + "Number of Padé expansion terms:", self.npade)
         print(prefix + "Branch cut angle for Padé series:", self.theta)
         print(prefix + "Wavenumber:", self.wavenumber)
@@ -124,9 +111,8 @@ class OsrcParameters:
 
 class PostProcessingParameters:
     def __init__(self):
-        """
-        Initialize the default parameters for postprocessing routines.
-        """
+        """Initialize the default parameters for postprocessing routines."""
+
         self.hmat_eps = 1.0e-8
         self.hmat_max_rank = 10000
         self.hmat_max_block_size = 10000
@@ -135,9 +121,8 @@ class PostProcessingParameters:
         self.quadrature_order = 4
 
     def print(self, prefix=""):
-        """
-        Print all parameters.
-        """
+        """Print all parameters."""
+
         print(prefix + "Potential operator assembly type is: ", self.assembly_type)
         if self.assembly_type.lower() in [
             "h-matrix",

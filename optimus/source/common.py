@@ -28,19 +28,17 @@ class Source:
 
     def pressure_field(self, medium, locations):
         """
-        Calculate the pressure field in the specified locations.
-
-        Needs to be overridden by specific source type.
+        Calculate the pressure field in the specified locations. Needs to be overridden by specific source type.
         """
+
         raise NotImplementedError
 
     def normal_pressure_gradient(self, medium, locations, normals):
         """
         Calculate the normal gradient of the pressure field in the
-        specified locations.
-
-        Needs to be overridden by specific source type.
+        specified locations. Needs to be overridden by specific source type.
         """
+
         raise NotImplementedError
 
     def pressure_field_and_normal_gradient(self, medium, locations, normals):
@@ -48,6 +46,7 @@ class Source:
         Calculate the pressure field and the normal gradient of the pressure
         field in the specified locations.
         """
+
         return (
             self.pressure_field(medium, locations),
             self.normal_pressure_gradient(medium, locations, normals),
@@ -62,10 +61,9 @@ class Source:
         neumann_trace=True,
     ):
         """
-        Calculate the surface traces of the source field on the mesh.
-
-        Needs to be overridden by specific source type.
+        Calculate the surface traces of the source field on the mesh. Needs to be overridden by specific source type.
         """
+
         raise NotImplementedError
 
     def _calc_surface_traces_from_function(
@@ -90,7 +88,7 @@ class Source:
             Calculate the Dirichlet or Neumann trace of the field.
 
         Returns
-        ----------
+        -------
         trace : bempp.api.GridFunction
             The surface traces.
         """
@@ -138,8 +136,7 @@ class Source:
         dirichlet_trace=True,
         neumann_trace=True,
     ):
-        """
-        Calculate the surface traces of the source field from values of the
+        """Calculate the surface traces of the source field from values of the
         pressure and its normal gradient in the degrees of freedom.
 
         Parameters
@@ -152,7 +149,7 @@ class Source:
             Calculate the Dirichlet or Neumann trace of the field.
 
         Returns
-        ----------
+        -------
         trace : bempp.api.GridFunction
             The surface traces.
         """

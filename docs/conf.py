@@ -1,76 +1,72 @@
+# Configuration file for the Sphinx documentation builder.
+#
+# This file only contains a selection of the most common options. For a full
+# list see the documentation:
+# https://www.sphinx-doc.org/en/master/usage/configuration.html
+
+# -- Path setup --------------------------------------------------------------
+
+# If extensions (or modules to document with autodoc) are in another directory,
+# add these directories to sys.path here. If the directory is relative to the
+# documentation root, use os.path.abspath to make it absolute, like shown here.
+#
 import os
 import sys
-sys.path.insert(0, os.path.abspath(".."))
-
-project = "OptimUS"
-author = "OptimUS team"
+import numpydoc
+sys.path.insert(0, os.path.abspath('..'))
 
 with open("../optimus/version.py") as f:
     version = f.read().strip()
     release = version
 
+# -- Project information -----------------------------------------------------
+
+project = "OptimUS"
+copyright = "2022, MIT Licence"
+author = "OptimUS team"
+
+
+# -- General configuration ---------------------------------------------------
+# -- General configuration
+
 extensions = [
+    "sphinx.ext.duration",
+    "sphinx.ext.doctest",
     "sphinx.ext.autodoc",
-    "sphinx.ext.coverage",
-    "sphinx.ext.mathjax",
+    "sphinx.ext.autosummary",
+    "sphinx.ext.intersphinx",
+    "numpydoc",
     "autoapi.extension",
 ]
 
-templates_path = ["_templates"]
-source_suffix = ".rst"
-master_doc = "index"
-language = None
-
-exclude_patterns = ["_build", "Thumbs.db", ".DS_Store"]
-pygments_style = None
-
-html_theme = "sphinxdoc"
-# html_theme_options = {}
-html_static_path = ["_static"]
-# html_sidebars = {}
-htmlhelp_basename = "optimusdocs"
-
-latex_elements = {
-    # The paper size ('letterpaper' or 'a4paper').
-    #
-    # 'papersize': 'letterpaper',
-    # The font size ('10pt', '11pt' or '12pt').
-    #
-    # 'pointsize': '10pt',
-    # Additional stuff for the LaTeX preamble.
-    #
-    # 'preamble': '',
-    # Latex figure (float) alignment
-    #
-    # 'figure_align': 'htbp',
+intersphinx_mapping = {
+    "rtd": ("https://docs.readthedocs.io/en/stable/", None),
+    "python": ("https://docs.python.org/3/", None),
+    "sphinx": ("https://www.sphinx-doc.org/en/master/", None),
 }
+intersphinx_disabled_domains = ["std"]
 
-latex_documents = [
-    (master_doc, "optimus.tex", "OptimUS documentation", "OptimUS team", "manual"),
-]
+templates_path = ["_templates"]
 
-man_pages = [(master_doc, "optimus", "OptimUS documentation", [author], 1)]
+# -- Options for EPUB output
+epub_show_urls = "footnote"
 
-texinfo_documents = [
-    (
-        master_doc,
-        "OptimUS",
-        "OptimUS documentation",
-        author,
-        "OptimUS team",
-    ),
-]
+# List of patterns, relative to source directory, that match files and
+# directories to ignore when looking for source files.
+# This pattern also affects html_static_path and html_extra_path.
+exclude_patterns = ["_build", "Thumbs.db", ".DS_Store"]
 
+# -- Options for HTML output -------------------------------------------------
 
-epub_title = project
+# The theme to use for HTML and HTML Help pages.  See the documentation for
+# a list of builtin themes.
+#
+html_theme = "sphinx_rtd_theme"
 
-# epub_identifier = ''
-
-# epub_uid = ''
-
-epub_exclude_files = ["search.html"]
-
-# -- Extension configuration -------------------------------------------------
+# Add any paths that contain custom static files (such as style sheets) here,
+# relative to this directory. They are copied after the builtin static files,
+# so a file named "default.css" will overwrite the builtin "default.css".
+html_static_path = []
 autoapi_type = "python"
 autoapi_dirs = ["../optimus"]
-autoapi_root = "doc"
+autoapi_root = "docs"

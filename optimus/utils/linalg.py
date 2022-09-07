@@ -1,15 +1,12 @@
-"""Utilities for linear algebra."""
-
 import numpy as _np
 
 
 def normalize_vector(vector):
-    """
-    Convert a vector into a unit vector.
+    """Convert a vector into a unit vector.
     For 2D input arrays, the columns will be normalized.
 
     Parameters
-    ------
+    ----------
     vector : numpy.ndarray
         An array of size (n,) or (n,m) with the m input vectors of dimension n.
 
@@ -42,11 +39,10 @@ def normalize_vector(vector):
 
 
 def theta_phi_point(point):
-    """
-    Counter-clockwise angle in xy plane (theta) and altitude towards z (phi).
+    """Counter-clockwise angle in xy plane (theta) and altitude towards z (phi).
 
     Parameters
-    ------
+    ----------
     point : numpy.ndarray
         Array of size (3,) with the rotation axis.
 
@@ -57,8 +53,8 @@ def theta_phi_point(point):
     phi: float
         The angle towards z from the xy plane from the plane upwards.
 
-    Example
-    -------
+    Examples
+    --------
     >>> point = [0, 1, 0]
     >>> theta, phi = theta_phi_point(point) # (pi/2, 0)
     >>> print("theta = π/2 = {:.5f}; phi = 0 = {:.1f}".format(theta, phi))
@@ -77,8 +73,7 @@ def theta_phi_point(point):
 
 
 def rotate(locations, source_axis):
-    """
-    Rotates the coordinates of the point sources (`locations`) which
+    """Rotates the coordinates of the point sources (`locations`) which
     approximate the transducer prior to the coordinate transformation.
     The source axis is a three element vector which defines the direction
     towards which the source is "pointing" (or the main axis of propagation)
@@ -86,7 +81,7 @@ def rotate(locations, source_axis):
     The components of the vector are in metres.
 
     Parameters
-    ------
+    ----------
     locations : numpy.ndarray
         Array of size (3,N) with the coordinates of the point sources.
     source_axis: numpy.ndarray
@@ -154,11 +149,10 @@ def rotate(locations, source_axis):
 
 
 def translate(locations, translation):
-    """
-    Translate an array of location points.
+    """Translate an array of location points.
 
     Parameters
-    ------
+    ----------
     locations : numpy.ndarray
         Array of size (3,N) with the point locations to be translated.
     translation: numpy.ndarray

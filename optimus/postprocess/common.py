@@ -1,5 +1,3 @@
-"""Common functionality for postprocessing and visualising results."""
-
 from unicodedata import decimal
 import numpy as _np
 import bempp.api as _bempp
@@ -9,8 +7,7 @@ from ..utils.linalg import normalize_vector as _normalize_vector
 
 class PostProcess:
     def __init__(self, model, verbose=False):
-        """
-        Create an optimus postprocess object with the specified parameters.
+        """Create an optimus postprocess object with the specified parameters.
 
         Parameters
         ----------
@@ -19,7 +16,9 @@ class PostProcess:
             the solve() function must have been executed.
         verbose: boolean
             Display the logs.
+
         """
+
         self.verbose = verbose
         self.model = model
         self.domains_grids = [
@@ -27,28 +26,26 @@ class PostProcess:
         ]
 
     def create_computational_grid(self, **kwargs):
-        """
-        Create the grid on which to calculate the pressure field.
+        """Create the grid on which to calculate the pressure field.
         Needs to be overridden by specific source type.
 
         Parameters
-        ---------
+        ----------
         kwargs : dict
             Options to be specified for different types of postprocessing.
+
         """
+
         raise NotImplementedError
 
     def compute_fields(self):
-        """
-        Calculate the pressure field in the specified locations.
-        Needs to be overridden by specific source type.
-        """
+        """Calculate the pressure field in the specified locations.Needs to be overridden by specific source type."""
+
         raise NotImplementedError
 
     def print_parameters(self):
-        """
-        Display parameters used for visualisation.
-        """
+        """Display parameters used for visualisation."""
+
         print("\n", 70 * "*")
         if hasattr(self, "points"):
             print("\n number of visualisation points: ", self.points.shape[1])
@@ -71,22 +68,20 @@ class PostProcess:
 
 
 def calculate_bounding_box(domains_grids, plane_axes):
-    """
-    Calculate the bounding box for a set of grids.
+    """Calculate the bounding box for a set of grids.
 
     Parameters
-    ---------
-    domains_grids : list[optimus.Grid]
+    ----------
+    domains_grids : list optimus.Grid
         The grids of the subdomains.
-    plane_axes : tuple[int]
+    plane_axes : tuple int
         The two indices of the boundary plane.
         Possible values are 0,1,2 for x,y,z axes, respectively.
 
     Returns
-    ----------
-    bounding_box: list[float]
-        Bounding box specifying the visualisation section on
-        the plane_axis: [axis1_min, axis1_max, axis2_min, axis2_max]
+    -------
+    bounding_box: list float
+        Bounding box specifying the visualisation section on the plane_axis as a list: axis1_min, axis1_max, axis2_min, axis2_max
     """
 
     if not isinstance(domains_grids, list):
@@ -103,37 +98,35 @@ def calculate_bounding_box(domains_grids, plane_axes):
 
 
 def find_int_ext_points(domains_grids, points, verbose):
-    """
-    Identify the interior and exterior points w.r.t. each grid.
+    """Identify the interior and exterior points w.r.t. each grid.
 
     Parameters
-    ---------
-    domains_grids : list[optimus.Grid]
+    ----------
+    domains_grids : list optimus.Grid
         The grids of the subdomains.
     points : numpy.ndarray
-        The field points.
-        The size of the array should be (3,N).
+        The field points. The size of the array should be (3,N).
     verbose : boolean
         Display the logs.
 
     Returns
-    -----------
-    points_interior : list[numpy.ndarray]
+    -------
+    points_interior : list numpy.ndarray
         A list of numpy arrays of size (3,N), where
         element i of the list is an array of coordinates of the
         interior points for domain i, i=1,...,no_subdomains.
     points_exterior : numpy.ndarray
         An array of size (3,N) with visualisation points in the exterior domain
-    points_boundary : list[numpy.ndarray]
+    points_boundary : list numpy.ndarray
         A list of arrays of size (3,N) with visualisation points at, or close to,
         grid boundaries.
-    index_interior : list[numpy.ndarray]
+    index_interior : list numpy.ndarray
         A list of arrays of size (1,N) with boolean values,
         identifying the interior points for each domain.
     index_exterior : numpy.ndarray
         An array of size (1,N) with boolean values,
         identifying the exterior points.
-    index_boundary : list[numpy.ndarray]
+    index_boundary : list numpy.ndarray
         A list of arrays of size (1,N) with boolean values,
         identifying the boundary points.
     """
@@ -207,8 +200,7 @@ def compute_pressure_fields(
     index_boundary,
     verbose,
 ):
-    """
-    Calculate the scattered and total pressure fields for visualisation.
+    """Calculate the scattered and total pressure fields for visualisation.
 
     Parameters
     ----------
@@ -220,25 +212,25 @@ def compute_pressure_fields(
         An array of size (3,N) with the visualisation points in the exterior domain.
     index_exterior : numpy.ndarray
         An array of size (1,N) with boolean values indentifying the exterior points.
-    points_interior : list[numpy.ndarray]
+    points_interior : list numpy.ndarray
         A list of arrays of size (3,N), where
         element i of the list is an array of coordinates of the
         interior points for domain i, i=1,...,no_subdomains
-    index_interior : list[numpy.ndarray]
+    index_interior : list numpy.ndarray
         A list of arrays of size (1,N) with boolean values indentifying
         the interior points.
-    points_boundary : list[numpy.ndarray]
+    points_boundary : list numpy.ndarray
         A list of arrays of size (3,N), where
         element i of the list is an array of coordinates of the
         boundary points for domain i, i=1,...,no_subdomains
-    index_boundary : list[numpy.ndarray]
+    index_boundary : list numpy.ndarray
         A list of boolean arrays of size (1,N),
         identifying the boundary points.
     verbose : bool
         Display the logs.
 
     Returns
-    -----------
+    -------
     total_field : numpy.ndarray
         An array of size (1,N) with complex values of the total pressure field.
     scattered_field : numpy.ndarray
@@ -246,6 +238,7 @@ def compute_pressure_fields(
     incident_exterior_field : numpy.ndarray
         An array of size (1,N) with complex values of the incident pressure field
         in the exterior domain.
+
     """
 
     from ..utils.generic import chunker, bold_ul_text
@@ -402,13 +395,12 @@ def compute_pressure_fields(
 
 
 def compute_pressure_boundary(grid, boundary_points, dirichlet_solution):
-    """
-    Calculate pressure for points near or at the boundary of a domain. When the solid
+    """Calculate pressure for points near or at the boundary of a domain. When the solid
     angle associated with a boundary vertex is below 0.1, it is assumed to lie on the
     boundary.
 
     Parameters
-    -----------
+    ----------
     grid : bempp.api.Grid
         The surface mesh of bempp.
     boundary_points : numpy.ndarray
@@ -419,9 +411,10 @@ def compute_pressure_boundary(grid, boundary_points, dirichlet_solution):
         solution vector on the boundary.
 
     Returns
-    -----------
+    -------
     total_boundary_pressure : numpy.ndarray
         An array of size (N,) with complex values of the pressure field.
+
     """
 
     vertices = grid.leaf_view.vertices
@@ -523,20 +516,20 @@ def compute_pressure_boundary(grid, boundary_points, dirichlet_solution):
 
 
 def ppi_calculator(bounding_box, resolution):
-    """
-    To convert resolution to diagonal ppi
+    """To convert resolution to diagonal ppi
 
     Parameters
-    -----------
-    bounding_box : list[float]
+    ----------
+    bounding_box : list float
         list of min and max of the 2D plane
-    resolution : list[float]
+    resolution : list float
         list of number of points along each direction
 
     Returns
-    -----------
+    -------
     resolution : float
         resolution in ppi
+
     """
     diagonal_length_meter = _np.sqrt(
         (bounding_box[1] - bounding_box[0]) ** 2
@@ -549,8 +542,7 @@ def ppi_calculator(bounding_box, resolution):
 
 
 def domain_edge(model, plane_axes, plane_offset):
-    """
-    Determine the points at the edges of the domains by computing the intersection of
+    """Determine the points at the edges of the domains by computing the intersection of
     the grid triangular elements with planes of constant x, y or z. The intersection
     points are then sorted by proximity to one another.
 
@@ -564,9 +556,10 @@ def domain_edge(model, plane_axes, plane_offset):
         Offset of the visualisation plane defined along the third axis.
 
     Returns
-    -----------
+    -------
     domains_edge_points : list[numpy.ndarray]
         list of numpy arrays of coordinates of points on the edges
+
     """
 
     import warnings
@@ -674,8 +667,7 @@ def domain_edge(model, plane_axes, plane_offset):
 
 
 def array_to_imshow(field_array):
-    """
-    Convert a two-dimensional array to a format for imshow plots.
+    """Convert a two-dimensional array to a format for imshow plots.
 
     Parameters
     ----------
@@ -686,5 +678,7 @@ def array_to_imshow(field_array):
     -------
     field_imshow : numpy.ndarray
         The two-dimensional array for imshow plots.
+
     """
+
     return _np.flipud(field_array.T)

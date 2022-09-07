@@ -32,14 +32,14 @@ def create_bowl(
         The outer radius of the spherical section bowl.
     radius_of_curvature : float
         The radius of curvature of the bowl.
-    source_axis : tuple[float]
+    source_axis : tuple float
         The axis of the bowl.
         Default: positive x direction
     number_of_point_sources_per_wavelength : integer
         The number of point sources per wavelength used to discretise
         the bowl source.
         Default: 6
-    location : tuple[float]
+    location : tuple float
         The location of the centroid of the bowl.
         Default: global origin
     velocity : complex
@@ -49,6 +49,7 @@ def create_bowl(
         The radius of the bowl aperture.
         Default: None
     """
+
     return _Bowl(
         frequency,
         outer_radius,
@@ -100,8 +101,7 @@ class _Bowl(_Source):
         self.velocity = _np.atleast_1d(complex(velocity))
 
     def pressure_field(self, medium, locations):
-        """
-        Calculate the pressure field in the specified locations.
+        """Calculate the pressure field in the specified locations.
 
         Parameters
         ----------
@@ -112,7 +112,7 @@ class _Bowl(_Source):
             the pressure field.
 
         Returns
-        ----------
+        -------
         pressure : numpy.ndarray
             Array of size (N,) with the pressure in the locations.
         """
@@ -124,8 +124,7 @@ class _Bowl(_Source):
         return pressure
 
     def normal_pressure_gradient(self, locations, normals, medium):
-        """
-        Calculate the normal gradient of the pressure field in the
+        """Calculate the normal gradient of the pressure field in the
         specified locations.
 
         Parameters
@@ -133,14 +132,12 @@ class _Bowl(_Source):
         medium : optimus.material.Material
             The propagating medium.
         locations : numpy.ndarray
-            Array of size (3,N) with the locations on which to evaluate
-            the pressure field.
+            Array of size (3,N) with the locations on which to evaluate the pressure field.
         normals : numpy.ndarray
-            Array of size (3,N) with the unit normal vectors at the locations
-            on which to evaluate the pressure field.
+            Array of size (3,N) with the unit normal vectors at the locations on which to evaluate the pressure field.
 
         Returns
-        ----------
+        -------
         gradient : numpy.ndarray
             Array of size (3,N) with the normal gradient of the pressure
             in the locations.
@@ -156,8 +153,7 @@ class _Bowl(_Source):
         return gradient
 
     def pressure_field_and_normal_gradient(self, medium, locations, normals):
-        """
-        Calculate the pressure field and the normal gradient of the pressure
+        """Calculate the pressure field and the normal gradient of the pressure
         field in the specified locations.
 
         Parameters
@@ -165,19 +161,16 @@ class _Bowl(_Source):
         medium : optimus.material.Material
             The propagating medium.
         locations : numpy.ndarray
-            An array of size (3,N) with the locations on which to evaluate
-            the pressure field.
+            An array of size (3,N) with the locations on which to evaluate the pressure field.
         normals : numpy.ndarray
-            An array of size (3,N) with the unit normal vectors at the locations
-            on which to evaluate the pressure field.
+            An array of size (3,N) with the unit normal vectors at the locations on which to evaluate the pressure field.
 
         Returns
-        ----------
+        -------
         pressure : numpy.ndarray
             An array of size (N,) with the pressure in the locations.
         gradient : numpy.ndarray
-            An array of size (3,N) with the normal gradient of the pressure
-            in the locations.
+            An array of size (3,N) with the normal gradient of the pressure in the locations.
         """
 
         points = _convert_to_3n_array(locations)
@@ -211,10 +204,11 @@ class _Bowl(_Source):
             Calculate the Dirichlet or Neumann trace of the field.
 
         Returns
-        ----------
+        -------
         trace : bempp.api.GridFunctions
             The surface traces.
         """
+
         return super()._calc_surface_traces_from_coefficients(
             medium,
             space_dirichlet,
