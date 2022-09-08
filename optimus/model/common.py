@@ -32,6 +32,7 @@ class Model:
         Solve the model.
         Needs to be overwritten by specific model.
         """
+
         raise NotImplementedError
 
     def _preprocess_domains(self):
@@ -39,7 +40,7 @@ class Model:
         Preprocess the input variables for the geometry and materials.
 
         Returns
-        ----------
+        -------
         n_bounded_domains : int
             The number of bounded subdomains.
         """
@@ -84,7 +85,7 @@ def _vector_to_gridfunction(vector, spaces):
         The function spaces.
 
     Returns
-    ----------
+    -------
     gridfunctions : tuple[bempp.api.GridFunction]
         The list of grid functions.
     """
@@ -118,7 +119,7 @@ def _check_validity_formulation(
         The parameters for the operator preconditioner.
 
     Returns
-    ----------
+    -------
     formulation_name : str
         The name of the boundary integral formulation.
     preconditioner_name : str

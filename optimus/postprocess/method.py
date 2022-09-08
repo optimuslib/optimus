@@ -1,13 +1,10 @@
-"""Functionality to calculate acoustic fields on different visualisation grids"""
-
 from .common import PostProcess as _PostProcess
 import numpy as _np
 
 
 class VisualisePlane(_PostProcess):
     def __init__(self, model, verbose=False):
-        """
-        Create a PostProcess optimus object where the visualisation grid is a 2D plane.
+        """Create a PostProcess optimus object where the visualisation grid is a 2D plane.
 
         Parameters
         ----------
@@ -15,6 +12,7 @@ class VisualisePlane(_PostProcess):
             An optimus model object that includes the solution fields on the boundaries.
         verbose : boolean
             Display the log information.
+
         """
         super().__init__(model, verbose)
 
@@ -80,9 +78,8 @@ class VisualisePlane(_PostProcess):
         )
 
     def compute_fields(self):
-        """
-        Calculate the scattered and total pressure fields in the planar grid created.
-        """
+        """Calculate the scattered and total pressure fields in the planar grid created."""
+
         from .common import compute_pressure_fields, array_to_imshow
 
         (
@@ -115,8 +112,7 @@ class VisualisePlane(_PostProcess):
 
 class VisualiseCloudPoints(_PostProcess):
     def __init__(self, model, verbose=False):
-        """
-        Create a PostProcess optimus object where the visualisation grid is
+        """Create a PostProcess optimus object where the visualisation grid is
         a cloud of 3D points.
 
         Parameters
@@ -125,17 +121,18 @@ class VisualiseCloudPoints(_PostProcess):
             An optimus model object that includes the solution fields on the boundaries.
         verbose : boolean
             Display the log information.
+
         """
         super().__init__(model, verbose)
 
     def create_computational_grid(self, points):
-        """
-        Create a point cloud to compute the pressure fields.
+        """Create a point cloud to compute the pressure fields.
 
         Parameters
         ----------
         points: numpy.ndarray
             Array of size (3,N) with points on which to calculate the pressure field.
+
         """
 
         from .common import find_int_ext_points
@@ -153,9 +150,8 @@ class VisualiseCloudPoints(_PostProcess):
         ) = find_int_ext_points(self.domains_grids, self.points, self.verbose)
 
     def compute_fields(self):
-        """
-        Calculate the scattered and total pressure fields in the postprocess grid.
-        """
+        """Calculate the scattered and total pressure fields in the postprocess grid."""
+
         from .common import compute_pressure_fields
 
         (
@@ -179,8 +175,7 @@ class VisualiseCloudPoints(_PostProcess):
 
 class VisualisePlaneAndBoundary(_PostProcess):
     def __init__(self, model, verbose=False):
-        """
-        Create a PostProcess optimus object where the visualisation grid is
+        """Create a PostProcess optimus object where the visualisation grid is
         a union of a plane and surface meshes of the domains.
 
         Parameters
@@ -189,6 +184,7 @@ class VisualisePlaneAndBoundary(_PostProcess):
             An optimus model object that includes the solution fields on the boundaries.
         verbose : boolean
             Display the log information.
+
         """
         super().__init__(model, verbose)
 
@@ -199,8 +195,7 @@ class VisualisePlaneAndBoundary(_PostProcess):
         plane_offset=0.0,
         bounding_box=None,
     ):
-        """
-        Create a planar grid to compute the pressure fields.
+        """Create a planar grid to compute the pressure fields.
 
         Parameters
         ----------
@@ -216,6 +211,7 @@ class VisualisePlaneAndBoundary(_PostProcess):
         bounding_box : list[float], tuple[float]
             Bounding box specifying the visualisation section along
             the plane's axes: [axis1_min, axis1_max, axis2_min, axis2_max]
+
         """
 
         from .common import calculate_bounding_box, find_int_ext_points
@@ -248,8 +244,7 @@ class VisualisePlaneAndBoundary(_PostProcess):
         ) = find_int_ext_points(self.domains_grids, self.points, self.verbose)
 
     def compute_fields(self, file_name="planar_and_surface"):
-        """
-        Calculate the scattered and total pressure fields in the planar grid created.
+        """Calculate the scattered and total pressure fields in the planar grid created.
         Export the field values to gmsh files.
 
         Parameters
@@ -257,6 +252,7 @@ class VisualisePlaneAndBoundary(_PostProcess):
         file_name : str
             The name for the output file. The results are saved as GMSH files.
             GMSH should be used for visualisation.
+
         """
         from .common import compute_pressure_fields
         import bempp.api as _bempp

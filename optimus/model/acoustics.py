@@ -6,8 +6,7 @@ from .common import Model as _Model
 
 
 def create_default_model(source, geometry, exterior, interior):
-    """
-    Create an acoustics model with default settings.
+    """Create an acoustics model with default settings.
 
     For multiple domains, a list of geometries and interior materials need
     to be specified, with equal length. They are matched by order.
@@ -27,11 +26,11 @@ def create_default_model(source, geometry, exterior, interior):
         scatterer. For multiple domains, provide a list of materials.
 
     Returns
-    ----------
+    -------
     model : optimus.Model
-        The Optimus representation of the the BEM model of acoustic wave
-        propagation in the interior and exterior domains.
+        The Optimus representation of the the BEM model of acoustic wave propagation in the interior and exterior domains.
     """
+
     model = Pmchwt(
         source=source,
         geometry=geometry,
@@ -52,10 +51,7 @@ def create_acoustic_model(
     preconditioner="mass",
     preconditioner_parameters=None,
 ):
-    """
-    Create a preconditioned boundary integral equation for acoustic wave propagation.
-
-    For multiple domains, a list of geometries and interior materials need
+    """Create a preconditioned boundary integral equation for acoustic wave propagation. For multiple domains, a list of geometries and interior materials need
     to be specified, with equal length. They are matched by order.
 
     Parameters
@@ -81,7 +77,7 @@ def create_acoustic_model(
         The parameters for the operator preconditioner.
 
     Returns
-    ----------
+    -------
     model : optimus.Model
         The Optimus representation of the the BEM model of acoustic wave
         propagation in the interior and exterior domains.
@@ -118,9 +114,8 @@ class Pmchwt(_Model):
         preconditioner,
         parameters=None,
     ):
-        """
-        Create a model based on the PMCHWT formulation.
-        """
+        """Create a model based on the PMCHWT formulation."""
+
         super().__init__(
             source,
             geometry,
@@ -145,9 +140,8 @@ class Pmchwt(_Model):
         self.iteration_count = None
 
     def solve(self):
-        """
-        Solve the PMCHWT model.
-        """
+        """Solve the PMCHWT model."""
+
         self._create_function_spaces()
         self._create_continuous_operator()
         self._create_preconditioner()
@@ -157,18 +151,16 @@ class Pmchwt(_Model):
         self._solution_vector_to_gridfunction()
 
     def _create_function_spaces(self):
-        """
-        Create the function spaces for the boundary integral operators.
+        """Create the function spaces for the boundary integral operators.
         Continuous P1 elements will always be used for the Helmholtz equation.
         """
+
         self.space = [
             _bempp.function_space(geom.grid, "P", 1) for geom in self.geometry
         ]
 
     def _create_continuous_operator(self):
-        """
-        Create the continuous boundary integral operators of the system.
-        """
+        """Create the continuous boundary integral operators of the system."""
 
         freq = self.source.frequency
         k_ext = self.material_exterior.compute_wavenumber(freq)
@@ -214,9 +206,7 @@ class Pmchwt(_Model):
         self.continous_operator = matrix
 
     def _create_preconditioner(self):
-        """
-        Assemble the operator preconditioner for the linear system.
-        """
+        """Assemble the operator preconditioner for the linear system."""
 
         if self.preconditioner == "none":
 
@@ -369,8 +359,7 @@ def create_boundary_integral_operators(
     adjoint_double_layer=False,
     hypersingular=False,
 ):
-    """
-    Create boundary integral operators of the Helmholtz equation.
+    """Create boundary integral operators of the Helmholtz equation.
 
     Parameters
     ----------

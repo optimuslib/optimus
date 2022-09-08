@@ -1,5 +1,3 @@
-"""Common functionality for materials."""
-
 import numpy as _np
 import pandas as pd
 import os
@@ -11,8 +9,7 @@ def get_excel_database(
     header_format=(0, 1),
     index_col=None,
 ):
-    """
-    Read excel database file as a pandas dataframe
+    """Read excel database file as a pandas dataframe
 
     Parameters
     ----------
@@ -28,10 +25,11 @@ def get_excel_database(
         Column index for labels.
 
     Returns
-    ----------
+    -------
     dataframe: pandas.Dataframe
         The database with material parameters.
     """
+
     if database.lower() == "default":
         file_name = "Material_database.xls"
     elif database.lower() == "user-defined":
@@ -51,8 +49,7 @@ def get_excel_database(
 
 
 def get_material_properties(name):
-    """
-    Extract material properties from all databases.
+    """Extract material properties from all databases.
 
     Parameters
     ----------
@@ -60,10 +57,11 @@ def get_material_properties(name):
         The name of material in the database.
 
     Returns
-    ----------
+    -------
     properties : dict
         A dictionary of material properties
     """
+
     from ..utils.generic import bold_ul_red_text
 
     if not isinstance(name, str):
@@ -99,8 +97,7 @@ def get_material_properties(name):
 
 
 def write_material_database(properties):
-    """
-    Write a pandas dataframe of user-defined properties to the user-defined
+    """Write a pandas dataframe of user-defined properties to the user-defined
     material database Excel file.
 
     Parameters
@@ -110,7 +107,7 @@ def write_material_database(properties):
 
     Returns
     -------
-    None
+        None
     """
 
     user_database_file = "Material_database_user-defined.xls"
@@ -170,8 +167,7 @@ def write_material_database(properties):
 
 class Material:
     def __init__(self, properties):
-        """
-        Object for the physical properties of a material.
+        """Object for the physical properties of a material.
 
         Parameters
         ----------
@@ -187,6 +183,7 @@ class Material:
             attenuation_pow_b: float
                 Attenuation power in power law [dimensionless]
         """
+
         self.name = properties["name"]
         self.density = properties["density"]
         self.speed_of_sound = properties["speed_of_sound"]
@@ -195,8 +192,7 @@ class Material:
         self.properties = properties
 
     def compute_wavenumber(self, frequency):
-        """
-        Calculate the wavenumber for the specified frequency.
+        """Calculate the wavenumber for the specified frequency.
 
         Parameters
         ----------
@@ -204,18 +200,18 @@ class Material:
             The wave frequency
 
         Returns
-        ----------
+        -------
         wavenumber : complex
             The wavenumber
         """
+
         return (
             2 * _np.pi * frequency / self.speed_of_sound
             + 1j * self.compute_attenuation(frequency)
         )
 
     def compute_wavelength(self, frequency):
-        """
-        Calculate the wave length for the specified frequency.
+        """Calculate the wave length for the specified frequency.
 
         Parameters
         ----------
@@ -223,15 +219,15 @@ class Material:
             The wave frequency
 
         Returns
-        ----------
+        -------
         wavelength : float
             The wave length
         """
+
         return self.speed_of_sound / frequency
 
     def compute_attenuation(self, frequency):
-        """
-        Calculate the power law attenuation coefficient (alpha) for the
+        """Calculate the power law attenuation coefficient (alpha) for the
         specified frequency.
 
         Parameters
@@ -240,20 +236,21 @@ class Material:
             The wave frequency
 
         Returns
-        ----------
+        -------
         attenuation : float
             The attenuation coefficient
         """
+
         return self.attenuation_coeff_a * (frequency * 1e-6) ** self.attenuation_pow_b
 
     def print(self):
-        """
-        Print the material properties
+        """Print the material properties
 
         Returns
         -------
-        None
+            None
         """
+
         cols = [
             "name",
             "density",

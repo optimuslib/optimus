@@ -6,8 +6,7 @@ from .common import Geometry as _Geometry
 
 class RegularSphere(_Geometry):
     def __init__(self, refinement_level=1):
-        """
-        Create a regular sphere geometry, i.e., a structured mesh on a sphere
+        """Create a regular sphere geometry, i.e., a structured mesh on a sphere
         with unit radius.
 
         Parameters
@@ -26,8 +25,7 @@ class RegularSphere(_Geometry):
 
 class Sphere(_Geometry):
     def __init__(self, radius=1, origin=(0, 0, 0), element_size=0.1):
-        """
-        Create a sphere geometry.
+        """Create a sphere geometry.
 
         Parameters
         ----------
@@ -51,8 +49,7 @@ class Sphere(_Geometry):
 
 class Ellipsoid(_Geometry):
     def __init__(self, radius=(1, 1, 1), origin=(0, 0, 0), element_size=0.1):
-        """
-        Create an ellipsoid geometry.
+        """Create an ellipsoid geometry.
 
         Parameters
         ----------
@@ -77,8 +74,7 @@ class Ellipsoid(_Geometry):
 
 class Cube(_Geometry):
     def __init__(self, length=1, origin=(0, 0, 0), element_size=0.1):
-        """
-        Create a cube geometry.
+        """Create a cube geometry.
 
         Parameters
         ----------
@@ -101,8 +97,7 @@ class Cube(_Geometry):
 
 class ReentrantCube(_Geometry):
     def __init__(self, refinement_factor=0.2, element_size=0.1):
-        """
-        Create a reentrant cube geometry.
+        """Create a reentrant cube geometry.
 
         Parameters
         ----------
@@ -122,8 +117,7 @@ class ReentrantCube(_Geometry):
 
 class Almond(_Geometry):
     def __init__(self, element_size=0.01):
-        """
-        Create a NASA almond geometry.
+        """Create a NASA almond geometry.
 
         Parameters
         ----------
@@ -140,8 +134,7 @@ class Almond(_Geometry):
 
 class Cuboid(_Geometry):
     def __init__(self, length=(1, 1, 1), origin=(0, 0, 0), element_size=0.1):
-        """
-        Create a cuboid geometry.
+        """Create a cuboid geometry.
 
         Parameters
         ----------
@@ -165,8 +158,7 @@ class Cuboid(_Geometry):
         super().__init__(grid, label="cuboid")
 
     def _cuboid_gmsh_string(self):
-        """
-        Create GMSH string for cuboid shape.
+        """Create GMSH string for cuboid shape.
         This function is identical to the equivalent bempp-cl functionality.
         """
 

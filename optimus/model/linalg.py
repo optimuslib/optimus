@@ -20,12 +20,13 @@ def linear_solve(
         Default: False
 
     Returns
-    ----------
+    -------
     solution : numpy.ndarray
         The solution vector.
     it_count : int
         The number of iterations (optional).
     """
+
     import optimus
 
     if optimus.global_parameters.linalg.linsolver == "gmres":
@@ -56,6 +57,7 @@ class GmresSolver:
         rhs_system : numpy.ndarray
             The right-hand-side vector of the system.
         """
+
         self.lhs_matrix = lhs_system
         self.rhs_vector = rhs_system
         self.it_count = None
@@ -64,6 +66,7 @@ class GmresSolver:
         """
         Solve the linear system with GMRES.
         """
+
         from scipy.sparse.linalg import gmres
         import optimus
 

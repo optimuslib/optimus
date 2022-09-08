@@ -1,5 +1,3 @@
-"""Material properties."""
-
 import numpy as _np
 from .common import Material as _Material
 from .common import get_material_properties as _get_material_properties
@@ -7,16 +5,15 @@ from .common import write_material_database as _write_material_database
 
 
 def load_material(name):
-    """
-    Load the physical properties of the specified material.
+    """Load the physical properties of the specified material.
 
     Parameters
     ----------
-    name : str, tuple[str]
+    name : str, tuple str
         The name(s) of the material(s)
 
     Returns
-    ----------
+    -------
     material : optimus.Material
         An (list of) optimus material object(s)
     """
@@ -45,22 +42,21 @@ def create_material(
     save_to_file=False,
     **properties_user
 ):
-    """
-    Create an optimus material object with the specified parameters.
+    """Create an optimus material object with the specified parameters.
 
     Parameters
     ----------
     name : str
         The name of the material.
     density : float
-        The mass density in [kg/m^3]
+        The mass density in kg/m^3
     speed_of_sound : float
-        The speed of sound in [m/s]
+        The speed of sound in m/s
     attenuation_coeff_a: float
-        Attenuation coefficient in power law [Np/m/MHz]
+        Attenuation coefficient in power law Np/m/MHz
         Default: 0 (no attenuation)
     attenuation_pow_b: float
-        Attenuation power in power law [dimensionless]
+        Attenuation power in power law, dimensionless
         Default: 0 (no attenuation)
     save_to_file: boolean
         Write the material to the user-defined database.
@@ -68,10 +64,11 @@ def create_material(
         A dictionary of additional material properties.
 
     Returns
-    ----------
+    -------
     material : optimus.Material
         The optimus material object
     """
+
     list_args = [
         "name",
         "density",
