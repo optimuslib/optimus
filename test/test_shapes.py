@@ -16,6 +16,6 @@ def test_unit_sphere_radius():
         np.sqrt(vertices[0, :] ** 2 + vertices[1, :] ** 2 + vertices[2, :] ** 2)
     )
 
-    expected = 1.1
+    expected = 1
 
     np.testing.assert_almost_equal(actual, expected, decimal=5)
