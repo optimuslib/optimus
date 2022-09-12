@@ -1,5 +1,5 @@
 # OptimUS
-[![Documentation Status](https://readthedocs.org/projects/optimuslib/badge/?version=docs_build)](https://optimuslib.readthedocs.io/en/docs_build/?badge=docs_build)
+[![Documentation Status](https://readthedocs.org/projects/optimuslib/badge/?version=release_edit)](https://optimuslib.readthedocs.io/en/release_edit/?badge=release_edit)
 
 An open-source Python library for solving 3D acoustic wave propagation.
 
@@ -47,7 +47,7 @@ python3 <file_name.py>
 
 ## Documentation
 Examples are available in the `notebook` directory on this GitHub page. Automatically generated documentation of the Python API
-can be found in [Read the Docs optimus project](https://optimuslib.readthedocs.io/en/docs_build/).
+can be found in [Read the Docs optimus project](https://optimuslib.readthedocs.io/en/release_edit/index.html).
 
 
 ## Getting help
