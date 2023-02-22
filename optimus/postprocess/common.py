@@ -244,6 +244,18 @@ def compute_pressure_fields(
     from ..utils.generic import chunker, bold_ul_text
     from optimus import global_parameters
 
+    if model.formulation == 'analytical':
+        return compute_analytical_pressure_fields(
+            model,
+            points,
+            points_exterior,
+            index_exterior,
+            points_interior,
+            index_interior,
+            points_boundary,
+            index_boundary,
+        )
+
     if global_parameters.postprocessing.assembly_type.lower() in [
         "h-matrix",
         "hmat",
@@ -393,6 +405,148 @@ def compute_pressure_fields(
 
     return total_field, scattered_field, incident_exterior_field
 
+def compute_analytical_pressure_fields(
+    model,
+    points,
+    points_exterior,
+    index_exterior,
+    points_interior,
+    index_interior,
+    points_boundary,
+    index_boundary,
+):
+    """Calculate the scattered and total pressure fields for visualisation
+    in the analytical model.
+
+    Parameters
+    ----------
+    model : optimus.Model
+        A model object which has solution attributes already computed.
+    points : numpy.ndarray
+        An array of size (3,N) with the visualisation points.
+    points_exterior : numpy.ndarray
+        An array of size (3,N) with the visualisation points in the exterior domain.
+    index_exterior : numpy.ndarray
+        An array of size (1,N) with boolean values indentifying the exterior points.
+    points_interior : list numpy.ndarray
+        A list of arrays of size (3,N), where
+        element i of the list is an array of coordinates of the
+        interior points for domain i, i=1,...,no_subdomains
+    index_interior : list numpy.ndarray
+        A list of arrays of size (1,N) with boolean values indentifying
+        the interior points.
+    points_boundary : list numpy.ndarray
+        A list of arrays of size (3,N), where
+        element i of the list is an array of coordinates of the
+        boundary points for domain i, i=1,...,no_subdomains
+    index_boundary : list numpy.ndarray
+        A list of boolean arrays of size (1,N),
+        identifying the boundary points.
+
+    Returns
+    -------
+    total_field : numpy.ndarray
+        An array of size (1,N) with complex values of the total pressure field.
+    scattered_field : numpy.ndarray
+        An array of size (1,N) with complex values of the scatterd pressure field.
+    incident_exterior_field : numpy.ndarray
+        An array of size (1,N) with complex values of the incident pressure field
+        in the exterior domain.
+    """
+    from scipy.special import sph_jn, sph_yn, eval_legendre
+
+    total_field = _np.full(points.shape[1], _np.nan, dtype=complex)
+    scattered_field = _np.full(points.shape[1], _np.nan, dtype=complex)
+    incident_exterior_field = _np.full(points.shape[1], _np.nan, dtype=complex)
+
+    k_ext = model.material_exterior.compute_wavenumber(model.source.frequency)
+    k_int = model.material_interior.compute_wavenumber(model.source.frequency)
+    
+    rho_ext = model.material_exterior.density
+    rho_int = model.material_interior.density
+    
+    rho = rho_int / rho_ext
+    k = k_ext / k_int
+    n_iter = model.interior_coefficients.size
+
+    #
+    # Interior
+    #
+    pi = points_interior[0]
+    ii = index_interior[0]
+    if ii.any():
+        radial_space = _np.linalg.norm(pi, axis=0)
+        directional_space = _np.dot(model.source.direction_vector, pi)
+        directional_space /= radial_space
+
+        jn, djn = _np.array(
+            list(zip(*[sph_jn(n_iter - 1, k_int * r) for r in radial_space]))
+        )
+
+        legendre = _np.array(
+            [eval_legendre(n, directional_space) for n in range(n_iter)]
+        )
+
+        total_field[ii] = _np.dot(
+            model.interior_coefficients, jn.T * legendre
+        )
+
+    #
+    # Exterior
+    #
+    pe = points_exterior
+    ie = index_exterior
+    if ie.any():
+        radial_space = _np.linalg.norm(pe, axis=0)
+        directional_space = _np.dot(model.source.direction_vector, pe)
+        directional_space /= radial_space
+
+        jn, djn = _np.array(
+            list(zip(*[sph_jn(n_iter - 1, k_ext * r) for r in radial_space]))
+        )
+        yn, dyn = _np.array(
+            list(zip(*[sph_yn(n_iter - 1, k_ext * r) for r in radial_space]))
+        )
+        h1n, dh1n = jn.T + 1j * yn.T, djn.T + 1j * dyn.T
+
+        legendre = _np.array(
+            [eval_legendre(n, directional_space) for n in range(n_iter)]
+        )
+        
+        scattered_field[ie] = _np.dot(
+            model.scattered_coefficients, h1n * legendre
+        )
+
+        incident_exterior_field[ie] = _np.dot(
+            _np.array([(2*n + 1) * 1j**n for n in range(n_iter)])
+            ,
+            jn.T * legendre
+        )
+
+        total_field[ie] = scattered_field[ie] + incident_exterior_field[ie]
+
+    #
+    # Boundary
+    #
+    pb = points_boundary[0]
+    ib = index_boundary[0]
+    if ib.any():
+        # We use the interior field to compute the boundary points
+        radial_space = _np.linalg.norm(pb, axis=0)
+        directional_space = _np.dot(model.source.direction_vector, pb)
+        directional_space /= radial_space
+
+        jn, djn = _np.array(
+            list(zip(*[sph_jn(n_iter - 1, k_int * r) for r in radial_space]))
+        )
+
+        legendre = _np.array(
+            [eval_legendre(n, directional_space) for n in range(n_iter)]
+        )
+
+        total_field[ib] = _np.dot(model.interior_coefficients, jn.T * legendre)
+
+    return total_field, scattered_field, incident_exterior_field
 
 def compute_pressure_boundary(grid, boundary_points, dirichlet_solution):
     """Calculate pressure for points near or at the boundary of a domain. When the solid
@@ -680,5 +834,4 @@ def array_to_imshow(field_array):
         The two-dimensional array for imshow plots.
 
     """
-
     return _np.flipud(field_array.T)
