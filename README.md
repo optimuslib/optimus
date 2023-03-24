@@ -42,7 +42,11 @@ In the terminal, you can execute your Python files by running:
 python3 <file_name.py>
 ```
 
-*Note: depending on the configuration of your machine's OS, you may need to run the above Docker commands as a super user (e.g. in a bash terminal: `sudo docker`).*
+### Troubleshooting
+
+Depending on the configuration of your machine's OS, you may need to adapt the above Docker commands.
+- Some systems require running the above Docker commands as a super user. In a bash terminal use: `sudo docker` instead of `docker`.
+- On Windows, PowerShell works best. Other shell environments may not detect `$(pwd)` as the current working directory and one needs to provide the full path, for example, `C:\Users\myname:/home/optimus/localwork` with the first part adapted to the path of your local folder to be detected in the Docker container.
 
 
 ## Documentation
