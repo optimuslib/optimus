@@ -237,10 +237,9 @@ def compute_pressure_fields(
     incident_exterior_field : numpy.ndarray
         An array of size (1,N) with complex values of the incident pressure field
         in the exterior domain.
-
     """
 
-    from ..utils.generic import chunker, bold_ul_text
+    from optimus.utils.generic import chunker, bold_ul_text
     from optimus import global_parameters
 
     if model.formulation == 'analytical':
@@ -255,34 +254,7 @@ def compute_pressure_fields(
             index_boundary,
         )
 
-    if global_parameters.postprocessing.assembly_type.lower() in [
-        "h-matrix",
-        "hmat",
-        "h-mat",
-        "h_mat",
-        "h_matrix",
-    ]:
-        _bempp.global_parameters.hmat.eps = global_parameters.postprocessing.hmat_eps
-        _bempp.global_parameters.hmat.max_rank = (
-            global_parameters.postprocessing.hmat_max_rank
-        )
-        _bempp.global_parameters.hmat.max_block_size = (
-            global_parameters.postprocessing.hmat_max_block_size
-        )
-        _bempp.global_parameters.assembly.potential_operator_assembly_type = "hmat"
-    elif global_parameters.postprocessing.assembly_type.lower() == "dense":
-        _bempp.global_parameters.assembly.potential_operator_assembly_type = "dense"
-    else:
-        raise ValueError(
-            "Supported operator assembly methods are "
-            + bold_ul_text("dense")
-            + " and "
-            + bold_ul_text("hmat")
-        )
-
-    _bempp.global_parameters.quadrature.near.single_order = (
-        global_parameters.postprocessing.quadrature_order
-    )
+    global_parameters.bem.update_hmat_parameters("potential")
 
     start_time_pot_ops = _time.time()
     if verbose:

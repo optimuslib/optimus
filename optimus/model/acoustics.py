@@ -141,7 +141,9 @@ class Pmchwt(_Model):
 
     def solve(self):
         """Solve the PMCHWT model."""
+        from optimus import global_parameters
 
+        global_parameters.bem.update_hmat_parameters("boundary")
         self._create_function_spaces()
         self._create_continuous_operator()
         self._create_preconditioner()
