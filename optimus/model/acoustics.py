@@ -349,6 +349,7 @@ class Pmchwt(_Model):
             list_of_spaces,
         )
 
+
 class Analytical(_Model):
     def __init__(
         self,
@@ -411,7 +412,7 @@ class Analytical(_Model):
         Check for single material.
         """
         if len(self.material_interior) > 1:
-            raise NotImplemtedError(
+            raise NotImplementedError(
                 "Analytical model does not support multiple subdomains."
             )
 
@@ -419,13 +420,14 @@ class Analytical(_Model):
 
     def solve(self, n_iter=100):
         """
-        Compute analytical coefficients
+        Compute analytical coefficients.
+
         Parameters
         ----------
         n_iter : int
             number of coefficients terms to be computed
         """
-        from scipy.special import sph_jn, sph_yn, eval_legendre
+        from scipy.special import sph_jn, sph_yn
         
         self.scattered_coefficients = _np.full(n_iter, _np.nan, dtype=_np.complex128)
         self.interior_coefficients = _np.full(n_iter, _np.nan, dtype=_np.complex128)
@@ -458,12 +460,13 @@ class Analytical(_Model):
             / (rho * k * jn_int * d_h1n_ext - d_jn_int * h1n_ext)
         )
 
-        weights =  _np.array(
+        weights = _np.array(
             [(2*n + 1) * 1j**n for n in range(n_iter + 1)]
         )
 
         self.scattered_coefficients = coef_sca * weights
         self.interior_coefficients = ((jn_ext + coef_sca * h1n_ext) / jn_int) * weights
+
 
 def create_boundary_integral_operators(
     space_domain,
