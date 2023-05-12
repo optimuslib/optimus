@@ -27,19 +27,17 @@ class PostProcess:
 
     def create_computational_grid(self, **kwargs):
         """Create the grid on which to calculate the pressure field.
-        Needs to be overridden by specific source type.
 
-        Parameters
-        ----------
-        kwargs : dict
-            Options to be specified for different types of postprocessing.
-
+        This function needs to be overridden by a specific postprocessing type.
         """
 
         raise NotImplementedError
 
     def compute_fields(self):
-        """Calculate the pressure field in the specified locations.Needs to be overridden by specific source type."""
+        """Calculate the pressure field in the specified locations.
+
+        This function needs to be overridden by a specific postprocessing type.
+        """
 
         raise NotImplementedError
 
@@ -81,7 +79,8 @@ def calculate_bounding_box(domains_grids, plane_axes):
     Returns
     -------
     bounding_box: list float
-        Bounding box specifying the visualisation section on the plane_axis as a list: axis1_min, axis1_max, axis2_min, axis2_max
+        Bounding box specifying the visualisation section on the plane_axis
+        as a list: axis1_min, axis1_max, axis2_min, axis2_max.
     """
 
     if not isinstance(domains_grids, list):
@@ -405,6 +404,7 @@ def compute_pressure_fields(
 
     return total_field, scattered_field, incident_exterior_field
 
+
 def compute_analytical_pressure_fields(
     model,
     points,
@@ -547,6 +547,7 @@ def compute_analytical_pressure_fields(
         total_field[ib] = _np.dot(model.interior_coefficients, jn.T * legendre)
 
     return total_field, scattered_field, incident_exterior_field
+
 
 def compute_pressure_boundary(grid, boundary_points, dirichlet_solution):
     """Calculate pressure for points near or at the boundary of a domain. When the solid

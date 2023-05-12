@@ -4,7 +4,8 @@ import numpy as _np
 
 class VisualisePlane(_PostProcess):
     def __init__(self, model, verbose=False):
-        """Create a PostProcess optimus object where the visualisation grid is a 2D plane.
+        """Create a PostProcess optimus object where the visualisation grid is
+        a 2D plane.
 
         Parameters
         ----------
@@ -23,8 +24,7 @@ class VisualisePlane(_PostProcess):
         plane_offset=0.0,
         bounding_box=None,
     ):
-        """
-        Create a planar grid to compute the pressure fields.
+        """Create a planar grid to compute the pressure fields.
 
         Parameters
         ----------
@@ -43,7 +43,6 @@ class VisualisePlane(_PostProcess):
         """
         from .common import calculate_bounding_box, find_int_ext_points, domain_edge
         from ..utils.mesh import create_grid_points
-        from optimus import global_parameters
 
         self.resolution = resolution
         self.plane_axes = plane_axes
@@ -78,7 +77,7 @@ class VisualisePlane(_PostProcess):
         )
 
     def compute_fields(self):
-        """Calculate the scattered and total pressure fields in the planar grid created."""
+        """Calculate the scattered and total pressure fields in the planar grid."""
 
         from .common import compute_pressure_fields, array_to_imshow
 
