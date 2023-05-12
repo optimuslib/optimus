@@ -242,7 +242,7 @@ def compute_pressure_fields(
     from optimus.utils.generic import chunker, bold_ul_text
     from optimus import global_parameters
 
-    if model.formulation == 'analytical':
+    if model.formulation == "analytical":
         return compute_analytical_pressure_fields(
             model,
             points,
@@ -433,10 +433,10 @@ def compute_analytical_pressure_fields(
 
     k_ext = model.material_exterior.compute_wavenumber(model.source.frequency)
     k_int = model.material_interior.compute_wavenumber(model.source.frequency)
-    
+
     rho_ext = model.material_exterior.density
     rho_int = model.material_interior.density
-    
+
     rho = rho_int / rho_ext
     k = k_ext / k_int
     n_iter = model.interior_coefficients.size
@@ -459,9 +459,7 @@ def compute_analytical_pressure_fields(
             [eval_legendre(n, directional_space) for n in range(n_iter)]
         )
 
-        total_field[ii] = _np.dot(
-            model.interior_coefficients, jn.T * legendre
-        )
+        total_field[ii] = _np.dot(model.interior_coefficients, jn.T * legendre)
 
     #
     # Exterior
@@ -484,15 +482,11 @@ def compute_analytical_pressure_fields(
         legendre = _np.array(
             [eval_legendre(n, directional_space) for n in range(n_iter)]
         )
-        
-        scattered_field[ie] = _np.dot(
-            model.scattered_coefficients, h1n * legendre
-        )
+
+        scattered_field[ie] = _np.dot(model.scattered_coefficients, h1n * legendre)
 
         incident_exterior_field[ie] = _np.dot(
-            _np.array([(2*n + 1) * 1j**n for n in range(n_iter)])
-            ,
-            jn.T * legendre
+            _np.array([(2 * n + 1) * 1j**n for n in range(n_iter)]), jn.T * legendre
         )
 
         total_field[ie] = scattered_field[ie] + incident_exterior_field[ie]

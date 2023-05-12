@@ -148,7 +148,7 @@ class BemParameters:
         if self._matrix_assembly_type == "hmat":
             print(
                 prefix + " H-matrix epsilon for boundary operators:",
-                self._matrix_hmat_eps
+                self._matrix_hmat_eps,
             )
             print(
                 prefix + " H-matrix maximum rank for boundary operators:",
@@ -163,7 +163,7 @@ class BemParameters:
         if self._field_assembly_type == "hmat":
             print(
                 prefix + " H-matrix epsilon for potential operators:",
-                self._field_hmat_eps
+                self._field_hmat_eps,
             )
             print(
                 prefix + " H-matrix maximum rank for potential operators:",
@@ -176,29 +176,40 @@ class BemParameters:
 
         print(prefix + "Numerical quadrature order.")
         print(prefix + " Double integration for boundary operators in the matrix.")
-        print(prefix + "  Self interaction:",
-              self.bempp_parameters.quadrature.double_singular)
-        print(prefix + "  Near interaction:",
-              self.bempp_parameters.quadrature.near.double_order)
-        print(prefix + "  Medium interaction:",
-              self.bempp_parameters.quadrature.medium.double_order)
-        print(prefix + "  Far interaction:",
-              self.bempp_parameters.quadrature.far.double_order)
+        print(
+            prefix + "  Self interaction:",
+            self.bempp_parameters.quadrature.double_singular,
+        )
+        print(
+            prefix + "  Near interaction:",
+            self.bempp_parameters.quadrature.near.double_order,
+        )
+        print(
+            prefix + "  Medium interaction:",
+            self.bempp_parameters.quadrature.medium.double_order,
+        )
+        print(
+            prefix + "  Far interaction:",
+            self.bempp_parameters.quadrature.far.double_order,
+        )
         print(prefix + " Single integration for potential operators for the field.")
-        print(prefix + "  Near interaction:",
-              self.bempp_parameters.quadrature.near.single_order)
-        print(prefix + "  Medium interaction:",
-              self.bempp_parameters.quadrature.medium.single_order)
-        print(prefix + "  Far interaction:",
-              self.bempp_parameters.quadrature.far.single_order)
+        print(
+            prefix + "  Near interaction:",
+            self.bempp_parameters.quadrature.near.single_order,
+        )
+        print(
+            prefix + "  Medium interaction:",
+            self.bempp_parameters.quadrature.medium.single_order,
+        )
+        print(
+            prefix + "  Far interaction:",
+            self.bempp_parameters.quadrature.far.single_order,
+        )
 
     def print_current_hmat_parameters(self, prefix=""):
         """Print the current H-matrix parameters."""
 
-        print(
-            prefix + " H-matrix epsilon:",
-            self.bempp_parameters.hmat.eps
-        )
+        print(prefix + " H-matrix epsilon:", self.bempp_parameters.hmat.eps)
         print(
             prefix + " H-matrix maximum rank:",
             self.bempp_parameters.hmat.max_rank,
@@ -265,14 +276,17 @@ class BemParameters:
         """
         from optimus.utils.conversions import convert_to_positive_float
         from optimus.utils.conversions import convert_to_positive_int
+
         if eps is not None:
             self._matrix_hmat_eps = convert_to_positive_float(eps, "hmat eps")
         if max_rank is not None:
             self._matrix_hmat_max_rank = convert_to_positive_int(
-                max_rank, "hmat max rank")
+                max_rank, "hmat max rank"
+            )
         if max_block_size is not None:
             self._matrix_hmat_max_block_size = convert_to_positive_int(
-                max_block_size, "hmat max block size")
+                max_block_size, "hmat max block size"
+            )
 
     def set_field_hmat(self, eps=None, max_rank=None, max_block_size=None):
         """
@@ -289,14 +303,17 @@ class BemParameters:
         """
         from optimus.utils.conversions import convert_to_positive_float
         from optimus.utils.conversions import convert_to_positive_int
+
         if eps is not None:
             self._field_hmat_eps = convert_to_positive_float(eps, "hmat eps")
         if max_rank is not None:
             self._field_hmat_max_rank = convert_to_positive_int(
-                max_rank, "hmat max rank")
+                max_rank, "hmat max rank"
+            )
         if max_block_size is not None:
             self._field_hmat_max_block_size = convert_to_positive_int(
-                max_block_size, "hmat max block size")
+                max_block_size, "hmat max block size"
+            )
 
     def update_hmat_parameters(self, operator_type):
         """
@@ -345,7 +362,8 @@ class BemParameters:
             operator_type = "all"
         else:
             raise ValueError(
-                "Operator type has to be 'boundary', 'potential' or 'all'.")
+                "Operator type has to be 'boundary', 'potential' or 'all'."
+            )
 
         if region.lower() in ("singular", "self"):
             region = "singular"
@@ -353,7 +371,8 @@ class BemParameters:
             region = region.lower()
         else:
             raise ValueError(
-                "Region has to be 'singular', 'near', 'medium', 'far' or 'all.")
+                "Region has to be 'singular', 'near', 'medium', 'far' or 'all."
+            )
 
         order = convert_to_positive_int(order, "quadrature order")
 

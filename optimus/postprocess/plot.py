@@ -57,8 +57,8 @@ def plot_pressure_field(
         file_name_real = None
         file_name_abs = None
     else:
-        file_name_real = 'real_'+file_name
-        file_name_abs = 'abs_'+file_name
+        file_name_real = "real_" + file_name
+        file_name_abs = "abs_" + file_name
 
     scaling_factor, pressure_unit = _convert_pressure_unit(unit)
     pressure_field *= scaling_factor
@@ -188,7 +188,7 @@ def surface_plot(
     fig.tight_layout()
 
     if file_name is not None:
-        plt.savefig(file_name, bbox_inches='tight')
+        plt.savefig(file_name, bbox_inches="tight")
 
     plt.show()
 
