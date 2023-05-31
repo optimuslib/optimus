@@ -24,7 +24,9 @@ class Source:
         """
 
         self.type = source_type
-        self.frequency = _convert_to_positive_float(frequency, "frequency")
+        self.frequency = _convert_to_positive_float(
+            frequency, "frequency", nonnegative=True
+        )
 
     def pressure_field(self, medium, locations):
         """
