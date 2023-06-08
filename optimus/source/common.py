@@ -28,7 +28,9 @@ class Source:
 
     def pressure_field(self, medium, locations):
         """
-        Calculate the pressure field in the specified locations. Needs to be overridden by specific source type.
+        Calculate the pressure field in the specified locations.
+
+        This function needs to be overridden by specific source type.
         """
 
         raise NotImplementedError
@@ -36,7 +38,9 @@ class Source:
     def normal_pressure_gradient(self, medium, locations, normals):
         """
         Calculate the normal gradient of the pressure field in the
-        specified locations. Needs to be overridden by specific source type.
+        specified locations.
+
+        This function needs to be overridden by specific source type.
         """
 
         raise NotImplementedError
@@ -61,7 +65,9 @@ class Source:
         neumann_trace=True,
     ):
         """
-        Calculate the surface traces of the source field on the mesh. Needs to be overridden by specific source type.
+        Calculate the surface traces of the source field on the mesh.
+
+        This function needs to be overridden by specific source type.
         """
 
         raise NotImplementedError

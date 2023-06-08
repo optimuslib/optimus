@@ -150,22 +150,62 @@ def get_geometries_stats(geometries, verbose=False):
 
 
 def scale_mesh(geometry, scaling_factor):
-    """Scale elements sizes of a grid of an optimus Geometry by a factor.
-    The number of nodes remains intact.
+    """Scale the entire geometry with a multiplicative factor.
+
+    The connectivity of the mesh remains intact and the scaling is with respect
+    to the global origin as defined in the mesh.
 
     Parameters
     ----------
     geometry: optimus.geometry.common.Geometry
         The geometry to scale.
     scaling_factor : float
-        Scaling factor of the sizes of the grid elements.
+        Scaling factor for the grid.
+
+    Returns
+    -------
+    geometry: optimus.geometry.common.Geometry
+        A new, scaled geometry.
     """
 
     scaling = _convert_to_float(scaling_factor, "mesh scaling factor")
-    vertices = geometry.grid.leaf_view.vertices * scaling
-    elements = geometry.grid.leaf_view.elements
-    scaled_grid = _bempp.grid_from_element_data(vertices, elements)
-    return _Geometry(scaled_grid, label=geometry.label + "_scaled")
+    new_vertices = geometry.grid.leaf_view.vertices * scaling
+    new_grid = _bempp.grid_from_element_data(
+        new_vertices,
+        geometry.grid.leaf_view.elements,
+        geometry.grid.leaf_view.domain_indices,
+    )
+    return _Geometry(new_grid, label=geometry.label + "_scaled")
+
+
+def translate_mesh(geometry, translation_vector):
+    """
+    Translate the entire geometry with an additive vector.
+
+    The connectivity of the mesh remains intact.
+
+    Parameters
+    ----------
+    geometry: optimus.geometry.common.Geometry
+        The geometry to translate.
+    translation_vector : numpy.ndarray
+        A 3D vector to translate the grid.
+
+    Returns
+    -------
+    geometry: optimus.geometry.common.Geometry
+        A new, translated geometry.
+    """
+    from ..utils.conversions import convert_to_array
+
+    translation = convert_to_array(translation_vector, (3, 1), "translation vector")
+    new_vertices = geometry.grid.leaf_view.vertices + translation
+    new_grid = _bempp.grid.grid_from_element_data(
+        new_vertices,
+        geometry.grid.leaf_view.elements,
+        geometry.grid.leaf_view.domain_indices,
+    )
+    return _Geometry(new_grid, label=geometry.label + "_translated")
 
 
 def msh_from_string(geo_string):

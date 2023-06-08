@@ -4,21 +4,31 @@ def plot_pressure_field(
     unit="Pa",
     display_edges=True,
     clim=None,
+    file_name=None,
 ):
-    """2D contour plotting of pressure fields of an optimus post process object.
+    """2D contour plotting of the real part and the magnitude of the pressure field.
 
     Parameters
     ----------
     postprocess_obj : optimus.postprocess.PostProcess
         Optimus postprocess object that includes the visualisation pressure fields
     field : string
-        The pressure field to be plotted. The options are: 1. total, total_field, or total_pressure; 2. scattered, scattered_pressure, or scattered_field. 3. incident, incident_pressure, or incident_field.
+        The pressure field to be plotted.
+        The options are:
+            1. total, total_field, or total_pressure;
+            2. scattered, scattered_pressure, or scattered_field.
+            3. incident, incident_pressure, or incident_field.
     unit : string
-        Pressure unit. the pressure fields are scaled accordingly - options are: Pa, kPa, MPa and GPa.
+        The pressure unit for the plot, where the data is assumed to be in Pa.
+        The options are: Pa, kPa, MPa and GPa.
     display_edges : boolean
         Display domains edges, i.e. domains and plane interfaces.
     clim : tuple (float, int)
-        The color limits: (clim_min, clim_max). Must be of the same units as pressure fields.
+        The color limits: (clim_min, clim_max).
+        Must be of the same units as pressure fields.
+    file_name : None, str
+        The file name to export the figure, if specified.
+        The labels 'real' and 'abs' are prepended.
 
     Returns
     -------
@@ -42,6 +52,13 @@ def plot_pressure_field(
         raise ValueError(
             "Undefined pressure field, options are total, scattered, and incident."
         )
+
+    if file_name is None:
+        file_name_real = None
+        file_name_abs = None
+    else:
+        file_name_real = "real_" + file_name
+        file_name_abs = "abs_" + file_name
 
     scaling_factor, pressure_unit = _convert_pressure_unit(unit)
     pressure_field *= scaling_factor
@@ -69,6 +86,7 @@ def plot_pressure_field(
         colormap_lims,
         colorbar_unit="$p_{real}$ [" + pressure_unit + "]",
         domains_edges=domains_edges,
+        file_name=file_name_real,
     )
 
     if clim is None:
@@ -79,6 +97,7 @@ def plot_pressure_field(
         colormap_lims = (0, clim[1])
 
     colormap = "viridis"
+
     fig_p_tot = surface_plot(
         _np.abs(pressure_field),
         bounding_box,
@@ -87,6 +106,7 @@ def plot_pressure_field(
         colormap_lims,
         colorbar_unit="$p_{abs}$ [" + pressure_unit + "]",
         domains_edges=domains_edges,
+        file_name=file_name_abs,
     )
 
     return fig_p_real, fig_p_tot
@@ -100,6 +120,7 @@ def surface_plot(
     colormap_lims,
     colorbar_unit,
     domains_edges=None,
+    file_name=None,
 ):
     """2D surface plotting of a mesh grid quantity.
 
@@ -108,7 +129,8 @@ def surface_plot(
     quantity : np.ndarray
         the quantity to be plotted
     axes_lims : list float, tuple float
-        List of minima and maxima of h-axis and v-axis of the 2D contour plot, in the form of (h_axis_min, h_axis_max, v_axis_min, v_axis_max).
+        List of minima and maxima of h-axis and v-axis of the 2D contour plot,
+        in the form of (h_axis_min, h_axis_max, v_axis_min, v_axis_max).
     axes_labels : list str, tuple str
         the labels for h-axis and v-axis of the plot.
     colormap : string
@@ -118,7 +140,10 @@ def surface_plot(
     colorbar_unit : string
         the label for colorbar
     domains_edges : None, list numpy.ndarray
-        if the intersection points of the domains and the visualisation plane is passed as a list, they are overlaid to the field plot.
+        If the intersection points of the domains and the visualisation plane is
+        passed as a list, they are overlaid to the field plot.
+    file_name : None, str
+        The file name to export the figure, if specified.
 
     Returns
     -------
@@ -161,6 +186,10 @@ def surface_plot(
     cbar.set_label(colorbar_unit, size=18)
     cbar.ax.tick_params(labelsize=14)
     fig.tight_layout()
+
+    if file_name is not None:
+        plt.savefig(file_name, bbox_inches="tight")
+
     plt.show()
 
     return fig

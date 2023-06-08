@@ -141,7 +141,9 @@ class Pmchwt(_Model):
 
     def solve(self):
         """Solve the PMCHWT model."""
+        from optimus import global_parameters
 
+        global_parameters.bem.update_hmat_parameters("boundary")
         self._create_function_spaces()
         self._create_continuous_operator()
         self._create_preconditioner()
@@ -349,6 +351,7 @@ class Pmchwt(_Model):
             list_of_spaces,
         )
 
+
 class Analytical(_Model):
     def __init__(
         self,
@@ -384,10 +387,9 @@ class Analytical(_Model):
         Checks for the source being a planewave.
         """
         from ..source.planewave import _PlaneWave
+
         if not isinstance(self.source, _PlaneWave):
-            raise NotImplementedError(
-                "Analytical model supports a planewave only."
-            )
+            raise NotImplementedError("Analytical model supports a planewave only.")
 
     def _setup_geometry(self):
         """
@@ -399,10 +401,11 @@ class Analytical(_Model):
             )
 
         from ..geometry.shapes import Sphere as _Sphere
+
         if not isinstance(self.geometry[0], _Sphere):
             raise NotImplementedError(
                 "Analytical model is available only for the sphere."
-                + " Not for " 
+                + " Not for "
                 + self.geometry[0].label
             )
 
@@ -411,7 +414,7 @@ class Analytical(_Model):
         Check for single material.
         """
         if len(self.material_interior) > 1:
-            raise NotImplemtedError(
+            raise NotImplementedError(
                 "Analytical model does not support multiple subdomains."
             )
 
@@ -419,32 +422,33 @@ class Analytical(_Model):
 
     def solve(self, n_iter=100):
         """
-        Compute analytical coefficients
+        Compute analytical coefficients.
+
         Parameters
         ----------
         n_iter : int
             number of coefficients terms to be computed
         """
-        from scipy.special import sph_jn, sph_yn, eval_legendre
-        
+        from scipy.special import sph_jn, sph_yn
+
         self.scattered_coefficients = _np.full(n_iter, _np.nan, dtype=_np.complex128)
         self.interior_coefficients = _np.full(n_iter, _np.nan, dtype=_np.complex128)
 
         k_ext = self.material_exterior.compute_wavenumber(self.source.frequency)
         k_int = self.material_interior.compute_wavenumber(self.source.frequency)
-        
+
         rho_ext = self.material_exterior.density
         rho_int = self.material_interior.density
-        
+
         rho = rho_int / rho_ext
         k = k_ext / k_int
 
         r = self.geometry[0].radius
 
-        # 
+        #
         # Compute spherical Bessel function for the exterior and interior domain
         # hn = jn - i*yn, denotes the Hankel function of second kind.
-        # 
+        #
         jn_ext, d_jn_ext = sph_jn(n_iter, k_ext * r)
         yn_ext, d_yn_ext = sph_yn(n_iter, k_ext * r)
         h1n_ext, d_h1n_ext = (jn_ext + 1j * yn_ext, d_jn_ext + 1j * d_yn_ext)
@@ -453,17 +457,15 @@ class Analytical(_Model):
         yn_int, d_yn_int = sph_yn(n_iter, k_int * r)
         h1n_int, d_h1n_int = (jn_int + 1j * yn_int, d_jn_int + 1j * d_yn_int)
 
-        coef_sca = (
-            (d_jn_int * jn_ext - rho * k * jn_int * d_jn_ext)
-            / (rho * k * jn_int * d_h1n_ext - d_jn_int * h1n_ext)
+        coef_sca = (d_jn_int * jn_ext - rho * k * jn_int * d_jn_ext) / (
+            rho * k * jn_int * d_h1n_ext - d_jn_int * h1n_ext
         )
 
-        weights =  _np.array(
-            [(2*n + 1) * 1j**n for n in range(n_iter + 1)]
-        )
+        weights = _np.array([(2 * n + 1) * 1j**n for n in range(n_iter + 1)])
 
         self.scattered_coefficients = coef_sca * weights
         self.interior_coefficients = ((jn_ext + coef_sca * h1n_ext) / jn_int) * weights
+
 
 def create_boundary_integral_operators(
     space_domain,

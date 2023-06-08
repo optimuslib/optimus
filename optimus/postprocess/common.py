@@ -27,19 +27,17 @@ class PostProcess:
 
     def create_computational_grid(self, **kwargs):
         """Create the grid on which to calculate the pressure field.
-        Needs to be overridden by specific source type.
 
-        Parameters
-        ----------
-        kwargs : dict
-            Options to be specified for different types of postprocessing.
-
+        This function needs to be overridden by a specific postprocessing type.
         """
 
         raise NotImplementedError
 
     def compute_fields(self):
-        """Calculate the pressure field in the specified locations.Needs to be overridden by specific source type."""
+        """Calculate the pressure field in the specified locations.
+
+        This function needs to be overridden by a specific postprocessing type.
+        """
 
         raise NotImplementedError
 
@@ -81,7 +79,8 @@ def calculate_bounding_box(domains_grids, plane_axes):
     Returns
     -------
     bounding_box: list float
-        Bounding box specifying the visualisation section on the plane_axis as a list: axis1_min, axis1_max, axis2_min, axis2_max
+        Bounding box specifying the visualisation section on the plane_axis
+        as a list: axis1_min, axis1_max, axis2_min, axis2_max.
     """
 
     if not isinstance(domains_grids, list):
@@ -238,13 +237,12 @@ def compute_pressure_fields(
     incident_exterior_field : numpy.ndarray
         An array of size (1,N) with complex values of the incident pressure field
         in the exterior domain.
-
     """
 
-    from ..utils.generic import chunker, bold_ul_text
+    from optimus.utils.generic import chunker, bold_ul_text
     from optimus import global_parameters
 
-    if model.formulation == 'analytical':
+    if model.formulation == "analytical":
         return compute_analytical_pressure_fields(
             model,
             points,
@@ -256,34 +254,7 @@ def compute_pressure_fields(
             index_boundary,
         )
 
-    if global_parameters.postprocessing.assembly_type.lower() in [
-        "h-matrix",
-        "hmat",
-        "h-mat",
-        "h_mat",
-        "h_matrix",
-    ]:
-        _bempp.global_parameters.hmat.eps = global_parameters.postprocessing.hmat_eps
-        _bempp.global_parameters.hmat.max_rank = (
-            global_parameters.postprocessing.hmat_max_rank
-        )
-        _bempp.global_parameters.hmat.max_block_size = (
-            global_parameters.postprocessing.hmat_max_block_size
-        )
-        _bempp.global_parameters.assembly.potential_operator_assembly_type = "hmat"
-    elif global_parameters.postprocessing.assembly_type.lower() == "dense":
-        _bempp.global_parameters.assembly.potential_operator_assembly_type = "dense"
-    else:
-        raise ValueError(
-            "Supported operator assembly methods are "
-            + bold_ul_text("dense")
-            + " and "
-            + bold_ul_text("hmat")
-        )
-
-    _bempp.global_parameters.quadrature.near.single_order = (
-        global_parameters.postprocessing.quadrature_order
-    )
+    global_parameters.bem.update_hmat_parameters("potential")
 
     start_time_pot_ops = _time.time()
     if verbose:
@@ -405,6 +376,7 @@ def compute_pressure_fields(
 
     return total_field, scattered_field, incident_exterior_field
 
+
 def compute_analytical_pressure_fields(
     model,
     points,
@@ -461,10 +433,10 @@ def compute_analytical_pressure_fields(
 
     k_ext = model.material_exterior.compute_wavenumber(model.source.frequency)
     k_int = model.material_interior.compute_wavenumber(model.source.frequency)
-    
+
     rho_ext = model.material_exterior.density
     rho_int = model.material_interior.density
-    
+
     rho = rho_int / rho_ext
     k = k_ext / k_int
     n_iter = model.interior_coefficients.size
@@ -487,9 +459,7 @@ def compute_analytical_pressure_fields(
             [eval_legendre(n, directional_space) for n in range(n_iter)]
         )
 
-        total_field[ii] = _np.dot(
-            model.interior_coefficients, jn.T * legendre
-        )
+        total_field[ii] = _np.dot(model.interior_coefficients, jn.T * legendre)
 
     #
     # Exterior
@@ -512,15 +482,11 @@ def compute_analytical_pressure_fields(
         legendre = _np.array(
             [eval_legendre(n, directional_space) for n in range(n_iter)]
         )
-        
-        scattered_field[ie] = _np.dot(
-            model.scattered_coefficients, h1n * legendre
-        )
+
+        scattered_field[ie] = _np.dot(model.scattered_coefficients, h1n * legendre)
 
         incident_exterior_field[ie] = _np.dot(
-            _np.array([(2*n + 1) * 1j**n for n in range(n_iter)])
-            ,
-            jn.T * legendre
+            _np.array([(2 * n + 1) * 1j**n for n in range(n_iter)]), jn.T * legendre
         )
 
         total_field[ie] = scattered_field[ie] + incident_exterior_field[ie]
@@ -547,6 +513,7 @@ def compute_analytical_pressure_fields(
         total_field[ib] = _np.dot(model.interior_coefficients, jn.T * legendre)
 
     return total_field, scattered_field, incident_exterior_field
+
 
 def compute_pressure_boundary(grid, boundary_points, dirichlet_solution):
     """Calculate pressure for points near or at the boundary of a domain. When the solid
