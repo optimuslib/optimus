@@ -50,7 +50,7 @@ def convert_to_float(value, label="variable"):
     return float(value)
 
 
-def convert_to_positive_float(value, label="variable"):
+def convert_to_positive_float(value, label="variable", nonnegative=False):
     """Check if the input value can be converted into a positive float.
 
     Parameters
@@ -59,6 +59,8 @@ def convert_to_positive_float(value, label="variable"):
         The input value to be converted into a positive float.
     label : str
         The name of the variable.
+    nonnegative : bool
+        Check for nonnegative instead of strictly positive numbers.
 
     Returns
     -------
@@ -69,8 +71,12 @@ def convert_to_positive_float(value, label="variable"):
     if not isinstance(value, (float, int)):
         raise TypeError(label + " needs to be a float or int, not " + str(type(value)))
 
-    if value <= 0:
-        raise ValueError(label + " needs to be positive, not " + str(value))
+    if nonnegative:
+        if value < 0:
+            raise ValueError(label + " needs to be nonnegative, not " + str(value))
+    else:
+        if value <= 0:
+            raise ValueError(label + " needs to be positive, not " + str(value))
 
     return float(value)
 

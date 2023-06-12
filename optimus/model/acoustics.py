@@ -501,45 +501,85 @@ def create_boundary_integral_operators(
 
     operators = []
 
-    if single_layer:
-        sl_op = _bempp.operators.boundary.helmholtz.single_layer(
-            space_domain,
-            space_range,
-            space_range,
-            wavenumber,
-            use_projection_spaces=False,
-        )
-        operators.append(sl_op)
+    if _np.isclose(_np.abs(wavenumber), 0):
 
-    if double_layer:
-        dl_op = _bempp.operators.boundary.helmholtz.double_layer(
-            space_domain,
-            space_range,
-            space_range,
-            wavenumber,
-            use_projection_spaces=False,
-        )
-        operators.append(dl_op)
+        if single_layer:
+            sl_op = _bempp.operators.boundary.laplace.single_layer(
+                space_domain,
+                space_range,
+                space_range,
+                use_projection_spaces=False,
+            )
+            operators.append(sl_op)
 
-    if adjoint_double_layer:
-        ad_op = _bempp.operators.boundary.helmholtz.adjoint_double_layer(
-            space_domain,
-            space_range,
-            space_range,
-            wavenumber,
-            use_projection_spaces=False,
-        )
-        operators.append(ad_op)
+        if double_layer:
+            dl_op = _bempp.operators.boundary.laplace.double_layer(
+                space_domain,
+                space_range,
+                space_range,
+                use_projection_spaces=False,
+            )
+            operators.append(dl_op)
 
-    if hypersingular:
-        hs_op = _bempp.operators.boundary.helmholtz.hypersingular(
-            space_domain,
-            space_range,
-            space_range,
-            wavenumber,
-            use_projection_spaces=False,
-        )
-        operators.append(hs_op)
+        if adjoint_double_layer:
+            ad_op = _bempp.operators.boundary.laplace.adjoint_double_layer(
+                space_domain,
+                space_range,
+                space_range,
+                use_projection_spaces=False,
+            )
+            operators.append(ad_op)
+
+        if hypersingular:
+            hs_op = _bempp.operators.boundary.laplace.hypersingular(
+                space_domain,
+                space_range,
+                space_range,
+                use_projection_spaces=False,
+            )
+            operators.append(hs_op)
+
+    else:
+
+        if single_layer:
+            sl_op = _bempp.operators.boundary.helmholtz.single_layer(
+                space_domain,
+                space_range,
+                space_range,
+                wavenumber,
+                use_projection_spaces=False,
+            )
+            operators.append(sl_op)
+
+        if double_layer:
+            dl_op = _bempp.operators.boundary.helmholtz.double_layer(
+                space_domain,
+                space_range,
+                space_range,
+                wavenumber,
+                use_projection_spaces=False,
+            )
+            operators.append(dl_op)
+
+        if adjoint_double_layer:
+            ad_op = _bempp.operators.boundary.helmholtz.adjoint_double_layer(
+                space_domain,
+                space_range,
+                space_range,
+                wavenumber,
+                use_projection_spaces=False,
+            )
+            operators.append(ad_op)
+
+        if hypersingular:
+            hs_op = _bempp.operators.boundary.helmholtz.hypersingular(
+                space_domain,
+                space_range,
+                space_range,
+                wavenumber,
+                use_projection_spaces=False,
+            )
+            operators.append(hs_op)
 
     return operators
 
