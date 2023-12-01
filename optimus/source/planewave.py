@@ -98,7 +98,7 @@ class _PlaneWave(_Source):
         normals = _convert_to_3n_array(normals)
         unit_normals = _normalize_vector(normals)
         wavenumber = medium.compute_wavenumber(self.frequency)
-
+    
         normals = _np.dot(self.direction_vector, unit_normals)
         points = _np.dot(self.direction_vector, points)
         gradient = (
