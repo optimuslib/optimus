@@ -37,7 +37,9 @@ class _PointSource(_Source):
     ):
         super().__init__("pointsource", frequency)
 
-        self.location = _convert_to_float(location, label="point source location")
+        self.location = _convert_to_array(
+            location, shape=(3,), label="point source location"
+        )
 
         self.amplitude = _convert_to_float(amplitude, label="point source amplitude")
 
@@ -61,17 +63,19 @@ class _PointSource(_Source):
         points = _convert_to_3n_array(locations)
         wavenumber = medium.compute_wavenumber(self.frequency)
 
-        differences_between_all_points = (
-            self.location[:, _np.newaxis, :] - points[:, :, _np.newaxis]
-        )
+        point_source_location = _convert_to_3n_array(self.location)
+        differences_between_all_points = point_source_location - points
+
+        # differences_between_all_points = (
+        #     self.location[:, _np.newaxis, :] - points[:, :, _np.newaxis]
+        # )
         distances_between_all_points = _np.linalg.norm(
             differences_between_all_points, axis=0
         )
 
-        pressure = self.amplitude * _np.exp(
-            1j
-            * wavenumber
-            * distances_between_all_points
+        pressure = (
+            self.amplitude
+            * _np.exp(1j * wavenumber * distances_between_all_points)
             / distances_between_all_points
         )
 
@@ -102,36 +106,30 @@ class _PointSource(_Source):
 
         points = _convert_to_3n_array(locations)
         normals = _convert_to_3n_array(normals)
-        unit_normals = _normalize_vector(normals)
         wavenumber = medium.compute_wavenumber(self.frequency)
 
-        normals = _np.dot(self.direction_vector, unit_normals)
-        points = _np.dot(self.direction_vector, points)
+        point_source_location = _convert_to_3n_array(self.location)
+        differences_between_all_points = point_source_location - points
 
-        differences_between_all_points = (
-            self.location[:, _np.newaxis, :] - points[:, :, _np.newaxis]
-        )
         distances_between_all_points = _np.linalg.norm(
             differences_between_all_points, axis=0
         )
 
-        greens_function_scaled = _np.exp(
-            1j
-            * wavenumber
-            * distances_between_all_points
+        greens_function_scaled = (
+            _np.exp(1j * wavenumber * distances_between_all_points)
             / distances_between_all_points
         )
+
         greens_gradient_amplitude_scaled = _np.divide(
             greens_function_scaled * (wavenumber * distances_between_all_points + 1j),
             distances_between_all_points**2,
         )
         greens_gradient_scaled = (
-            differences_between_all_points
-            * greens_gradient_amplitude_scaled[_np.newaxis, :, :]
+            differences_between_all_points * greens_gradient_amplitude_scaled
         )
         greens_gradient = 1j * self.amplitude * greens_gradient_scaled
 
-        gradient = _np.sum(greens_gradient * self.normals, axis=0)
+        gradient = _np.sum(greens_gradient * normals, axis=0)
 
         # gradient = (
         #     (self.amplitude * 1j * wavenumber)
