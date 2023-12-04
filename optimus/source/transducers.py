@@ -12,6 +12,7 @@ from ..utils.linalg import rotate as _rotate
 def transducer_field(
     source,
     medium,
+   # source_locations,
     field_locations,
     normals=None,
     verbose=False,
@@ -44,6 +45,7 @@ def transducer_field(
         transducer = _Transducer(
             source,
             medium,
+            #source_locations,
             field_locations,
             normals,
             verbose,
