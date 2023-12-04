@@ -127,15 +127,9 @@ class _PointSource(_Source):
         greens_gradient_scaled = (
             differences_between_all_points * greens_gradient_amplitude_scaled
         )
-        greens_gradient = 1j * self.amplitude * greens_gradient_scaled
+        greens_gradient = -1j * self.amplitude * greens_gradient_scaled
 
         gradient = _np.sum(greens_gradient * normals, axis=0)
-
-        # gradient = (
-        #     (self.amplitude * 1j * wavenumber)
-        #     * normals
-        #     * _np.exp(1j * wavenumber * points)
-        # )
 
         return gradient
 
