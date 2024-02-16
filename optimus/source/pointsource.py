@@ -6,7 +6,6 @@ from .common import Source as _Source
 from ..utils.conversions import convert_to_float as _convert_to_float
 from ..utils.conversions import convert_to_array as _convert_to_array
 from ..utils.conversions import convert_to_3n_array as _convert_to_3n_array
-from ..utils.linalg import normalize_vector as _normalize_vector
 
 
 def create_pointsource(frequency, location=(0, 0, 0), amplitude=1.0):
@@ -38,7 +37,7 @@ class _PointSource(_Source):
         super().__init__("pointsource", frequency)
 
         self.location = _convert_to_array(
-            location, shape=(3,), label="point source location"
+            location, shape=(3, 1), label="point source location"
         )
 
         self.amplitude = _convert_to_float(amplitude, label="point source amplitude")
@@ -52,7 +51,8 @@ class _PointSource(_Source):
         medium : optimus.material.Material
             The propagating medium.
         locations : numpy.ndarray
-            An array of size (3,N) with the locations on which to evaluate the pressure field.
+            An array of size (3,N) with the locations on which to evaluate
+            the pressure field.
 
         Returns
         -------
@@ -63,12 +63,7 @@ class _PointSource(_Source):
         points = _convert_to_3n_array(locations)
         wavenumber = medium.compute_wavenumber(self.frequency)
 
-        point_source_location = _convert_to_3n_array(self.location)
-        differences_between_all_points = point_source_location - points
-
-        # differences_between_all_points = (
-        #     self.location[:, _np.newaxis, :] - points[:, :, _np.newaxis]
-        # )
+        differences_between_all_points = self.location - points
         distances_between_all_points = _np.linalg.norm(
             differences_between_all_points, axis=0
         )
@@ -108,9 +103,7 @@ class _PointSource(_Source):
         normals = _convert_to_3n_array(normals)
         wavenumber = medium.compute_wavenumber(self.frequency)
 
-        point_source_location = _convert_to_3n_array(self.location)
-        differences_between_all_points = point_source_location - points
-
+        differences_between_all_points = self.location - points
         distances_between_all_points = _np.linalg.norm(
             differences_between_all_points, axis=0
         )
