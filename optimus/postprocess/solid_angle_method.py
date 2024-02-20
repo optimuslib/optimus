@@ -1,3 +1,5 @@
+"""The solid angle method for exterior-interior point evaluation."""
+
 import numpy as _np
 from functools import partial as _partial
 import time as _time
@@ -5,34 +7,42 @@ import multiprocessing as _mp
 
 
 def exterior_interior_points_eval(grid, points, solid_angle_tolerance, verbose=False):
-    """Evaluate whether a field point is within a domain or not using a solid angle method.
+    """
+    Evaluate whether a field point is interior or exterior to a domain,
+    using a solid angle method.
 
     Parameters
     ----------
     grid : bempp.api.Grid
         surface grid defining a domain
     points : numpy.ndarray
-        Field points to be evaluated if they are inside the volume defined by the surface grid or not. Array of size (3,N).
+        Field points to be evaluated if they are inside the volume defined by
+        the surface grid or not. Array of size (3,N).
     solid_angle_tolerance : float, None
-        the tolerance in solid angle method. If set to None/zero boundary points are not identified, otherwise they are.
+        the tolerance in solid angle method. If set to None/zero boundary points
+        are not identified, otherwise they are.
     verbose : boolean
         display the log
 
     Returns
     -------
-    points_interior : numpy.ndarray
-        Array of size (3,N) with coordinates of the interior points.
+    points_interior : list[numpy.ndarray]
+        Array of size (3, N_interior) with coordinates of the interior points.
+        The list has elements for each geometrical tag in the mesh.
     points_exterior : numpy.ndarray
-        Array of size (3,N) with coordinates of the exterior points.
-    points_boundary : numpy.ndarray
-        Array of size (3,N) with coordinates of the points that lie on the
+        Array of size (3, N_exterior) with coordinates of the exterior points.
+    points_boundary : list[numpy.ndarray]
+        Array of size (3, N_boundary) with coordinates of the points that lie on the
         surface of the domain.
-    index_interior : numpy.ndarray
-        Array of size (1,N) with boolean values identifying the interior points.
+        The list has elements for each geometrical tag in the mesh.
+    index_interior : list[numpy.ndarray]
+        Array of size (N_points,) with boolean values identifying the interior points.
+        The list has elements for each geometrical tag in the mesh.
     index_exterior : numpy.ndarray
-        Array of size (1,N) with boolean values identifying the exterior points.
-    index_boundary : numpy.ndarray
-        Array of size (1,N) with boolean values identifying the surface points.
+        Array of size (N_points,) with boolean values identifying the exterior points.
+    index_boundary : list[numpy.ndarray]
+        Array of size (N_points,) with boolean values identifying the surface points.
+        The list has elements for each geometrical tag in the mesh.
     """
 
     elements = grid.leaf_view.elements
@@ -54,14 +64,12 @@ def exterior_interior_points_eval(grid, points, solid_angle_tolerance, verbose=F
         print(element_properties)
 
     points_interior = []
-    points_exterior = []
     points_boundary = []
     index_interior = []
-    index_exterior = _np.full(points.shape[1], True, dtype=bool)
     index_boundary = []
+    index_exterior = _np.full(points.shape[1], True, dtype=bool)
 
     for i in range(element_properties.size):
-
         elements_trunc = elements[:, element_groups[0, :] == element_properties[i]]
         num_elem = elements_trunc.shape[1]
 
@@ -79,7 +87,7 @@ def exterior_interior_points_eval(grid, points, solid_angle_tolerance, verbose=F
         elements_barycent_y_coordinate = _np.mean(elements_y_coordinate, axis=0)
         elements_barycent_z_coordinate = _np.mean(elements_z_coordinate, axis=0)
 
-        # Preallocate matrix of vectors for triangular elementses
+        # Preallocate matrix of vectors for triangular elements
         elements_u_coordinate = _np.zeros(shape=(3, num_elem), dtype=float)
         elements_v_coordinate = _np.zeros(shape=(3, num_elem), dtype=float)
         # Compute matrix of vectors defining each triangular elements
@@ -107,7 +115,7 @@ def exterior_interior_points_eval(grid, points, solid_angle_tolerance, verbose=F
         elements_surface_area = 0.5 * elements_u_cross_v_norm
 
         start_time = _time.time()
-        N_workers = _mp.cpu_count()
+        n_workers = _mp.cpu_count()
         parallelised_compute_solid_angle = _partial(
             compute_solid_angle,
             elements_barycent_x_coordinate,
@@ -117,7 +125,7 @@ def exterior_interior_points_eval(grid, points, solid_angle_tolerance, verbose=F
             normals,
             elements_surface_area,
         )
-        pool = _mp.Pool(N_workers)
+        pool = _mp.Pool(n_workers)
         result = pool.starmap(
             parallelised_compute_solid_angle, zip(_np.arange(0, points.shape[1]))
         )
@@ -137,6 +145,8 @@ def exterior_interior_points_eval(grid, points, solid_angle_tolerance, verbose=F
                 (index_interior_tmp == False) & (index_boundary_tmp == False)
             )
         else:
+            points_boundary.append(None)
+            index_boundary.append(None)
             index_interior_tmp = solid_angle > 0.5
             index_exterior = index_exterior & (index_interior_tmp == False)
 

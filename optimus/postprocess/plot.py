@@ -1,3 +1,6 @@
+"""Plotting functionality."""
+
+
 def plot_pressure_field(
     postprocess_obj,
     field="total",
@@ -6,12 +9,14 @@ def plot_pressure_field(
     clim=None,
     file_name=None,
 ):
-    """2D contour plotting of the real part and the magnitude of the pressure field.
+    """
+    2D contour plotting of the real part and the magnitude of the pressure field.
 
     Parameters
     ----------
-    postprocess_obj : optimus.postprocess.PostProcess
+    postprocess_obj : optimus.postprocess.method.VisualisePlane
         Optimus postprocess object that includes the visualisation pressure fields
+        on a rectangular grid in a plane.
     field : string
         The pressure field to be plotted.
         The options are:
@@ -79,12 +84,13 @@ def plot_pressure_field(
         domains_edges = None
 
     fig_p_real = surface_plot(
-        _np.real(pressure_field),
-        bounding_box,
-        axes_labels,
-        colormap,
-        colormap_lims,
-        colorbar_unit="$p_{real}$ [" + pressure_unit + "]",
+        quantity=_np.real(pressure_field),
+        interpolation="bilinear",
+        axes_lims=bounding_box,
+        axes_labels=axes_labels,
+        colormap=colormap,
+        colormap_lims=colormap_lims,
+        colorbar_label="$p_{real}$ [" + pressure_unit + "]",
         domains_edges=domains_edges,
         file_name=file_name_real,
     )
@@ -99,12 +105,13 @@ def plot_pressure_field(
     colormap = "viridis"
 
     fig_p_tot = surface_plot(
-        _np.abs(pressure_field),
-        bounding_box,
-        axes_labels,
-        colormap,
-        colormap_lims,
-        colorbar_unit="$p_{abs}$ [" + pressure_unit + "]",
+        quantity=_np.abs(pressure_field),
+        interpolation="bilinear",
+        axes_lims=bounding_box,
+        axes_labels=axes_labels,
+        colormap=colormap,
+        colormap_lims=colormap_lims,
+        colorbar_label="$p_{abs}$ [" + pressure_unit + "]",
         domains_edges=domains_edges,
         file_name=file_name_abs,
     )
@@ -164,32 +171,42 @@ def plot_regions(postprocess_obj, display_edges=False, file_name=None):
 
 def surface_plot(
     quantity,
+    interpolation,
     axes_lims,
     axes_labels,
     colormap,
     colormap_lims,
-    colorbar_unit,
+    colorbar_label,
+    colorbar_ticks=None,
+    colorbar_ticklabels=None,
     domains_edges=None,
     file_name=None,
 ):
-    """2D surface plotting of a mesh grid quantity.
+    """
+    2D surface plotting of a mesh grid quantity.
 
     Parameters
     ----------
     quantity : np.ndarray
-        the quantity to be plotted
+        The quantity to be plotted.
+    interpolation : string
+        The interpolation method for the imshow plot.
     axes_lims : list float, tuple float
         List of minima and maxima of h-axis and v-axis of the 2D contour plot,
         in the form of (h_axis_min, h_axis_max, v_axis_min, v_axis_max).
     axes_labels : list str, tuple str
-        the labels for h-axis and v-axis of the plot.
+        The labels for h-axis and v-axis of the plot.
     colormap : string
         the name of colormap. all the matplotlib colormaps are supported.
     colormap_lims : list float, tuple float
         The limit values of the colormap.
-    colorbar_unit : string
-        the label for colorbar
-    domains_edges : None, list numpy.ndarray
+    colorbar_label : string, None
+        The label for colorbar.
+    colorbar_ticks : list[float], None
+        The tick locationss for the colorbar.
+    colorbar_ticklabels : list[str], None
+        The tick labels for the colorbar.
+    domains_edges : list[numpy.ndarray], None
         If the intersection points of the domains and the visualisation plane is
         passed as a list, they are overlaid to the field plot.
     file_name : None, str
@@ -205,10 +222,13 @@ def surface_plot(
     from matplotlib import pylab as plt
     import numpy as _np
 
-    no_cbarticks = 10
-    cbar_ticks = _np.linspace(
-        colormap_lims[0], colormap_lims[1], no_cbarticks, endpoint=True
-    )
+    if colorbar_ticks is None:
+        no_cbarticks = 10
+        colorbar_ticks = _np.linspace(
+            colormap_lims[0], colormap_lims[1], no_cbarticks, endpoint=True
+        )
+    if colorbar_ticklabels is None:
+        colorbar_ticklabels = ["{:1.1e}".format(i) for i in colorbar_ticks]
     haxis_label, vaxis_label = axes_labels[0], axes_labels[1]
 
     fig = plt.figure(figsize=(10, 8))
@@ -223,7 +243,7 @@ def surface_plot(
         cmap=colormap,
         clim=colormap_lims,
         extent=axes_lims,
-        interpolation="bilinear",
+        interpolation=interpolation,
     )
 
     ax.set_xlabel(haxis_label, size=18)
@@ -231,9 +251,10 @@ def surface_plot(
     ax.tick_params(axis="both", which="major", labelsize=14)
     divider = make_axes_locatable(ax)
     cax = divider.append_axes("right", size="5%", pad=0.2)
-    cbar = plt.colorbar(ax_image, ticks=cbar_ticks, cax=cax)
-    cbar.set_ticklabels(["{:1.1e}".format(i) for i in cbar_ticks])
-    cbar.set_label(colorbar_unit, size=18)
+    cbar = plt.colorbar(ax_image, ticks=colorbar_ticks, cax=cax)
+    cbar.set_ticklabels(colorbar_ticklabels)
+    if colorbar_label is not None:
+        cbar.set_label(colorbar_label, size=18)
     cbar.ax.tick_params(labelsize=14)
     fig.tight_layout()
 
