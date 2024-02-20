@@ -11,7 +11,7 @@ def linear_solve(
 
     Parameters
     ----------
-    lhs_system : numpy.ndarray, bempp.api.DiscreteBoundaryOperator
+    lhs_system : scipy.sparse.linalg.LinearOperator
         The system of linear equations.
     rhs_system : numpy.ndarray
         The right-hand-side vector.
@@ -52,7 +52,7 @@ class GmresSolver:
 
         Parameters
         ----------
-        lhs_system : numpy.ndarray, bempp.api.DiscreteBoundaryOperator
+        lhs_system : scipy.sparse.linalg.LinearOperator
             The system of linear equations.
         rhs_system : numpy.ndarray
             The right-hand-side vector of the system.
@@ -76,6 +76,7 @@ class GmresSolver:
 
         def callback_fct(residual):
             self.it_count += 1
+            return
 
         solution, info = gmres(
             self.lhs_matrix,

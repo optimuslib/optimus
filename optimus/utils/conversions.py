@@ -195,14 +195,12 @@ def convert_to_3n_array(array, label="variable"):
     array_np = convert_to_array(array)
 
     if array_np.ndim == 1:
-
         if array_np.size == 3:
             return array_np.reshape([3, 1])
         else:
             raise ValueError(label + " needs to be three dimensional.")
 
     elif array_np.ndim == 2:
-
         if array_np.shape[0] == 3:
             return array_np
         elif array_np.shape[1] == 3:
@@ -211,5 +209,4 @@ def convert_to_3n_array(array, label="variable"):
             raise ValueError(label + " needs to be three dimensional.")
 
     else:
-
         raise ValueError(label + " needs to be three dimensional.")

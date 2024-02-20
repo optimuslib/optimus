@@ -154,11 +154,9 @@ class _Transducer:
         """
 
         if self.source.number_of_point_sources_per_wavelength == 0:
-
             locations_inside_transducer = _np.zeros((3, 1))
 
         else:
-
             wavelength = 2 * _np.pi / self.wavenumber.real
             distance_between_points = (
                 wavelength / self.source.number_of_point_sources_per_wavelength
@@ -308,7 +306,6 @@ class _Transducer:
             )
 
         if self.verbose:
-
             if self.source.inner_radius is None:
                 radius_section = self.source.radius_of_curvature - _np.sqrt(
                     self.source.radius_of_curvature**2 - self.source.outer_radius**2
@@ -359,7 +356,6 @@ class _Transducer:
         source_locations_array = _np.empty((3, n_points_array), dtype="float")
 
         for element_number in range(self.source.number_of_elements):
-
             source_locations_directed = _rotate(
                 locations_inside_transducer,
                 self.source.element_normals[:, element_number],
@@ -605,7 +601,6 @@ def calc_field_from_point_sources(
     )
 
     if parallelisation_method.lower() == "numba":
-
         if verbose:
             print("Parallelisation library is: numba")
 
@@ -630,7 +625,6 @@ def calc_field_from_point_sources(
         "mp",
         "multi-processing",
     ]:
-
         if verbose:
             print("Parallelisation library is: multiprocessing")
 
@@ -656,7 +650,6 @@ def calc_field_from_point_sources(
         )
 
         if source_parallelisation:
-
             if verbose:
                 print(
                     "Parallelisation of incident field calculation "
@@ -682,7 +675,6 @@ def calc_field_from_point_sources(
             )
 
         else:
-
             if verbose:
                 print(
                     "Parallelisation of incident field calculation "
@@ -868,10 +860,12 @@ def calc_field_from_point_sources_mp_source_para(
     i1, i2 = chunks_index_source[parallelisation_index : parallelisation_index + 2]
 
     for i in range(len(chunks_index_field) - 1):
-
         j1, j2 = chunks_index_field[i : i + 2]
 
-        (pressure[j1:j2], gradient[:, j1:j2],) = calc_field_from_point_sources_numpy(
+        (
+            pressure[j1:j2],
+            gradient[:, j1:j2],
+        ) = calc_field_from_point_sources_numpy(
             locations_source[:, i1:i2],
             locations_observation[:, j1:j2],
             frequency,

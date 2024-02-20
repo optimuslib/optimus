@@ -68,7 +68,6 @@ class _Array(_Source):
         centroid_locations,
         centroid_locations_filename,
     ):
-
         super().__init__("array", frequency)
 
         source_axis_vector = _convert_to_array(

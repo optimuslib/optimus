@@ -83,7 +83,6 @@ def get_geometries_stats(geometries, verbose=False):
     """
 
     if isinstance(geometries, (list, tuple)):
-
         labels = []
         elements_min = []
         elements_max = []
@@ -143,7 +142,6 @@ def get_geometries_stats(geometries, verbose=False):
             )
             print("\n", 70 * "*")
     else:
-
         stats_total = _get_mesh_stats(geometries.grid, verbose=verbose)
 
     return stats_total

@@ -17,7 +17,7 @@ def create_planewave(frequency, direction=(1, 0, 0), amplitude=1.0):
     ----------
     frequency : float
         The frequency of the acoustic field.
-    direction : numpy.ndarray, tuple float, list float
+    direction : numpy.ndarray, tuple[float], list[float]
         The direction of the plane wave.
         Default: positive x direction
     amplitude : float
@@ -35,7 +35,6 @@ class _PlaneWave(_Source):
         direction,
         amplitude,
     ):
-
         super().__init__("planewave", frequency)
 
         direction_vector = _convert_to_array(
@@ -54,7 +53,8 @@ class _PlaneWave(_Source):
         medium : optimus.material.Material
             The propagating medium.
         locations : numpy.ndarray
-            An array of size (3,N) with the locations on which to evaluate the pressure field.
+            An array of size (3,N) with the locations on which to evaluate
+            the pressure field.
 
         Returns
         -------
@@ -131,7 +131,7 @@ class _PlaneWave(_Source):
 
         Returns
         -------
-        trace : bempp.api.GridFunctions
+        trace : bempp.api.GridFunction
             The surface traces.
         """
 
