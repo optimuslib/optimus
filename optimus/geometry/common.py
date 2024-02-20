@@ -4,7 +4,7 @@ import bempp.api as _bempp
 
 
 class Geometry:
-    def __init__(self, grid, label="none"):
+    def __init__(self, grid, shape="geometry", label="none"):
         """
         Create a geometry.
 
@@ -12,11 +12,14 @@ class Geometry:
         ----------
         grid : bempp.api.Grid
             Surface grid of the geometry.
+        shape : str
+            The specific shape of the geometry.
         label : str
-            The name of the geometry.
+            The user-defined name of the geometry.
         """
 
         self.grid = grid
+        self.shape = shape
         self.label = label
 
     def number_of_vertices(self):
@@ -96,5 +99,5 @@ class ImportedGeometry(Geometry):
         filename : str, None
             The file name of the geometry, if specified.
         """
-        super().__init__(bempp_grid, label)
+        super().__init__(bempp_grid, "imported geometry", label)
         self.filename = filename
