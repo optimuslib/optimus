@@ -7,69 +7,216 @@ import numpy as _np
 class Model:
     def __init__(
         self,
+        label="model",
+    ):
+        """
+        Base class for wave propagation models.
+        """
+
+        self.label = label
+        self.solution = None
+        self.frequency = None
+
+        return
+
+
+class ExteriorModel(Model):
+    def __init__(
+        self,
         source,
         geometry,
         material_exterior,
         material_interior,
         formulation,
         preconditioner,
+        parameters,
+        label="exterior_model",
     ):
         """
-        Base class for BEM models.
+        Base class for discrete exterior wave propagation models.
+
+        The geometry has one unbounded exterior domain and may have multiple
+        bounded subdomains, which are assumed to be disjoint.
+
+        Parameters
+        ----------
+        source : optimus.source.common.Source
+            The Optimus representation of a source field.
+        geometry : list of optimus.geometry.common.Geometry
+            The list of geometries, in Optimus representation that includes the grid of
+            the scatterers.
+        material_exterior : optimus.material.common.Material
+            The Optimus representation of the material for the unbounded
+            exterior region.
+        material_interior : list of optimus.material.common.Material
+            The Optimus representation of the material for the bounded
+            scatterers.
+        formulation : str
+            The type of boundary integral formulation.
+        preconditioner : str
+            The type of operator preconditioner.
+        parameters : dict
+            The parameters for the formulation and preconditioner.
+        label : str
+            The label of the model.
         """
 
+        super().__init__(label)
+
         self.source = source
-        self.geometry = geometry
+        self.frequency = source.frequency
         self.material_exterior = material_exterior
-        self.material_interior = material_interior
-        self.n_subdomains = self._preprocess_domains()
+        (
+            self.n_subdomains,
+            self.geometry,
+            self.material_interior,
+        ) = self._preprocess_domains(geometry, material_interior)
 
         self.formulation = formulation
         self.preconditioner = preconditioner
+        self.parameters = parameters
+
+        self.space = None
+        self.continous_operator = None
+        self.discrete_operator = None
+        self.discrete_preconditioner = None
+        self.rhs_vector = None
+        self.lhs_discrete_system = None
+        self.rhs_discrete_system = None
+        self.solution_vector = None
+
+        self.iteration_count = None
+
+        return
 
     def solve(self):
         """
         Solve the model.
+
         Needs to be overwritten by specific model.
         """
 
         raise NotImplementedError
 
-    def _preprocess_domains(self):
+    @staticmethod
+    def _preprocess_domains(geometry, material_interior):
         """
         Preprocess the input variables for the geometry and materials.
+
+        Parameters
+        ----------
+        geometry : list of optimus.geometry.common.Geometry
+            The list of geometries, in Optimus representation that includes the grid of
+            the scatterers.
+        material_interior : list of optimus.material.common.Material
+            The Optimus representation of the material for the bounded
+            scatterers.
 
         Returns
         -------
         n_bounded_domains : int
             The number of bounded subdomains.
+        geometries : tuple[optimus.geometry.common.Geometry]
+            The list of geometries, in Optimus representation that includes the grid of
+            the scatterers.
+        materials_interior : tuple[optimus.material.common.Material]
+            The Optimus representation of the material for the bounded
+            scatterers.
         """
 
         from optimus.geometry.common import Geometry
         from optimus.material.common import Material
 
-        if not isinstance(self.geometry, (list, tuple)):
-            self.geometry = (self.geometry,)
-        for subdomain in self.geometry:
+        if isinstance(geometry, tuple):
+            geometries = geometry
+        elif isinstance(geometry, list):
+            geometries = tuple(geometry)
+        else:
+            geometries = (geometry,)
+        for subdomain in geometries:
             if not isinstance(subdomain, Geometry):
                 raise TypeError(
                     "The subdomain needs to be specified as an Optimus Geometry object."
                 )
-        n_bounded_domains = len(self.geometry)
+        n_bounded_domains = len(geometries)
 
-        if not isinstance(self.material_interior, (list, tuple)):
-            self.material_interior = (self.material_interior,)
-        for material in self.material_interior:
+        if isinstance(material_interior, tuple):
+            materials_interior = material_interior
+        elif isinstance(material_interior, list):
+            materials_interior = tuple(material_interior)
+        else:
+            materials_interior = (material_interior,)
+        for material in materials_interior:
             if not isinstance(material, Material):
                 raise TypeError(
                     "The material needs to be specified as an Optimus Material object."
                 )
-        if len(self.material_interior) != n_bounded_domains:
+        if len(materials_interior) != n_bounded_domains:
             raise ValueError(
                 "The number of geometries and interior materials should be the same."
             )
 
-        return n_bounded_domains
+        return n_bounded_domains, geometries, materials_interior
+
+
+class GraphModel(Model):
+    def __init__(
+        self,
+        topology,
+        label="graph_model",
+    ):
+        """
+        Base class for wave propagation models for graph domains.
+
+        The geometry has one unbounded exterior domain and may have multiple
+        bounded subdomains, which are assumed to form a graph topology, i.e,
+        are nested domains without junctions.
+
+        Parameters
+        ----------
+        topology : optimus.geometry.Graph
+            The graph topology representing the geometry.
+        label : str
+            The label of the model.
+        """
+
+        super().__init__(label)
+
+        self.topology = self._check_topology(topology)
+
+        return
+
+    @staticmethod
+    def _check_topology(topology):
+        """
+        Check the validity of the topology.
+
+        Parameters
+        ----------
+        topology : optimus.geometry.Graph
+            The graph topology representing the geometry.
+
+        Returns
+        -------
+        topology : optimus.geometry.Graph
+            The graph topology representing the geometry.
+        """
+
+        from optimus.geometry import Graph
+
+        if not isinstance(topology, Graph):
+            raise TypeError(
+                "The topology needs to be specified as an Optimus Graph object."
+            )
+
+        # Check if all interface nodes have a geometry
+        for node in topology.interface_nodes:
+            if node.is_active() and node.bounded and node.geometry is None:
+                raise AttributeError(
+                    "The interface node " + node.label + " needs to have a geometry."
+                )
+
+        return topology
 
 
 def _vector_to_gridfunction(vector, spaces):
@@ -81,7 +228,7 @@ def _vector_to_gridfunction(vector, spaces):
     ----------
     vector : numpy.ndarray
         Vector of coefficients.
-    spaces : tuple[bempp.api.FunctionSpace]
+    spaces : tuple[bempp.api.FunctionSpace], list[bempp.api.FunctionSpace]
         The function spaces.
 
     Returns
@@ -176,9 +323,17 @@ def _process_osrc_parameters(preconditioner_parameters):
     """
     Process the parameters for the OSRC preconditioner.
 
+    If the OSRC parameter is not specified in the input,
+    the global parameter is used.
+    The OSRC parameters are:
+        - npade: number of Padé expansions
+        - theta: angle of the branch cut of the Padé series
+        - damped_wavenumber: damped wavenumber
+        - wavenumber: wavenumber
+
     Parameters
     ----------
-    preconditioner_parameters : dict
+    preconditioner_parameters : dict, None
         The parameters of the preconditioner.
 
     Returns
@@ -187,9 +342,12 @@ def _process_osrc_parameters(preconditioner_parameters):
         The parameters of the OSRC preconditioner.
     """
 
-    import optimus
+    from optimus import global_parameters
 
-    global_params_osrc = optimus.global_parameters.preconditioning.osrc
+    global_params_osrc = global_parameters.preconditioning.osrc
+
+    if preconditioner_parameters is None:
+        preconditioner_parameters = {}
 
     osrc_parameters = {}
 
