@@ -112,6 +112,56 @@ def plot_pressure_field(
     return fig_p_real, fig_p_tot
 
 
+def plot_regions(postprocess_obj, display_edges=False, file_name=None):
+    """
+    Plot the regions in the geometry.
+
+    Parameters
+    ----------
+    postprocess_obj : optimus.postprocess.method.VisualisePlane
+        Optimus postprocess object that includes the visualisation pressure fields
+        on a rectangular grid in a plane.
+    display_edges : boolean
+        Display domains edges, i.e. domains and plane interfaces.
+    file_name : str, None
+        The file name to export the figure, if specified.
+
+    Returns
+    -------
+    fig_regions : matplotlib.Figure
+        Image show of the regions.
+    """
+
+    from matplotlib import cm
+    from .common import array_to_imshow
+
+    n_regions = len(postprocess_obj.field.region_legend)
+    quantity = array_to_imshow(
+        postprocess_obj.field.regions.reshape(postprocess_obj.resolution)
+    )
+
+    if hasattr(postprocess_obj, "domains_edges") and display_edges:
+        domains_edges = postprocess_obj.domains_edges
+    else:
+        domains_edges = None
+
+    fig_regions = surface_plot(
+        quantity=quantity,
+        interpolation="none",
+        axes_lims=postprocess_obj.bounding_box,
+        axes_labels=_set_pressure_plane(postprocess_obj.plane_axes),
+        colormap=cm.get_cmap("tab10", n_regions),
+        colormap_lims=(-0.5, n_regions - 0.5),
+        colorbar_label=None,
+        colorbar_ticks=list(range(n_regions)),
+        colorbar_ticklabels=postprocess_obj.field.region_legend,
+        domains_edges=domains_edges,
+        file_name=file_name,
+    )
+
+    return fig_regions
+
+
 def surface_plot(
     quantity,
     axes_lims,
