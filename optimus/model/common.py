@@ -2,8 +2,6 @@
 
 import bempp.api as _bempp
 import numpy as _np
-
-
 class Model:
     def __init__(
         self,
@@ -157,7 +155,6 @@ class ExteriorModel(Model):
             )
 
         return n_bounded_domains, geometries, materials_interior
-
 
 class GraphModel(Model):
     def __init__(

@@ -1,9 +1,6 @@
 """Postprocess methods."""
-
 from .common import PostProcess as _PostProcess
 import numpy as _np
-
-
 class VisualisePlane(_PostProcess):
     def __init__(self, model, verbose=False):
         """
@@ -121,38 +118,20 @@ class VisualisePlane(_PostProcess):
 
         return
 
-
 class VisualiseCloudPoints(_PostProcess):
     def __init__(self, model, verbose=False):
-        """
-        Create a PostProcess object to visualise to field in a cloud of 3D points.
+        """Create a PostProcess optimus object where the visualisation grid is
+        a cloud of 3D points.
 
         Parameters
         ----------
-        model : optimus.model.common.ExteriorModel
+        model : optimus.Model
             An optimus model object that includes the solution fields on the boundaries.
         verbose : boolean
             Display the log information.
+
         """
-
         super().__init__(model, verbose)
-
-        # Points of the 3D cloud
-        self.points = None
-        self.points_interior = None
-        self.points_exterior = None
-        self.points_boundary = None
-        self.index_interior = None
-        self.index_exterior = None
-        self.index_boundary = None
-
-        # Fields in the 3D point cloud
-        self.total_field = None
-        self.scattered_field = None
-        self.incident_field = None
-        self.l2_norm_total_field_mpa = None
-
-        return
 
     def create_computational_grid(self, points):
         """Create a point cloud to compute the pressure fields.
@@ -161,29 +140,63 @@ class VisualiseCloudPoints(_PostProcess):
         ----------
         points: numpy.ndarray
             Array of size (3,N) with points on which to calculate the pressure field.
+
         """
 
+        from .topology import find_int_ext_points
         from ..utils.conversions import convert_to_3n_array
 
         self.points = convert_to_3n_array(points, "visualisation points")
-        self.field.segmentation(self.points)
 
-        return
+        (
+            self.points_interior,
+            self.points_exterior,
+            self.points_boundary,
+            self.index_interior,
+            self.index_exterior,
+            self.index_boundary,
+        ) = find_int_ext_points(self.domains_grids, self.points, self.verbose)
 
     def compute_fields(self):
         """Calculate the scattered and total pressure fields in the postprocess grid."""
 
-        if self.model.solution is None:
-            raise ValueError(
-                "The model does not contain a solution, "
-                "so no fields can be computed."
-            )
+        from .common import compute_pressure_fields
 
-        self.field.compute_fields()
+        (
+            self.total_field,
+            self.scattered_field,
+            self.incident_field,
+        ) = compute_pressure_fields(
+            self.model,
+            self.points,
+            self.points_exterior,
+            self.index_exterior,
+            self.points_interior,
+            self.index_interior,
+            self.points_boundary,
+            self.index_boundary,
+            self.verbose,
+        )
 
         self.l2_norm_total_field_mpa = _np.linalg.norm(self.total_field)
 
-        return
+    def display_field(self, size=0.2):
+        """Display the magnitude of the field in the cloud points.
+
+        Parameters
+        ___________
+        size : float
+            The point size, 0.2 by default.
+        """
+        import k3d
+
+        plot = k3d.plot()
+        plot += k3d.factory.points(
+            self.points, attribute=abs(self.total_field), point_size=size
+        )
+
+        plot.display()
+
 
 
 class VisualisePlaneAndBoundary(_PostProcess):
@@ -323,15 +336,18 @@ class VisualisePlaneAndBoundary(_PostProcess):
                 ]
             ),
         )
+        # noinspection PyArgumentList
         _bempp.export(
             file_name=file_name + "_ptot_complex.msh",
             grid_function=plot3d_ptot_all,
         )
+        # noinspection PyArgumentList
         _bempp.export(
             file_name=file_name + "_ptot_abs.msh",
             grid_function=plot3d_ptot_abs_all,
         )
 
+        return
 
 class VisualiseTimeDomain(_PostProcess):
     def __init__(self, model, verbose=False):

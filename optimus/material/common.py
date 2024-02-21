@@ -31,9 +31,9 @@ def get_excel_database(
     """
 
     if database.lower() == "default":
-        file_name = "Material_database.xls"
+        file_name = "Material_database.xlsx"
     elif database.lower() == "user-defined":
-        file_name = "Material_database_user-defined.xls"
+        file_name = "Material_database_user-defined.xlsx"
     else:
         raise ValueError("undefined database.")
 
@@ -110,7 +110,7 @@ def write_material_database(properties):
         None
     """
 
-    user_database_file = "Material_database_user-defined.xls"
+    user_database_file = "Material_database_user-defined.xlsx"
     dataframe_default = get_excel_database(database="default")
     dataframe_user = get_excel_database(
         database="user-defined",
