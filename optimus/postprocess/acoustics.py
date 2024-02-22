@@ -697,11 +697,12 @@ class NestedField(Field):
 
         self.fields_interface = []
         for interface in self.graph.interface_nodes:
+            formulation = self.model.formulation[interface.identifier]
+            if formulation not in ("none", "pmchwt", "muller"):
+                raise NotImplementedError(
+                    "Unknown formulation for boundary points: " + formulation
+                )
             if self.index_boundary[interface.identifier] is not None:
-                if self.model.formulations[interface.identifier] != "pmchwt":
-                    raise NotImplementedError(
-                        "Only PMCHWT formulation is available for boundary points."
-                    )
                 self.fields_interface.append(
                     compute_pressure_boundary(
                         interface.geometry.grid,

@@ -26,8 +26,15 @@ def create_default_nested_model(topology, frequency, label="default"):
         in the nested domains.
     """
 
-    model = Pmchwt(
-        topology=topology, frequency=frequency, preconditioner="mass", label=label
+    freq = _check_frequency(frequency, topology.subdomain_nodes)
+
+    model = NestedModel(
+        topology=topology,
+        frequency=freq,
+        formulation=["none"] + ["pmchwt"]*(topology.number_interface_nodes()-1),
+        preconditioner=["none"] + ["mass"]*(topology.number_interface_nodes()-1),
+        parameters=None,
+        label=label,
     )
 
     return model
@@ -76,17 +83,14 @@ def create_nested_model(
         topology.number_interface_nodes(),
     )
 
-    if _np.all([item == "pmchwt" for item in form_names[1:]]):
-        model = NestedModel(
-            topology=topology,
-            frequency=freq,
-            formulations=form_names,
-            preconditioners=prec_names,
-            parameters=parameters,
-            label=label,
-        )
-    else:
-        raise NotImplementedError("Unknown formulation: " + str(form_names) + ".")
+    model = NestedModel(
+        topology=topology,
+        frequency=freq,
+        formulation=form_names,
+        preconditioner=prec_names,
+        parameters=parameters,
+        label=label,
+    )
 
     return model
 
@@ -123,7 +127,9 @@ def _check_frequency(frequency, subdomain_nodes):
         if source.frequency != freq:
             raise ValueError(
                 "All sources must have frequency {}. Source {} has "
-                "frequency {} instead.".format(freq, source.label, source.frequency)
+                "frequency {} instead.".format(
+                    freq, source.label, source.frequency
+                )
             )
 
     return freq
@@ -135,12 +141,13 @@ def _check_preconditioned_formulation(formulation, preconditioner, n_interfaces)
 
     Parameters
     ----------
-    formulation : str, list[str]
+    formulation : str, list[str], tuple[str]
         The type of formulation, possibly different for each interface.
-    preconditioner : str, list[str]
+    preconditioner : str, list[str], tuple[str]
         The type of operator preconditioner, possibly different for each interface.
     n_interfaces : int
-        The number of interfaces in the geometry.
+        The number of interfaces in the nested geometry, including the unbounded
+        one at infinity.
 
     Returns
     -------
@@ -151,18 +158,24 @@ def _check_preconditioned_formulation(formulation, preconditioner, n_interfaces)
     """
 
     if isinstance(formulation, str):
-        formulations = [formulation] * n_interfaces
+        formulations = [formulation] * (n_interfaces - 1)
     elif isinstance(formulation, (list, tuple)):
         formulations = list(formulation)
+        for form in formulations:
+            if not isinstance(form, str):
+                raise ValueError("The formulation name must be a string.")
     else:
-        raise ValueError("The formulation must be a string or a list of strings.")
+        raise ValueError("The formulation must be a string, list or tuple.")
 
     if isinstance(preconditioner, str):
-        preconditioners = [preconditioner] * n_interfaces
+        preconditioners = [preconditioner] * (n_interfaces - 1)
     elif isinstance(preconditioner, (list, tuple)):
         preconditioners = list(preconditioner)
+        for prec in preconditioners:
+            if not isinstance(prec, str):
+                raise ValueError("The preconditioner name must be a string.")
     else:
-        raise ValueError("The preconditioner must be a string or a list of strings.")
+        raise ValueError("The preconditioner must be a string, list or tuple.")
 
     # If necessary, prepend the default formulation and preconditioner for the
     # unbounded exterior surface, on which no integral equation is defined.
@@ -185,17 +198,52 @@ def _check_preconditioned_formulation(formulation, preconditioner, n_interfaces)
 
     # The unbounded exterior surface has no boundary integral equation.
     # Hence, the formulation and preconditioner must be 'none'.
-    formulations[0] = "none"
-    preconditioners[0] = "none"
+    if formulations[0] != "none":
+        raise ValueError(
+            "The formulation for the unbounded exterior surface must be 'none'."
+        )
+    if preconditioners[0] != "none":
+        raise ValueError(
+            "The preconditioner for the unbounded exterior surface must be 'none'."
+        )
+
+    # Check if the specified formulations and preconditioners have been implemented.
+
+    def clean_string_names(name):
+        return name.lower().replace("ü", "u")
+
+    formulations = tuple([clean_string_names(form) for form in formulations])
+    preconditioners = tuple([clean_string_names(prec) for prec in preconditioners])
 
     for form in formulations[1:]:
-        if form not in ("pmchwt",):
-            raise ValueError("The formulation must be one of 'pmchwt'.")
+        if form not in ("pmchwt", "muller"):
+            raise ValueError(
+                "The formulation must be one of: "
+                "'pmchwt' or 'muller'."
+            )
 
     for prec in preconditioners[1:]:
         if prec not in ("none", "mass", "osrc"):
             raise ValueError(
-                "The preconditioner must be one of 'none', 'mass' or 'osrc'."
+                "The preconditioner must be one of: "
+                "'none', 'mass', or 'osrc'."
+            )
+
+    # Check the consistency of the set of preconditioner and formulation types.
+
+    weak = ("none",)
+    strong = ("mass", "osrc")
+    weak_preconditioners = [prec in weak for prec in preconditioners[1:]]
+    strong_preconditioners = [prec in strong for prec in preconditioners[1:]]
+    if not (all(weak_preconditioners) or all(strong_preconditioners)):
+        raise NotImplementedError(
+            "The preconditioner must be the same weak/strong discretisation type."
+        )
+
+    for form, prec in zip(formulations, preconditioners):
+        if prec == "osrc" and form not in ("pmchwt",):
+            raise ValueError(
+                "The OSRC preconditioner only works for the PMCHWT formulation."
             )
 
     return formulations, preconditioners
@@ -206,8 +254,8 @@ class NestedModel(_GraphModel):
         self,
         topology,
         frequency,
-        formulations,
-        preconditioners,
+        formulation,
+        preconditioner,
         parameters=None,
         label="nested_model",
     ):
@@ -220,9 +268,9 @@ class NestedModel(_GraphModel):
             The graph topology representing the geometry.
         frequency : float
             The frequency of the harmonic wave propagation model.
-        formulations : list[str]
+        formulation : list[str]
             The type of formulation for each interface.
-        preconditioners : list[str]
+        preconditioner : list[str]
             The type of operator preconditioner for each interface.
         parameters : dict, None
             The parameters for the formulation and preconditioner.
@@ -233,11 +281,11 @@ class NestedModel(_GraphModel):
         super().__init__(topology, label)
 
         self.frequency = frequency
-
-        self.formulations = formulations
-        self.preconditioners = preconditioners
+        self.formulation = formulation
+        self.preconditioner = preconditioner
         self.parameters = parameters
-        self.representations = self._assign_representation(formulations)
+
+        self.representation = self._assign_representation(formulation)
 
         self.spaces = None
         self.continuous_preconditioners = None
@@ -249,21 +297,58 @@ class NestedModel(_GraphModel):
         self.vector_interface_split = None
         self.solution_vector = None
         self.iteration_count = None
+        self.timings = {}
 
         return
 
-    def solve(self):
-        """Solve the nested model."""
+    def solve(self, timing=False):
+        """
+        Solve the nested model.
+
+        Parameters
+        ----------
+        timing : bool
+            Store the computation time of the solution process.
+        """
         from optimus import global_parameters
+        import time
 
         global_parameters.bem.update_hmat_parameters("boundary")
+
         self._create_function_spaces()
+
         self._create_continuous_preconditioners()
+
         self._create_continuous_operators()
-        self._create_discrete_preconditioners()
-        self._create_discrete_operators()
-        self._create_rhs_vector()
-        self._solve_linear_system()
+
+        if timing:
+            start = time.time()
+            self._create_discrete_preconditioners()
+            self.timings["assembly preconditioners"] = time.time() - start
+        else:
+            self._create_discrete_preconditioners()
+
+        if timing:
+            start = time.time()
+            self._create_discrete_operators()
+            self.timings["assembly operators"] = time.time() - start
+        else:
+            self._create_discrete_operators()
+
+        if timing:
+            start = time.time()
+            self._create_rhs_vector()
+            self.timings["assembly rhs"] = time.time() - start
+        else:
+            self._create_rhs_vector()
+
+        if timing:
+            start = time.time()
+            self._solve_linear_system()
+            self.timings["linear solve"] = time.time() - start
+        else:
+            self._solve_linear_system()
+
         self._solution_vector_to_gridfunction()
 
         return
@@ -288,7 +373,7 @@ class NestedModel(_GraphModel):
         for form in formulations:
             if form == "none":
                 representations.append("none")
-            elif form in ("pmchwt",):
+            elif form in ("pmchwt", "muller"):
                 representations.append("direct")
             else:
                 raise ValueError("Unknown formulation: " + form + ".")
@@ -299,7 +384,7 @@ class NestedModel(_GraphModel):
         """
         Create the function spaces for nested domains.
 
-        By default, continous P1 elements are used.
+        By default, continuous P1 elements are used.
 
         Sets "self.spaces" to a list of function spaces, one for each interface.
         """
@@ -319,7 +404,7 @@ class NestedModel(_GraphModel):
         """
         Create the preconditioners for nested domains.
 
-        For each interface, specify the continous preconditioning
+        For each interface, specify the continuous preconditioning
         operators and store all of them in a list that correspond to the same
         interface. Each element in the list is a special object for
         preconditioner operators.
@@ -334,7 +419,7 @@ class NestedModel(_GraphModel):
         for interface in self.topology.interface_nodes:
             if interface.is_active():
                 interface_id = interface.identifier
-                preconditioner = self.preconditioners[interface_id]
+                preconditioner = self.preconditioner[interface_id]
 
                 if preconditioner in ("none", "mass"):
                     # No preconditioner is needed for 'mass' since the strong form
@@ -346,7 +431,7 @@ class NestedModel(_GraphModel):
                         PreconditionerOperators(
                             identifier=len(self.continuous_preconditioners),
                             node=interface,
-                            formulation=self.formulations[interface_id],
+                            formulation=self.formulation[interface_id],
                             preconditioner=preconditioner,
                             space=self.spaces[interface_id],
                             materials=(
@@ -372,26 +457,15 @@ class NestedModel(_GraphModel):
 
     def _create_continuous_operators(self):
         """
-        Create the continous boundary integral operators for nested domains.
+        Create the continuous boundary integral operators for nested domains.
 
-        For each interface connector, specify the continous boundary integral
+        For each interface connector, specify the continuous boundary integral
         operators and store all of them in a list that correspond to the same
         interface connector. Each element in the list is a special object for
         boundary integral operators.
 
-        Sets "self.continous_operators" to a list of BoundaryIntegralOperators.
+        Sets "self.continuous_operators" to a list of BoundaryIntegralOperators.
         """
-
-        def check_preconditioner(prec1, prec2):
-            weak = ("none",)
-            strong = ("mass", "osrc")
-            if (prec1 in weak and prec2 in strong) or (
-                prec1 in strong and prec2 in weak
-            ):
-                raise NotImplementedError(
-                    "The preconditioner must be the same discretisation type."
-                )
-            return prec1
 
         self.continuous_operators = []
         for connector in self.topology.interface_connectors:
@@ -399,20 +473,12 @@ class NestedModel(_GraphModel):
                 interface_ids = connector.interfaces_ids
                 subdomain_id = connector.subdomain_id
 
-                if (
-                    self.formulations[interface_ids[0]]
-                    != self.formulations[interface_ids[1]]
-                ):
-                    raise NotImplementedError(
-                        "The formulation must be the same for both interfaces."
-                    )
-                else:
-                    formulation_name = self.formulations[interface_ids[0]]
+                # The type of boundary integral formulation has to be consistent
+                # with the range domain of the operator.
+                formulation_name = self.formulation[interface_ids[1]]
 
-                preconditioner_name = check_preconditioner(
-                    self.preconditioners[interface_ids[0]],
-                    self.preconditioners[interface_ids[1]],
-                )
+                # Left preconditioners use the range domain of the operator.
+                preconditioner_name = self.preconditioner[interface_ids[1]]
 
                 spaces = (
                     self.spaces[interface_ids[0]],
@@ -511,7 +577,7 @@ class NestedModel(_GraphModel):
 
     def _create_discrete_operators(self):
         """
-        Assemble the continous boundary integral operators for nested domains.
+        Assemble the continuous boundary integral operators for nested domains.
 
         Calculate the discrete boundary integral operators for each interface connector
         and store them in a list that correspond to the same interface connector.
@@ -533,7 +599,7 @@ class NestedModel(_GraphModel):
 
     def _create_discrete_preconditioners(self):
         """
-        Assemble the continous preconditioners for nested domains.
+        Assemble the continuous preconditioners for nested domains.
 
         Calculate the discrete preconditioner for each interface node
         and store them in a list that correspond to the same interface.
@@ -582,7 +648,7 @@ class NestedModel(_GraphModel):
                     self.source_projections.append(
                         EmptySourceProjection(
                             space=self.spaces[interface_id],
-                            formulation=self.formulations[interface_id],
+                            formulation=self.formulation[interface_id],
                         )
                     )
                 elif len(parent_subdomain.sources) == 1:
@@ -593,8 +659,8 @@ class NestedModel(_GraphModel):
                                 source=parent_subdomain.sources[0],
                                 space=self.spaces[interface_id],
                                 material=parent_subdomain.material,
-                                formulation=self.formulations[interface_id],
-                                preconditioner_name=self.preconditioners[interface_id],
+                                formulation=self.formulation[interface_id],
+                                preconditioner_name=self.preconditioner[interface_id],
                                 preconditioner_operators=prec_ops,
                             )
                         )
@@ -778,57 +844,17 @@ class NestedModel(_GraphModel):
 
         self.solution = []
         for vector, space, formulation in zip(
-            solution_vector_interfaces, self.spaces, self.formulations
+            solution_vector_interfaces, self.spaces, self.formulation
         ):
             if space is None:
                 self.solution.append(None)
             else:
-                if formulation == "pmchwt":
+                if formulation in ("pmchwt", "muller"):
                     self.solution.append(
                         _vector_to_gridfunction(vector, [space, space])
                     )
                 else:
-                    raise ValueError("Unknown formulation :" + formulation + ".")
-
-        return
-
-
-class Pmchwt(NestedModel):
-    def __init__(
-        self,
-        topology,
-        frequency,
-        preconditioner,
-        parameters=None,
-        label="pmchwt",
-    ):
-        """
-        Create a model based on the PMCHWT formulation for nested domains.
-
-        Parameters
-        ----------
-        topology : optimus.geometry.Graph
-            The graph topology representing the geometry.
-        frequency : float
-            The frequency of the harmonic wave propagation model.
-        preconditioner : str
-            The type of operator preconditioner.
-        parameters : None, dict
-            The parameters for the formulation and preconditioner.
-        label : str
-            The label of the model.
-        """
-
-        n_interfaces = topology.number_interface_nodes()
-
-        super().__init__(
-            topology,
-            frequency,
-            ["pmchwt"] * n_interfaces,
-            [preconditioner] * n_interfaces,
-            parameters,
-            label,
-        )
+                    raise ValueError("Unknown formulation: " + formulation + ".")
 
         return
 
@@ -907,8 +933,10 @@ class BoundaryIntegralOperators:
             The type of boundary integral formulation.
         """
 
-        if formulation != "pmchwt":
-            raise ValueError("Invalid boundary integral formulation.")
+        if formulation not in ("pmchwt", "muller"):
+            raise NotImplementedError(
+                "Formulation not implemented: " + formulation + "."
+            )
 
         return formulation
 
@@ -918,8 +946,8 @@ class BoundaryIntegralOperators:
 
         Returns
         -------
-        operators : tuple[dict[str, bempp.api.operators.boundary.Helmholtz]]
-            The continuos boundary integral operators. The tuple contains
+        operators : tuple[dict[str, bempp.api.operators.boundary]]
+            The continuous boundary integral operators. The tuple contains
             two items, one for each direction of the connector. Each item
             contains a dictionary with the necessary boundary integral
             operators.
@@ -927,27 +955,39 @@ class BoundaryIntegralOperators:
 
         from .acoustics import create_boundary_integral_operators
 
-        if self.formulation == "pmchwt":
-            operators_start_end = create_boundary_integral_operators(
-                self.spaces[0],
-                self.spaces[1],
-                self.wavenumber,
-                True,
-                True,
-                True,
-                True,
-            )
+        if self.formulation in ("pmchwt", "muller"):
             if self.connector.topology in ("self-exterior", "self-interior"):
+                operators_start_end = create_boundary_integral_operators(
+                    self.spaces[0],
+                    self.spaces[1],
+                    self.wavenumber,
+                    identity=True,
+                    single_layer=True,
+                    double_layer=True,
+                    adjoint_double_layer=True,
+                    hypersingular=True,
+                )
                 operators_end_start = operators_start_end
             else:
+                operators_start_end = create_boundary_integral_operators(
+                    self.spaces[0],
+                    self.spaces[1],
+                    self.wavenumber,
+                    identity=False,
+                    single_layer=True,
+                    double_layer=True,
+                    adjoint_double_layer=True,
+                    hypersingular=True,
+                )
                 operators_end_start = create_boundary_integral_operators(
                     self.spaces[1],
                     self.spaces[0],
                     self.wavenumber,
-                    True,
-                    True,
-                    True,
-                    True,
+                    identity=False,
+                    single_layer=True,
+                    double_layer=True,
+                    adjoint_double_layer=True,
+                    hypersingular=True,
                 )
         else:
             raise ValueError("Unknown formulation: " + self.formulation + ".")
@@ -965,7 +1005,7 @@ class BoundaryIntegralOperators:
 
         Returns
         -------
-        discrete_operators : tuple[dict[str, bempp.api.operators.boundary.Helmholtz]]
+        discrete_operators : tuple[dict[str, bempp.api.operators.boundary]]
             The discrete boundary integral operators. The tuple is for each direction.
         """
 
@@ -1017,7 +1057,7 @@ class BoundaryIntegralOperators:
         interface_ids = self.connector.interfaces_ids
 
         if interface_id not in interface_ids:
-            raise ValueError(
+            raise AssertionError(
                 "The interface " + str(interface_id) + " is not part of the connector."
             )
         else:
@@ -1026,17 +1066,22 @@ class BoundaryIntegralOperators:
         if self.discrete_operators is None:
             _ = self.assemble_boundary_integral_operators()
 
-        result = self._apply_boundary_operators(index, vector)
+        if self.formulation == "pmchwt":
+            result = self._apply_pmchwt_operators(index, vector)
+        elif self.formulation == "muller":
+            result = self._apply_muller_operators(index, vector)
+        else:
+            raise ValueError("Unknown formulation: " + self.formulation + ".")
 
         return result
 
-    def _apply_boundary_operators(self, index, vector):
+    def _apply_pmchwt_operators(self, index, vector):
         """
-        Apply the boundary operators to a vector to perform a local matvec.
+        Apply the PMCHWT operators to a vector to perform a local matvec.
 
         The index indicates the source/domain interface of the connector, on which
         the vector is defined. The vector is the entire vector for the connector,
-        and may include multiple traces depending on the formulation.
+        which includes the Dirichlet and Neumann traces.
 
         Parameters
         ----------
@@ -1054,58 +1099,158 @@ class BoundaryIntegralOperators:
         operators = self.discrete_operators[index]
         connector_topology = self.connector.topology
 
-        if self.formulation == "pmchwt":
-            trace_vectors = _np.split(vector, [self.spaces[index].global_dof_count])
+        trace_vectors = _np.split(vector, [self.spaces[index].global_dof_count])
 
-            if connector_topology in ("self-exterior", "sibling"):
-                matvec_vectors = self._apply_calderon(operators, trace_vectors)
+        if connector_topology in ("self-exterior", "sibling"):
+            matvec_vectors = self._apply_calderon(operators, trace_vectors)
 
-            elif connector_topology == "self-interior":
+        elif connector_topology == "self-interior":
+            rho_ext = self.densities[0]
+            rho_int = self.material.density
+            scaled_vector = [
+                trace_vectors[0],
+                (rho_int / rho_ext) * trace_vectors[1],
+            ]
+            calderon_vectors = self._apply_calderon(operators, scaled_vector)
+            matvec_vectors = [
+                calderon_vectors[0],
+                (rho_ext / rho_int) * calderon_vectors[1],
+            ]
+
+        elif connector_topology == "parent-child":
+            if index == 0:
                 rho_ext = self.densities[0]
                 rho_int = self.material.density
                 scaled_vector = [
-                    trace_vectors[0],
-                    (rho_int / rho_ext) * trace_vectors[1],
+                    -trace_vectors[0],
+                    -(rho_int / rho_ext) * trace_vectors[1],
                 ]
-                calderon_vectors = self._apply_calderon(operators, scaled_vector)
+                matvec_vectors = self._apply_calderon(operators, scaled_vector)
+            elif index == 1:
+                rho_ext = self.densities[0]
+                rho_int = self.material.density
+                calderon_vectors = self._apply_calderon(operators, trace_vectors)
+                matvec_vectors = [
+                    -calderon_vectors[0],
+                    -(rho_ext / rho_int) * calderon_vectors[1],
+                ]
+            else:
+                raise AssertionError(
+                    "Index must be 0 or 1, not: " + str(index) + "."
+                )
+
+        else:
+            raise AssertionError(
+                "Unknown topology of interface connector: " + connector_topology
+            )
+
+        result = _np.concatenate(matvec_vectors)
+
+        return result
+
+    def _apply_muller_operators(self, index, vector):
+        """
+        Apply the Müller operators to a vector to perform a local matvec.
+
+        The index indicates the source/domain interface of the connector, on which
+        the vector is defined. The vector is the entire vector for the connector,
+        which includes the Dirichlet and Neumann traces.
+
+        Parameters
+        ----------
+        index : int
+            The index of the pair of discrete operators to use: either 0 or 1.
+        vector : numpy.ndarray
+            The vector to multiply.
+
+        Returns
+        -------
+        result : numpy.ndarray
+            The product of the boundary integral operators with the vector.
+        """
+
+        operators = self.discrete_operators[index]
+        connector_topology = self.connector.topology
+
+        trace_vectors = _np.split(vector, [self.spaces[index].global_dof_count])
+
+        if connector_topology == "self-exterior":
+            identity_vectors = self._apply_identity(operators, trace_vectors)
+            calderon_vectors = self._apply_calderon(operators, trace_vectors)
+            matvec_vectors = [
+                identity_vectors[0] + calderon_vectors[0],
+                identity_vectors[1] + calderon_vectors[1],
+            ]
+
+        elif connector_topology == "self-interior":
+            rho_ext = self.densities[0]
+            rho_int = self.material.density
+            scaled_vector = [
+                trace_vectors[0],
+                (rho_int / rho_ext) * trace_vectors[1],
+            ]
+            calderon_vectors = self._apply_calderon(operators, scaled_vector)
+            matvec_vectors = [
+                -calderon_vectors[0],
+                -(rho_ext / rho_int) * calderon_vectors[1],
+            ]
+
+        elif connector_topology == "sibling":
+            matvec_vectors = self._apply_calderon(operators, trace_vectors)
+
+        elif connector_topology == "parent-child":
+            if index == 0:
+                rho_ext = self.densities[0]
+                rho_int = self.material.density
+                scaled_vector = [
+                    -trace_vectors[0],
+                    -(rho_int / rho_ext) * trace_vectors[1],
+                ]
+                matvec_vectors = self._apply_calderon(operators, scaled_vector)
+            elif index == 1:
+                rho_ext = self.densities[0]
+                rho_int = self.material.density
+                calderon_vectors = self._apply_calderon(operators, trace_vectors)
                 matvec_vectors = [
                     calderon_vectors[0],
                     (rho_ext / rho_int) * calderon_vectors[1],
                 ]
-
-            elif connector_topology == "parent-child":
-                if index == 0:
-                    rho_ext = self.densities[0]
-                    rho_int = self.material.density
-                    scaled_vector = [
-                        -trace_vectors[0],
-                        -(rho_int / rho_ext) * trace_vectors[1],
-                    ]
-                    matvec_vectors = self._apply_calderon(operators, scaled_vector)
-                elif index == 1:
-                    rho_ext = self.densities[0]
-                    rho_int = self.material.density
-                    calderon_vectors = self._apply_calderon(operators, trace_vectors)
-                    matvec_vectors = [
-                        -calderon_vectors[0],
-                        -(rho_ext / rho_int) * calderon_vectors[1],
-                    ]
-                else:
-                    raise AssertionError(
-                        "Index must be 0 or 1, not: " + str(index) + "."
-                    )
-
             else:
                 raise AssertionError(
-                    "Unknown topology of interface connector: " + connector_topology
+                    "Index must be 0 or 1, not: " + str(index) + "."
                 )
 
-            result = _np.concatenate(matvec_vectors)
-
         else:
-            raise ValueError("Unknown formulation: " + self.formulation + ".")
+            raise AssertionError(
+                "Unknown topology of interface connector: " + connector_topology
+            )
+
+        result = _np.concatenate(matvec_vectors)
 
         return result
+
+    @staticmethod
+    def _apply_identity(operators, vector):
+        """
+        Apply the identity operator to a vector.
+
+        Parameters
+        ----------
+        operators : dict[str, bempp.api.operators.boundary.sparse]
+            The dictionary with discrete boundary integral operators.
+        vector : list[numpy.ndarray]
+            The two parts of the vector to multiply: Dirichlet and Neumann traces.
+
+        Returns
+        -------
+        result : list[numpy.ndarray]
+            The two parts of the result vector: Dirichlet and Neumann traces.
+        """
+
+        dirichlet_matvec = operators["identity"] * vector[0]
+        neumann_matvec = operators["identity"] * vector[1]
+
+        return [dirichlet_matvec, neumann_matvec]
 
     @staticmethod
     def _apply_calderon(operators, vector):
@@ -1193,7 +1338,7 @@ class PreconditionerOperators:
         Returns
         -------
         operators : dict[str, bempp.api.operators.boundary.Helmholtz]
-            The continuos preconditioner operators with their names.
+            The continuous preconditioner operators with their names.
         """
 
         if self.preconditioner == "osrc" and self.formulation == "pmchwt":
@@ -1217,7 +1362,7 @@ class PreconditionerOperators:
         Returns
         -------
         operators : dict[str, bempp.api.operators.boundary.Helmholtz]
-            The continuos OSRC preconditioner operators with
+            The continuous OSRC preconditioner operators with
             their names: 'NtD' or 'DtN'.
         """
 
@@ -1429,7 +1574,7 @@ class SourceProjection(_SourceInterface):
         preconditioned formulation. Its type is "numpy.ndarray".
         """
 
-        if self.formulation == "pmchwt":
+        if self.formulation in ("pmchwt", "muller"):
             trace_dirichlet, trace_neumann = self.source.calc_surface_traces(
                 medium=self.material,
                 space_dirichlet=self.space,

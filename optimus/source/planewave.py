@@ -25,10 +25,10 @@ def create_planewave(frequency, direction=(1, 0, 0), amplitude=1.0):
         Default: 1 Pa
     """
 
-    return _PlaneWave(frequency, direction, amplitude)
+    return PlaneWave(frequency, direction, amplitude)
 
 
-class _PlaneWave(_Source):
+class PlaneWave(_Source):
     def __init__(
         self,
         frequency,

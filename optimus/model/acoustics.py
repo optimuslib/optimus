@@ -220,6 +220,7 @@ class Pmchwt(_ExteriorModel):
                     self.space[dom],
                     self.space[ran],
                     k_ext,
+                    identity=False,
                     single_layer=True,
                     double_layer=True,
                     adjoint_double_layer=True,
@@ -237,6 +238,7 @@ class Pmchwt(_ExteriorModel):
                 self.space[dom],
                 self.space[dom],
                 k_int[dom],
+                identity=False,
                 single_layer=True,
                 double_layer=True,
                 adjoint_double_layer=True,
@@ -606,6 +608,7 @@ def create_boundary_integral_operators(
     space_domain,
     space_range,
     wavenumber,
+    identity=False,
     single_layer=False,
     double_layer=False,
     adjoint_double_layer=False,
@@ -619,6 +622,8 @@ def create_boundary_integral_operators(
         The function space for the domain and range of the Galerkin discretisation.
     wavenumber : complex
         The wavenumber of the Green's function.
+    identity : bool
+        Return the continuous identity boundary integral operator.
     single_layer : bool
         Return the continuous single layer boundary integral operator.
     double_layer : bool
@@ -630,11 +635,19 @@ def create_boundary_integral_operators(
 
     Returns
     -------
-    operators : dict[str, bempp.api.operators.boundary.Helmholtz]
+    operators : dict[str, bempp.api.operators.boundary]
         A dictionary of boundary integral operators of the Helmholtz equation.
     """
 
     operators = {}
+
+    if identity:
+        id_op = _bempp.operators.boundary.sparse.identity(
+            space_domain,
+            space_range,
+            space_range,
+        )
+        operators["identity"] = id_op
 
     if _np.isclose(_np.abs(wavenumber), 0):
         if single_layer:
