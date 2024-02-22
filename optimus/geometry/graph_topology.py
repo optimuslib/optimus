@@ -96,7 +96,22 @@ class Graph:
         return
 
     def plot_graph(self):
-        """Plot the graph topology."""
+        """
+        Plot the graph topology.
+
+        Currently, visualisation of the graph is only possible with the
+        treelib package.
+        """
+
+        try:
+            import treelib
+        except ImportError:
+            print(
+                "The graph cannot be plotted without the 'treelib' package. "
+                "Please install the library manually. "
+                "This issue will be solved in future releases."
+            )
+            return
 
         from optimus.geometry.common import Geometry
 
