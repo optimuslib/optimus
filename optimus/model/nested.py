@@ -208,7 +208,7 @@ def _check_preconditioned_formulation(formulation, preconditioner, n_interfaces)
     # Check if the specified formulations and preconditioners have been implemented.
 
     def clean_string_names(name):
-        return name.lower().replace("ü", "u")
+        return name.lower().replace("ü", "u").replace("ó", "o")
 
     formulations = tuple([clean_string_names(form) for form in formulations])
     preconditioners = tuple([clean_string_names(prec) for prec in preconditioners])
@@ -218,15 +218,16 @@ def _check_preconditioned_formulation(formulation, preconditioner, n_interfaces)
             raise ValueError("The formulation must be one of: " "'pmchwt' or 'muller'.")
 
     for prec in preconditioners[1:]:
-        if prec not in ("none", "mass", "osrc"):
+        if prec not in ("none", "mass", "osrc", "calderon"):
             raise ValueError(
-                "The preconditioner must be one of: " "'none', 'mass', or 'osrc'."
+                "The preconditioner must be one of: "
+                "'none', 'mass', 'osrc', or 'calderon'."
             )
 
     # Check the consistency of the set of preconditioner and formulation types.
 
     weak = ("none",)
-    strong = ("mass", "osrc")
+    strong = ("mass", "osrc", "calderon")
     weak_preconditioners = [prec in weak for prec in preconditioners[1:]]
     strong_preconditioners = [prec in strong for prec in preconditioners[1:]]
     if not (all(weak_preconditioners) or all(strong_preconditioners)):
@@ -238,6 +239,12 @@ def _check_preconditioned_formulation(formulation, preconditioner, n_interfaces)
         if prec == "osrc" and form not in ("pmchwt",):
             raise ValueError(
                 "The OSRC preconditioner only works for the PMCHWT formulation."
+            )
+
+    for form, prec in zip(formulations, preconditioners):
+        if prec == "calderon" and form not in ("pmchwt",):
+            raise ValueError(
+                "The Calderón preconditioner only works for the PMCHWT formulation."
             )
 
     return formulations, preconditioners
@@ -311,9 +318,9 @@ class NestedModel(_GraphModel):
 
         self._create_function_spaces()
 
-        self._create_continuous_preconditioners()
-
         self._create_continuous_operators()
+
+        self._create_continuous_preconditioners()
 
         if timing:
             start = time.time()
@@ -388,7 +395,9 @@ class NestedModel(_GraphModel):
         self.spaces = []
         for interface in self.topology.interface_nodes:
             if interface.is_active() and interface.bounded:
-                self.spaces.append(function_space(interface.geometry.grid, "P", 1))
+                self.spaces.append(
+                    function_space(interface.geometry.grid, "P", 1)
+                )
             else:
                 self.spaces.append(None)
 
@@ -410,6 +419,7 @@ class NestedModel(_GraphModel):
         """
 
         self.continuous_preconditioners = []
+
         for interface in self.topology.interface_nodes:
             if interface.is_active():
                 interface_id = interface.identifier
@@ -420,7 +430,13 @@ class NestedModel(_GraphModel):
                     # of the operator will be assembled.
                     self.continuous_preconditioners.append(None)
 
-                elif preconditioner == "osrc":
+                elif preconditioner in ("osrc", "calderon"):
+
+                    if preconditioner == "calderon":
+                        calderon_operators = self._get_calderon_operators(interface_id)
+                    else:
+                        calderon_operators = None
+
                     self.continuous_preconditioners.append(
                         PreconditionerOperators(
                             identifier=len(self.continuous_preconditioners),
@@ -438,6 +454,7 @@ class NestedModel(_GraphModel):
                             ),
                             frequency=self.frequency,
                             parameters=self.parameters,
+                            calderon_operators=calderon_operators,
                         )
                     )
 
@@ -484,15 +501,15 @@ class NestedModel(_GraphModel):
                 )
                 self.continuous_operators.append(
                     BoundaryIntegralOperators(
-                        len(self.continuous_operators),
-                        connector,
-                        formulation_name,
-                        preconditioner_name,
-                        spaces,
-                        self.topology.subdomain_nodes[subdomain_id].material,
-                        geometries,
-                        self.frequency,
-                        self._get_outside_densities(connector),
+                        identifier=len(self.continuous_operators),
+                        connector=connector,
+                        formulation=formulation_name,
+                        preconditioner=preconditioner_name,
+                        spaces=spaces,
+                        material=self.topology.subdomain_nodes[subdomain_id].material,
+                        geometries=geometries,
+                        frequency=self.frequency,
+                        densities=self._get_outside_densities(connector),
                     )
                 )
 
@@ -568,6 +585,60 @@ class NestedModel(_GraphModel):
             )
 
         return densities
+
+    def _get_calderon_operators(self, interface_id):
+        """
+        Get the Calderón operators for a given interface.
+
+        Parameters
+        ----------
+        interface_id : int
+            The identifier of the interface.
+
+        Returns
+        -------
+        operators : tuple[bempp.api.assembly.boundary_operator.BoundaryOperator]
+            The Calderón operators for the exterior and interior side of the interface.
+        """
+
+        if self.continuous_operators is None:
+            raise AssertionError(
+                "Continuous operators must have been created to obtain the "
+                "Calderón operators."
+            )
+
+        interface_connector_self_exterior = (
+            self.topology.find_interface_connectors_of_interface(
+                interface_id, "self-exterior"
+            )
+        )
+        if len(interface_connector_self_exterior) != 1:
+            raise AssertionError(
+                "There must be exactly one self-exterior interface connector."
+            )
+        else:
+            interface_connector_id_exterior \
+                = interface_connector_self_exterior[0].identifier
+
+        interface_connector_self_interior = (
+            self.topology.find_interface_connectors_of_interface(
+                interface_id, "self-interior"
+            )
+        )
+        if len(interface_connector_self_interior) != 1:
+            raise AssertionError(
+                "There must be exactly one self-interior interface connector."
+            )
+        else:
+            interface_connector_id_interior \
+                = interface_connector_self_interior[0].identifier
+
+        calderon_operators = (
+            self.continuous_operators[interface_connector_id_exterior],
+            self.continuous_operators[interface_connector_id_interior]
+        )
+
+        return calderon_operators
 
     def _create_discrete_operators(self):
         """
@@ -1010,7 +1081,7 @@ class BoundaryIntegralOperators:
             if self.preconditioner == "none":
                 for key, operator in continuous_operators.items():
                     discrete_operators[key] = operator.weak_form()
-            elif self.preconditioner in ("mass", "osrc"):
+            elif self.preconditioner in ("mass", "osrc", "calderon"):
                 for key, operator in continuous_operators.items():
                     discrete_operators[key] = operator.strong_form()
             else:
@@ -1093,7 +1164,10 @@ class BoundaryIntegralOperators:
         operators = self.discrete_operators[index]
         connector_topology = self.connector.topology
 
-        trace_vectors = _np.split(vector, [self.spaces[index].global_dof_count])
+        trace_vectors = _np.split(
+            vector,
+            indices_or_sections=[self.spaces[index].global_dof_count],
+        )
 
         if connector_topology in ("self-exterior", "sibling"):
             matvec_vectors = self._apply_calderon(operators, trace_vectors)
@@ -1164,7 +1238,10 @@ class BoundaryIntegralOperators:
         operators = self.discrete_operators[index]
         connector_topology = self.connector.topology
 
-        trace_vectors = _np.split(vector, [self.spaces[index].global_dof_count])
+        trace_vectors = _np.split(
+            vector,
+            indices_or_sections=[self.spaces[index].global_dof_count],
+        )
 
         if connector_topology == "self-exterior":
             identity_vectors = self._apply_identity(operators, trace_vectors)
@@ -1249,7 +1326,7 @@ class BoundaryIntegralOperators:
 
         Parameters
         ----------
-        operators : dict[str, bempp.api.operators.boundary.Helmholtz]
+        operators : dict[str, bempp.api.assembly.boundary_operator.BoundaryOperator]
             The dictionary with discrete boundary integral operators.
         vector : list[numpy.ndarray]
             The two parts of the vector to multiply: Dirichlet and Neumann traces.
@@ -1283,6 +1360,7 @@ class PreconditionerOperators:
         materials,
         frequency,
         parameters,
+        calderon_operators=None,
     ):
         """
         Create the preconditioner operators for an interface node.
@@ -1305,6 +1383,10 @@ class PreconditionerOperators:
             The frequency of the propagating wave.
         parameters : dict
             The parameters for the preconditioner.
+        calderon_operators : None, tuple[BoundaryIntegralOperators]
+            The continuous Calderón operators for the interface node, corresponding
+            to the exterior and interior side of the interface. This is
+            only necessary for the Calderón preconditioner.
         """
 
         self.identifier = identifier
@@ -1315,6 +1397,7 @@ class PreconditionerOperators:
         self.materials = materials
         self.frequency = frequency
         self.parameters = parameters
+        self.calderon_operators = calderon_operators
 
         self.continuous_operators = self.create_interface_operators()
         self.discrete_operators = None
@@ -1327,14 +1410,19 @@ class PreconditionerOperators:
 
         Returns
         -------
-        operators : dict[str, bempp.api.operators.boundary.Helmholtz]
+        operators : dict[str, bempp.api.assembly.boundary_operator.BoundaryOperator]
             The continuous preconditioner operators with their names.
         """
 
         if self.preconditioner == "osrc" and self.formulation == "pmchwt":
             operators = self.create_osrc_operators(dtn=True, ntd=True)
+        elif self.preconditioner == "calderon" and self.formulation == "pmchwt":
+            operators = self.create_calderon_operators()
         else:
-            raise NotImplementedError
+            raise ValueError(
+                "Unknown formulation and preconditioner combination: " +
+                self.formulation + ", " + self.preconditioner + "."
+            )
 
         return operators
 
@@ -1351,7 +1439,7 @@ class PreconditionerOperators:
 
         Returns
         -------
-        operators : dict[str, bempp.api.operators.boundary.Helmholtz]
+        operators : dict[str, bempp.api.assembly.boundary_operator.BoundaryOperator]
             The continuous OSRC preconditioner operators with
             their names: 'NtD' or 'DtN'.
         """
@@ -1390,6 +1478,39 @@ class PreconditionerOperators:
 
         return operators
 
+    def create_calderon_operators(self):
+        """
+        Create the Calderón preconditioner operators for an interface node.
+
+        Returns
+        -------
+        operators : dict[str, bempp.api.assembly.boundary_operator.BoundaryOperator]
+            The continuous Calderón preconditioner operators with their names.
+        """
+
+        from .common import _process_calderon_parameters
+
+        calderon_params = _process_calderon_parameters(self.parameters)
+
+        if self.calderon_operators is None:
+            raise AssertionError(
+                "The continuous Calderón operators have not been created yet."
+            )
+
+        if calderon_params["domain"] == "exterior":
+            operators_object = self.calderon_operators[0]
+        elif calderon_params["domain"] == "interior":
+            operators_object = self.calderon_operators[1]
+        else:
+            raise ValueError(
+                "Unknown domain for Calderón preconditioner: "
+                + calderon_params["domain"] + "."
+            )
+
+        operators_dict = operators_object.continuous_operators[0]
+
+        return operators_dict
+
     def assemble_boundary_integral_operators(self):
         """
         Assemble the boundary integral operators for the interface node.
@@ -1398,17 +1519,19 @@ class PreconditionerOperators:
 
         Returns
         -------
-        discrete_operators : dict[str, bempp.api.operators.boundary.Helmholtz]
+        operators : dict[str, bempp.api.assembly.boundary_operator.BoundaryOperator]
             The discrete boundary integral operators of the preconditioner.
         """
 
         assembled_operators = {}
 
-        if self.preconditioner == "osrc":
-            for key, operator in self.continuous_operators.items():
-                assembled_operators[key] = operator.strong_form()
-        else:
-            raise ValueError("Unknown preconditioner: " + self.preconditioner + ".")
+        if not isinstance(self.continuous_operators, dict):
+            raise AssertionError(
+                "The continuous preconditioner operators have not been created yet."
+            )
+
+        for key, operator in self.continuous_operators.items():
+            assembled_operators[key] = operator.strong_form()
 
         self.discrete_operators = assembled_operators
 
@@ -1418,10 +1541,9 @@ class PreconditionerOperators:
         """
         Matrix-vector product for a interface node.
 
-        The identifier indicates the interface, on which the vector is defined.
         The vector is the entire vector for the interface, and may include
         multiple traces depending on the formulation.
-        Only self-interactions are implemented for a preconditioner.
+        Only single self-interactions are implemented for a preconditioner.
 
         Parameters
         ----------
@@ -1439,6 +1561,8 @@ class PreconditionerOperators:
 
         if self.preconditioner == "osrc":
             result = self._apply_osrc_operators(vector)
+        elif self.preconditioner == "calderon":
+            result = self._apply_calderon_operators(vector)
         else:
             raise ValueError("Unknown preconditioner: " + self.preconditioner + ".")
 
@@ -1446,11 +1570,13 @@ class PreconditionerOperators:
 
     def _apply_osrc_operators(self, vector):
         """
-        Apply the OSRC preconditioner operators to a vector.
+        Apply the OSRC preconditioner system to a vector.
 
-        The matrix-vector product depends on the specific formulation.
-        The vector is the entire vector for the interface, possibly
-        with multiple traces.
+        The OSRC preconditioner applies the OSRC-NtD operator to the Neumann
+        trace to calculate a Dirichlet trace, and applies the OSRD-DtN operator
+        to the Dirichlet trace to calculate a Neumann trace.
+        The vector is the entire vector for the interface, including first the
+        Dirichlet, and then the Neumann trace.
 
         Parameters
         ----------
@@ -1464,9 +1590,53 @@ class PreconditionerOperators:
         """
 
         if self.formulation == "pmchwt":
-            trace_dir, trace_neu = _np.split(vector, [self.space.global_dof_count])
+            trace_dir, trace_neu = _np.split(
+                vector,
+                indices_or_sections=[self.space.global_dof_count],
+            )
             result_dir = self.discrete_operators["NtD"] * trace_neu
             result_neu = self.discrete_operators["DtN"] * trace_dir
+            result = _np.concatenate([result_dir, result_neu])
+        else:
+            raise ValueError("Unknown formulation: " + self.formulation + ".")
+
+        return result
+
+    def _apply_calderon_operators(self, vector):
+        """
+        Apply the Calderón preconditioner system to a vector.
+
+        The Calderón preconditioner applies the Calderón operator to the Dirichlet
+        and Neumann traces. Here, we assume that the input vector has first
+        the Dirichlet trace, and then the Neumann trace. Similarly, the output
+        vector also has first the Dirichlet trace, and then the Neumann trace.
+        In this case, the standard Calderón system needs to applied to the input
+        vector to apply the preconditioner.
+
+        Parameters
+        ----------
+        vector : numpy.ndarray
+            The vector to multiply.
+
+        Returns
+        -------
+        result : numpy.ndarray
+            The product of the preconditioner with the vector.
+        """
+
+        if self.formulation == "pmchwt":
+            trace_dir, trace_neu = _np.split(
+                vector,
+                indices_or_sections=[self.space.global_dof_count],
+            )
+            result_dir = (
+                -self.discrete_operators["double_layer"] * trace_dir
+                + self.discrete_operators["single_layer"] * trace_neu
+            )
+            result_neu = (
+                self.discrete_operators["hypersingular"] * trace_dir
+                + self.discrete_operators["adjoint_double_layer"] * trace_neu
+            )
             result = _np.concatenate([result_dir, result_neu])
         else:
             raise ValueError("Unknown formulation: " + self.formulation + ".")
@@ -1582,7 +1752,7 @@ class SourceProjection(_SourceInterface):
                     trace_dirichlet.projections(),
                     trace_neumann.projections(),
                 )
-            elif self.preconditioner_name in ("mass", "osrc"):
+            elif self.preconditioner_name in ("mass", "osrc", "calderon"):
                 self.trace_vectors = (
                     trace_dirichlet.coefficients,
                     trace_neumann.coefficients,

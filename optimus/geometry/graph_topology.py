@@ -875,6 +875,36 @@ class Graph:
 
         return new_child_ids, new_sibling_ids
 
+    def find_interface_connectors_of_interface(self, interface_id, topology=None):
+        """
+        Find the interface connectors of an interface.
+
+        Parameters
+        ----------
+        interface_id : int
+            The identifier of the interface.
+        topology : None, str
+            The topology of the connector:
+             - "self-exterior": self interaction via exterior subdomain
+             - "self-interior": self interaction via interior subdomain
+             - "parent-child": interaction from parent to child
+             - "sibling": interaction between siblings
+            If None, all connectors are returned.
+
+        Returns
+        -------
+        interface_connectors : list[InterfaceConnector]
+            The identifiers of the interface connectors.
+        """
+
+        interface_connectors = []
+        for connector in self.interface_connectors:
+            if connector.is_active() and interface_id in connector.interfaces_ids:
+                if topology is None or connector.topology == topology:
+                    interface_connectors.append(connector)
+
+        return interface_connectors
+
 
 class _GraphComponent:
     def __init__(self, identifier):

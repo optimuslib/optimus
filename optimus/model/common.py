@@ -403,3 +403,50 @@ def _process_osrc_parameters(preconditioner_parameters):
         osrc_parameters["osrc_wavenumber"] = global_params_osrc.wavenumber
 
     return osrc_parameters
+
+
+def _process_calderon_parameters(preconditioner_parameters):
+    """
+    Process the parameters for the Calderón preconditioner.
+
+    Default values are taken from the global parameters.
+    The Calderón parameters are:
+        - domain: domain of the Calderón operator (exterior or interior)
+
+    Parameters
+    ----------
+    preconditioner_parameters : dict, None
+        The parameters of the preconditioner.
+
+    Returns
+    -------
+    calderon_parameters : dict
+        The parameters of the Calderón preconditioner.
+    """
+
+    from optimus import global_parameters
+
+    global_params_calderon = global_parameters.preconditioning.calderon
+
+    if preconditioner_parameters is None:
+        preconditioner_parameters = {}
+
+    calderon_parameters = {}
+
+    if "domain" in preconditioner_parameters:
+        domain = preconditioner_parameters["domain"]
+        if not isinstance(domain, str):
+            raise TypeError(
+                "The domain of the Calderón preconditioner needs to be a string."
+            )
+        elif domain not in ("exterior", "interior"):
+            raise ValueError(
+                "The domain of the Calderón preconditioner needs to be either "
+                "'exterior' or 'interior'."
+            )
+        else:
+            calderon_parameters["domain"] = domain
+    else:
+        calderon_parameters["domain"] = global_params_calderon.domain
+
+    return calderon_parameters
