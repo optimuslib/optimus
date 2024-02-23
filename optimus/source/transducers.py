@@ -862,10 +862,7 @@ def calc_field_from_point_sources_mp_source_para(
     for i in range(len(chunks_index_field) - 1):
         j1, j2 = chunks_index_field[i : i + 2]
 
-        (
-            pressure[j1:j2],
-            gradient[:, j1:j2],
-        ) = calc_field_from_point_sources_numpy(
+        (pressure[j1:j2], gradient[:, j1:j2],) = calc_field_from_point_sources_numpy(
             locations_source[:, i1:i2],
             locations_observation[:, j1:j2],
             frequency,

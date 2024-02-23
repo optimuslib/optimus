@@ -1,6 +1,8 @@
 """Postprocess methods."""
 from .common import PostProcess as _PostProcess
 import numpy as _np
+
+
 class VisualisePlane(_PostProcess):
     def __init__(self, model, verbose=False):
         """
@@ -118,6 +120,7 @@ class VisualisePlane(_PostProcess):
 
         return
 
+
 class VisualiseCloudPoints(_PostProcess):
     def __init__(self, model, verbose=False):
         """Create a PostProcess optimus object where the visualisation grid is
@@ -133,6 +136,10 @@ class VisualiseCloudPoints(_PostProcess):
         """
         super().__init__(model, verbose)
 
+        self.points = None
+        self.l2_norm_total_field_mpa = None
+        return
+
     def create_computational_grid(self, points):
         """Create a point cloud to compute the pressure fields.
 
@@ -143,42 +150,19 @@ class VisualiseCloudPoints(_PostProcess):
 
         """
 
-        from .topology import find_int_ext_points
         from ..utils.conversions import convert_to_3n_array
 
         self.points = convert_to_3n_array(points, "visualisation points")
 
-        (
-            self.points_interior,
-            self.points_exterior,
-            self.points_boundary,
-            self.index_interior,
-            self.index_exterior,
-            self.index_boundary,
-        ) = find_int_ext_points(self.domains_grids, self.points, self.verbose)
+        self.field.segmentation(self.points)
 
     def compute_fields(self):
         """Calculate the scattered and total pressure fields in the postprocess grid."""
 
-        from .common import compute_pressure_fields
+        self.field.compute_fields()
 
-        (
-            self.total_field,
-            self.scattered_field,
-            self.incident_field,
-        ) = compute_pressure_fields(
-            self.model,
-            self.points,
-            self.points_exterior,
-            self.index_exterior,
-            self.points_interior,
-            self.index_interior,
-            self.points_boundary,
-            self.index_boundary,
-            self.verbose,
-        )
-
-        self.l2_norm_total_field_mpa = _np.linalg.norm(self.total_field)
+        self.l2_norm_total_field_mpa = _np.linalg.norm(self.field.total_field)
+        return
 
     def display_field(self, size=0.2):
         """Display the magnitude of the field in the cloud points.
@@ -192,11 +176,11 @@ class VisualiseCloudPoints(_PostProcess):
 
         plot = k3d.plot()
         plot += k3d.factory.points(
-            self.points, attribute=abs(self.total_field), point_size=size
+            self.points, attribute=abs(self.field.total_field), point_size=size
         )
 
         plot.display()
-
+        return
 
 
 class VisualisePlaneAndBoundary(_PostProcess):
@@ -349,6 +333,7 @@ class VisualisePlaneAndBoundary(_PostProcess):
 
         return
 
+
 class VisualiseTimeDomain(_PostProcess):
     def __init__(self, model, verbose=False):
         """
@@ -398,7 +383,7 @@ class VisualiseTimeDomain(_PostProcess):
         """Display a time visualisation of the harmonic field."""
 
         from matplotlib import pylab as plt
-        from matplotlib import animation, rc
+        from matplotlib import animation
         from IPython.display import HTML
         from IPython.display import display
 
@@ -520,10 +505,10 @@ class Visualise3DField(_PostProcess):
                 cont += 12
 
         td_plane = k3d.mesh(vertices, index, color_map=matplotlib_color_maps.viridis)
-        td_plane.attribute = abs((postprocess_plane.total_field))
+        td_plane.attribute = abs((postprocess_plane.field.total_field))
         td_plane.color_range = [
-            min(abs(postprocess_plane.total_field)),
-            max(abs(postprocess_plane.total_field)),
+            min(abs(postprocess_plane.field.total_field)),
+            max(abs(postprocess_plane.field.total_field)),
         ]
 
         self.k3d_planes.append(td_plane)
@@ -532,7 +517,6 @@ class Visualise3DField(_PostProcess):
         """Calculate the total pressure field in the planar grid created."""
 
         total_field_dirichlet = self.model.solution[0]
-        total_field_neumann = self.model.solution[1]
 
         self.mesh3d.attribute = abs(total_field_dirichlet.coefficients)
         maximum = max(abs(total_field_dirichlet.coefficients))

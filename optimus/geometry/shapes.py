@@ -2,6 +2,7 @@
 import bempp.api as _bempp
 from .common import Geometry as _Geometry
 
+
 class RegularSphere(_Geometry):
     def __init__(self, refinement_level=1, label="regular_sphere"):
         """Create a regular sphere geometry, i.e., a structured mesh on a sphere

@@ -188,10 +188,7 @@ class Source:
 
         if dirichlet_trace and neumann_trace:
             if _np.all(points_dirichlet == points_neumann):
-                (
-                    field_val,
-                    gradient_val,
-                ) = self.pressure_field_and_normal_gradient(
+                (field_val, gradient_val,) = self.pressure_field_and_normal_gradient(
                     medium, points_dirichlet, normals_neumann
                 )
             else:

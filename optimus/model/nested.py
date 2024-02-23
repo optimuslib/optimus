@@ -31,8 +31,8 @@ def create_default_nested_model(topology, frequency, label="default"):
     model = NestedModel(
         topology=topology,
         frequency=freq,
-        formulation=["none"] + ["pmchwt"]*(topology.number_interface_nodes()-1),
-        preconditioner=["none"] + ["mass"]*(topology.number_interface_nodes()-1),
+        formulation=["none"] + ["pmchwt"] * (topology.number_interface_nodes() - 1),
+        preconditioner=["none"] + ["mass"] * (topology.number_interface_nodes() - 1),
         parameters=None,
         label=label,
     )
@@ -127,9 +127,7 @@ def _check_frequency(frequency, subdomain_nodes):
         if source.frequency != freq:
             raise ValueError(
                 "All sources must have frequency {}. Source {} has "
-                "frequency {} instead.".format(
-                    freq, source.label, source.frequency
-                )
+                "frequency {} instead.".format(freq, source.label, source.frequency)
             )
 
     return freq
@@ -217,16 +215,12 @@ def _check_preconditioned_formulation(formulation, preconditioner, n_interfaces)
 
     for form in formulations[1:]:
         if form not in ("pmchwt", "muller"):
-            raise ValueError(
-                "The formulation must be one of: "
-                "'pmchwt' or 'muller'."
-            )
+            raise ValueError("The formulation must be one of: " "'pmchwt' or 'muller'.")
 
     for prec in preconditioners[1:]:
         if prec not in ("none", "mass", "osrc"):
             raise ValueError(
-                "The preconditioner must be one of: "
-                "'none', 'mass', or 'osrc'."
+                "The preconditioner must be one of: " "'none', 'mass', or 'osrc'."
             )
 
     # Check the consistency of the set of preconditioner and formulation types.
@@ -1135,9 +1129,7 @@ class BoundaryIntegralOperators:
                     -(rho_ext / rho_int) * calderon_vectors[1],
                 ]
             else:
-                raise AssertionError(
-                    "Index must be 0 or 1, not: " + str(index) + "."
-                )
+                raise AssertionError("Index must be 0 or 1, not: " + str(index) + ".")
 
         else:
             raise AssertionError(
@@ -1216,9 +1208,7 @@ class BoundaryIntegralOperators:
                     (rho_ext / rho_int) * calderon_vectors[1],
                 ]
             else:
-                raise AssertionError(
-                    "Index must be 0 or 1, not: " + str(index) + "."
-                )
+                raise AssertionError("Index must be 0 or 1, not: " + str(index) + ".")
 
         else:
             raise AssertionError(
