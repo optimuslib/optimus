@@ -5,7 +5,8 @@ from .common import GraphModel as _GraphModel
 
 
 def create_default_nested_model(topology, frequency, label="default"):
-    """Create an acoustics model on nested domains with default settings.
+    """
+    Create an acoustics model on nested domains with default settings.
 
     A boundary integral formulation will be created with default parameters, for
     a geometry consisting of nested subdomains.
@@ -26,11 +27,9 @@ def create_default_nested_model(topology, frequency, label="default"):
         in the nested domains.
     """
 
-    freq = _check_frequency(frequency, topology.subdomain_nodes)
-
     model = NestedModel(
         topology=topology,
-        frequency=freq,
+        frequency=frequency,
         formulation=["none"] + ["pmchwt"] * (topology.number_interface_nodes() - 1),
         preconditioner=["none"] + ["mass"] * (topology.number_interface_nodes() - 1),
         parameters=None,
@@ -48,9 +47,10 @@ def create_nested_model(
     parameters=None,
     label="nested",
 ):
-    """Create an acoustics model on nested domains.
+    """
+    Create an acoustics model on nested domains.
 
-    A boundary integral formulation will be created for
+    A boundary integral formulation will be created with specified parameters, for
     a geometry consisting of nested subdomains.
 
     Parameters
@@ -75,179 +75,16 @@ def create_nested_model(
         in the nested domains.
     """
 
-    freq = _check_frequency(frequency, topology.subdomain_nodes)
-
-    form_names, prec_names = _check_preconditioned_formulation(
-        formulation,
-        preconditioner,
-        topology.number_interface_nodes(),
-    )
-
     model = NestedModel(
         topology=topology,
-        frequency=freq,
-        formulation=form_names,
-        preconditioner=prec_names,
+        frequency=frequency,
+        formulation=formulation,
+        preconditioner=preconditioner,
         parameters=parameters,
         label=label,
     )
 
     return model
-
-
-def _check_frequency(frequency, subdomain_nodes):
-    """
-    Check validity of frequency.
-
-    Check if all sources have the same frequency.
-
-    Parameters
-    ----------
-    frequency : float
-        The frequency of the harmonic wave propagation model.
-    subdomain_nodes : list[optimus.geometry.graph_topology.SubdomainNode]
-        The list of subdomain nodes.
-
-    Returns
-    -------
-    freq : float
-        The frequency of the harmonic wave propagation model.
-    """
-
-    from ..utils.conversions import convert_to_positive_float
-
-    freq = convert_to_positive_float(frequency, label="frequency", nonnegative=True)
-
-    sources = []
-    for subdomain in subdomain_nodes:
-        if subdomain.is_active():
-            sources.extend(subdomain.sources)
-
-    for source in sources:
-        if source.frequency != freq:
-            raise ValueError(
-                "All sources must have frequency {}. Source {} has "
-                "frequency {} instead.".format(freq, source.label, source.frequency)
-            )
-
-    return freq
-
-
-def _check_preconditioned_formulation(formulation, preconditioner, n_interfaces):
-    """
-    Check the validity of the preconditioned formulation.
-
-    Parameters
-    ----------
-    formulation : str, list[str], tuple[str]
-        The type of formulation, possibly different for each interface.
-    preconditioner : str, list[str], tuple[str]
-        The type of operator preconditioner, possibly different for each interface.
-    n_interfaces : int
-        The number of interfaces in the nested geometry, including the unbounded
-        one at infinity.
-
-    Returns
-    -------
-    formulations : list[str]
-        The type of formulation for each interface.
-    preconditioners : list[str]
-        The type of operator preconditioner for each interface.
-    """
-
-    if isinstance(formulation, str):
-        formulations = [formulation] * (n_interfaces - 1)
-    elif isinstance(formulation, (list, tuple)):
-        formulations = list(formulation)
-        for form in formulations:
-            if not isinstance(form, str):
-                raise ValueError("The formulation name must be a string.")
-    else:
-        raise ValueError("The formulation must be a string, list or tuple.")
-
-    if isinstance(preconditioner, str):
-        preconditioners = [preconditioner] * (n_interfaces - 1)
-    elif isinstance(preconditioner, (list, tuple)):
-        preconditioners = list(preconditioner)
-        for prec in preconditioners:
-            if not isinstance(prec, str):
-                raise ValueError("The preconditioner name must be a string.")
-    else:
-        raise ValueError("The preconditioner must be a string, list or tuple.")
-
-    # If necessary, prepend the default formulation and preconditioner for the
-    # unbounded exterior surface, on which no integral equation is defined.
-
-    if len(formulations) == n_interfaces - 1:
-        formulations = ["none"] + formulations
-
-    if len(preconditioners) == n_interfaces - 1:
-        preconditioners = ["none"] + preconditioners
-
-    if len(formulations) != n_interfaces:
-        raise ValueError(
-            "The number of formulations must be equal to the number of interfaces."
-        )
-
-    if len(preconditioners) != n_interfaces:
-        raise ValueError(
-            "The number of preconditioners must be equal to the number of interfaces."
-        )
-
-    # The unbounded exterior surface has no boundary integral equation.
-    # Hence, the formulation and preconditioner must be 'none'.
-    if formulations[0] != "none":
-        raise ValueError(
-            "The formulation for the unbounded exterior surface must be 'none'."
-        )
-    if preconditioners[0] != "none":
-        raise ValueError(
-            "The preconditioner for the unbounded exterior surface must be 'none'."
-        )
-
-    # Check if the specified formulations and preconditioners have been implemented.
-
-    def clean_string_names(name):
-        return name.lower().replace("ü", "u").replace("ó", "o")
-
-    formulations = tuple([clean_string_names(form) for form in formulations])
-    preconditioners = tuple([clean_string_names(prec) for prec in preconditioners])
-
-    for form in formulations[1:]:
-        if form not in ("pmchwt", "muller"):
-            raise ValueError("The formulation must be one of: " "'pmchwt' or 'muller'.")
-
-    for prec in preconditioners[1:]:
-        if prec not in ("none", "mass", "osrc", "calderon"):
-            raise ValueError(
-                "The preconditioner must be one of: "
-                "'none', 'mass', 'osrc', or 'calderon'."
-            )
-
-    # Check the consistency of the set of preconditioner and formulation types.
-
-    weak = ("none",)
-    strong = ("mass", "osrc", "calderon")
-    weak_preconditioners = [prec in weak for prec in preconditioners[1:]]
-    strong_preconditioners = [prec in strong for prec in preconditioners[1:]]
-    if not (all(weak_preconditioners) or all(strong_preconditioners)):
-        raise NotImplementedError(
-            "The preconditioner must be the same weak/strong discretisation type."
-        )
-
-    for form, prec in zip(formulations, preconditioners):
-        if prec == "osrc" and form not in ("pmchwt",):
-            raise ValueError(
-                "The OSRC preconditioner only works for the PMCHWT formulation."
-            )
-
-    for form, prec in zip(formulations, preconditioners):
-        if prec == "calderon" and form not in ("pmchwt",):
-            raise ValueError(
-                "The Calderón preconditioner only works for the PMCHWT formulation."
-            )
-
-    return formulations, preconditioners
 
 
 class NestedModel(_GraphModel):
@@ -279,14 +116,19 @@ class NestedModel(_GraphModel):
             The label of the model.
         """
 
+        from .formulations import (check_validity_nested_formulation, check_sources,
+                                   assign_representation)
+
         super().__init__(topology, label)
 
-        self.frequency = frequency
-        self.formulation = formulation
-        self.preconditioner = preconditioner
+        self.frequency = check_sources(frequency, topology.subdomain_nodes)
+        self.formulation, self.preconditioner = check_validity_nested_formulation(
+            formulation,
+            preconditioner,
+            topology.number_interface_nodes(),
+        )
+        self.representation = assign_representation(self.formulation)
         self.parameters = parameters
-
-        self.representation = self._assign_representation(formulation)
 
         self.spaces = None
         self.continuous_preconditioners = None
@@ -353,33 +195,6 @@ class NestedModel(_GraphModel):
         self._solution_vector_to_gridfunction()
 
         return
-
-    @staticmethod
-    def _assign_representation(formulations):
-        """
-        Assign a representation to each interface, according to the formulation.
-
-        Parameters
-        ----------
-        formulations : list[str]
-            The type of boundary integral formulation for each interface.
-
-        Returns
-        -------
-        representations : list[str]
-            The type of representation formula for each interface.
-        """
-
-        representations = []
-        for form in formulations:
-            if form == "none":
-                representations.append("none")
-            elif form in ("pmchwt", "muller"):
-                representations.append("direct")
-            else:
-                raise ValueError("Unknown formulation: " + form + ".")
-
-        return representations
 
     def _create_function_spaces(self):
         """
@@ -967,7 +782,7 @@ class BoundaryIntegralOperators:
 
         self.identifier = identifier
         self.connector = connector
-        self.formulation = self._check_formulation(formulation)
+        self.formulation = formulation
         self.preconditioner = preconditioner
         self.spaces = spaces
         self.material = material
@@ -981,29 +796,6 @@ class BoundaryIntegralOperators:
         self.discrete_operators = None
 
         return
-
-    @staticmethod
-    def _check_formulation(formulation):
-        """
-        Check the validity of the boundary integral formulation.
-
-        Parameters
-        ----------
-        formulation : str
-            The type of boundary integral formulation.
-
-        Returns
-        -------
-        formulation : str
-            The type of boundary integral formulation.
-        """
-
-        if formulation not in ("pmchwt", "muller"):
-            raise NotImplementedError(
-                "Formulation not implemented: " + formulation + "."
-            )
-
-        return formulation
 
     def create_connector_operators(self):
         """
@@ -1444,11 +1236,11 @@ class PreconditionerOperators:
             their names: 'NtD' or 'DtN'.
         """
 
-        from .common import _process_osrc_parameters
+        from .formulations import process_osrc_parameters
         from .acoustics import create_osrc_operators
         from optimus import global_parameters
 
-        osrc_params = _process_osrc_parameters(self.parameters)
+        osrc_params = process_osrc_parameters(self.parameters)
 
         osrc_wavenumber_type = global_parameters.preconditioning.osrc.wavenumber
         if osrc_wavenumber_type == "ext":
@@ -1488,9 +1280,9 @@ class PreconditionerOperators:
             The continuous Calderón preconditioner operators with their names.
         """
 
-        from .common import _process_calderon_parameters
+        from .formulations import process_calderon_parameters
 
-        calderon_params = _process_calderon_parameters(self.parameters)
+        calderon_params = process_calderon_parameters(self.parameters)
 
         if self.calderon_operators is None:
             raise AssertionError(

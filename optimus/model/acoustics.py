@@ -94,9 +94,9 @@ def create_acoustic_model(
         propagation in the interior and exterior domains.
     """
 
-    from .common import _check_validity_formulation
+    from .formulations import check_validity_exterior_formulation
 
-    form_name, prec_name, model_params = _check_validity_formulation(
+    form_name, prec_name, model_params = check_validity_exterior_formulation(
         formulation, formulation_parameters, preconditioner, preconditioner_parameters
     )
 
