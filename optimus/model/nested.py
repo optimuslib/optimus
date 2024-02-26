@@ -1604,7 +1604,7 @@ class EmptySourceProjection(_SourceInterface):
         boundary integral formulation.
         """
 
-        if self.formulation == "pmchwt":
+        if self.formulation in ("pmchwt", "muller"):
             self.trace_vectors = (
                 _np.zeros(self.space.global_dof_count, dtype=_np.complex128),
                 _np.zeros(self.space.global_dof_count, dtype=_np.complex128),
