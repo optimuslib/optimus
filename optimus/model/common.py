@@ -8,6 +8,7 @@ class Model:
     def __init__(
         self,
         label="model",
+        verbosity=False,
     ):
         """
         Base class for wave propagation models.

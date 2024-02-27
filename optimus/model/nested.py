@@ -116,8 +116,11 @@ class NestedModel(_GraphModel):
             The label of the model.
         """
 
-        from .formulations import (check_validity_nested_formulation, check_sources,
-                                   assign_representation)
+        from .formulations import (
+            check_validity_nested_formulation,
+            check_sources,
+            assign_representation,
+        )
 
         super().__init__(topology, label)
 
@@ -139,12 +142,15 @@ class NestedModel(_GraphModel):
         self.rhs_discrete_system = None
         self.vector_interface_split = None
         self.solution_vector = None
-        self.iteration_count = None
+        self.linear_solve_iteration_count = None
+        self.linear_solve_residual_error = None
+        self.linear_solve_time = None
+        self.linear_solve_time_per_iteration = None
         self.timings = {}
 
         return
 
-    def solve(self, timing=False):
+    def solve(self, timing=False, verbosity=False):
         """
         Solve the nested model.
 
@@ -155,6 +161,9 @@ class NestedModel(_GraphModel):
         """
         from optimus import global_parameters
         import time
+
+        if global_parameters.verbosity:
+            verbosity = True
 
         global_parameters.bem.update_hmat_parameters("boundary")
 
@@ -187,12 +196,22 @@ class NestedModel(_GraphModel):
 
         if timing:
             start = time.time()
-            self._solve_linear_system()
+            self._solve_linear_system(verbosity=verbosity)
             self.timings["linear solve"] = time.time() - start
         else:
-            self._solve_linear_system()
+            self._solve_linear_system(verbosity=verbosity)
 
         self._solution_vector_to_gridfunction()
+
+        if verbosity and timing:
+            print(
+                "\n "
+                + 70 * "*"
+                + "\n Timing for constructing and solving the BEM model: \n"
+            )
+            for key, value in self.timings.items():
+                print(key + " (s): " + str(value)),
+            print("\n " + 70 * "*")
 
         return
 
@@ -210,9 +229,7 @@ class NestedModel(_GraphModel):
         self.spaces = []
         for interface in self.topology.interface_nodes:
             if interface.is_active() and interface.bounded:
-                self.spaces.append(
-                    function_space(interface.geometry.grid, "P", 1)
-                )
+                self.spaces.append(function_space(interface.geometry.grid, "P", 1))
             else:
                 self.spaces.append(None)
 
@@ -432,8 +449,9 @@ class NestedModel(_GraphModel):
                 "There must be exactly one self-exterior interface connector."
             )
         else:
-            interface_connector_id_exterior \
-                = interface_connector_self_exterior[0].identifier
+            interface_connector_id_exterior = interface_connector_self_exterior[
+                0
+            ].identifier
 
         interface_connector_self_interior = (
             self.topology.find_interface_connectors_of_interface(
@@ -445,12 +463,13 @@ class NestedModel(_GraphModel):
                 "There must be exactly one self-interior interface connector."
             )
         else:
-            interface_connector_id_interior \
-                = interface_connector_self_interior[0].identifier
+            interface_connector_id_interior = interface_connector_self_interior[
+                0
+            ].identifier
 
         calderon_operators = (
             self.continuous_operators[interface_connector_id_exterior],
-            self.continuous_operators[interface_connector_id_interior]
+            self.continuous_operators[interface_connector_id_interior],
         )
 
         return calderon_operators
@@ -576,7 +595,7 @@ class NestedModel(_GraphModel):
 
         return
 
-    def _solve_linear_system(self):
+    def _solve_linear_system(self, verbosity=False):
         """
         Solve the linear system for nested domains.
 
@@ -598,10 +617,16 @@ class NestedModel(_GraphModel):
             dtype=_np.complex128,
         )
 
-        self.solution_vector, self.iteration_count = linear_solve(
+        (
+            self.solution_vector,
+            self.linear_solve_iteration_count,
+            self.linear_solve_residual_error,
+            self.linear_solve_time,
+            self.linear_solve_time_per_iteration,
+        ) = linear_solve(
             self.lhs_linear_operator,
             self.rhs_discrete_system,
-            return_iteration_count=True,
+            verbosity=verbosity,
         )
 
         return
@@ -1212,8 +1237,11 @@ class PreconditionerOperators:
             operators = self.create_calderon_operators()
         else:
             raise ValueError(
-                "Unknown formulation and preconditioner combination: " +
-                self.formulation + ", " + self.preconditioner + "."
+                "Unknown formulation and preconditioner combination: "
+                + self.formulation
+                + ", "
+                + self.preconditioner
+                + "."
             )
 
         return operators
@@ -1296,7 +1324,8 @@ class PreconditionerOperators:
         else:
             raise ValueError(
                 "Unknown domain for Calderón preconditioner: "
-                + calderon_params["domain"] + "."
+                + calderon_params["domain"]
+                + "."
             )
 
         operators_dict = operators_object.continuous_operators[0]

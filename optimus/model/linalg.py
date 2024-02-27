@@ -1,10 +1,12 @@
 """Linear algebra methods."""
 
+import optimus
+
 
 def linear_solve(
     lhs_system,
     rhs_system,
-    return_iteration_count=False,
+    verbosity=False,
 ):
     """
     Solve a system of linear equations.
@@ -15,22 +17,26 @@ def linear_solve(
         The system of linear equations.
     rhs_system : numpy.ndarray
         The right-hand-side vector.
-    return_iteration_count : bool
-        Return the number of iterations of the linear solver.
+    verbosity : bool
+        Display the iterations of the linear solver.
         Default: False
 
     Returns
     -------
     solution : numpy.ndarray
         The solution vector.
-    it_count : int
-        The number of iterations (optional).
+    linear_solve_it_count : int
+        The number of iterations.
+    linear_solve_residual_error : list
+        The error at each iterations.
+    total_time : int
+        The total time for solver (in seconds).
+    time_per_it : int
+        The average time per iterations for GMRES.
     """
 
-    import optimus
-
     if optimus.global_parameters.linalg.linsolver == "gmres":
-        solver = GmresSolver(lhs_system, rhs_system)
+        solver = GmresSolver(lhs_system, rhs_system, verbosity)
     else:
         raise ValueError(
             "Linear solver "
@@ -39,14 +45,20 @@ def linear_solve(
         )
     solution = solver.solve()
 
-    if return_iteration_count:
-        return solution, solver.it_count
-    else:
-        return solution
+    # if verbosity:
+    return (
+        solution,
+        solver.linear_solve_it_count[-1],
+        solver.linear_solve_residual_error,
+        solver.total_time,
+        solver.time_per_it,
+    )
+    # else:
+    #     return solution
 
 
 class GmresSolver:
-    def __init__(self, lhs_system, rhs_system):
+    def __init__(self, lhs_system, rhs_system, verbosity=False):
         """
         Create a GMRES linear solver.
 
@@ -60,7 +72,12 @@ class GmresSolver:
 
         self.lhs_matrix = lhs_system
         self.rhs_vector = rhs_system
-        self.it_count = None
+        self.verbosity = verbosity
+        self.linear_solve_it_count = []
+        self.linear_solve_residual_error = []
+
+        if optimus.global_parameters.verbosity:
+            self.verbosity = True
 
     def solve(self):
         """
@@ -68,17 +85,24 @@ class GmresSolver:
         """
 
         from scipy.sparse.linalg import gmres
-        import optimus
+        from time import time as _time
 
         global_params_linalg = optimus.global_parameters.linalg
 
-        self.it_count = 0
+        self._iter_count_tmp = 0
 
-        def callback_fct(residual):
-            self.it_count += 1
+        def callback_fct(rk=None):
+            """Iteration counter function for gmres"""
+            self._iter_count_tmp += 1
+            self.linear_solve_residual_error.append(rk)
+            self.linear_solve_it_count.append(self._iter_count_tmp)
+            if self.verbosity:
+                print("iter %3i\trk = %s" % (self._iter_count_tmp, str(rk)))
+
             return
 
-        solution, info = gmres(
+        t_start = _time()
+        solution, INFO = gmres(
             self.lhs_matrix,
             self.rhs_vector,
             tol=global_params_linalg.tol,
@@ -86,13 +110,32 @@ class GmresSolver:
             restart=min(global_params_linalg.maxiter, global_params_linalg.restart),
             callback=callback_fct,
         )
+        t_end = _time()
+        total_time = t_end - t_start
+        self.total_time = total_time  # _timedelta(seconds=total_time)
+        self.time_per_it = total_time / self._iter_count_tmp
+        if self.verbosity:
+            print(
+                "\n",
+                70 * "*",
+                "\n The linear system was solved in: \n {0} iterations, \n time: {1} ( = {2} secs) ".format(
+                    self._iter_count_tmp, str(self.total_time), total_time
+                ),
+            )
+            print(
+                "\n",
+                70 * "*",
+                "\nThe average time per iteration is: {0:.3f} secs".format(
+                    self.time_per_it
+                ),
+            )
 
-        if self.it_count == global_params_linalg.maxiter:
+        if self.linear_solve_it_count[-1] == global_params_linalg.maxiter:
             import warnings
 
             warnings.warn(
                 "The GMRES solver stopped at the maximum number of "
-                + str(self.it_count)
+                + str(self.linear_solve_it_count[-1])
                 + " iterations.",
                 RuntimeWarning,
             )
