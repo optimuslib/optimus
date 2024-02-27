@@ -299,15 +299,16 @@ class NestedModel(_GraphModel):
                 interface_ids = connector.interfaces_ids
                 subdomain_id = connector.subdomain_id
 
-                # The formulation type at both ends of the connector need to be
-                # passed on.
+                # The formulation and preconditioning type at both ends of the
+                # connector need to be passed on.
                 formulation_names = (
                     self.formulation[interface_ids[0]],
                     self.formulation[interface_ids[1]],
                 )
-
-                # Left preconditioners use the range domain of the operator.
-                preconditioner_name = self.preconditioner[interface_ids[1]]
+                preconditioner_names = (
+                    self.preconditioner[interface_ids[0]],
+                    self.preconditioner[interface_ids[1]],
+                )
 
                 spaces = (
                     self.spaces[interface_ids[0]],
@@ -317,12 +318,13 @@ class NestedModel(_GraphModel):
                     self.topology.interface_nodes[interface_ids[0]].geometry,
                     self.topology.interface_nodes[interface_ids[1]].geometry,
                 )
+
                 self.continuous_operators.append(
                     BoundaryIntegralOperators(
                         identifier=len(self.continuous_operators),
                         connector=connector,
                         formulations=formulation_names,
-                        preconditioner=preconditioner_name,
+                        preconditioners=preconditioner_names,
                         spaces=spaces,
                         material=self.topology.subdomain_nodes[subdomain_id].material,
                         geometries=geometries,
@@ -756,7 +758,7 @@ class BoundaryIntegralOperators:
         identifier,
         connector,
         formulations,
-        preconditioner,
+        preconditioners,
         spaces,
         material,
         geometries,
@@ -774,8 +776,8 @@ class BoundaryIntegralOperators:
             The connector between two interfaces.
         formulations : tuple[str]
             The type of boundary integral formulation at the two interfaces.
-        preconditioner : str
-            The type of preconditioner.
+        preconditioners : tuple[str]
+            The type of preconditioner at the two interfaces.
         spaces : tuple[bempp.api.FunctionSpace]
             The function spaces of the two interfaces.
         material : optimus.material.Material
@@ -794,7 +796,7 @@ class BoundaryIntegralOperators:
         self.identifier = identifier
         self.connector = connector
         self.formulations = formulations
-        self.preconditioner = preconditioner
+        self.preconditioners = preconditioners
         self.spaces = spaces
         self.material = material
         self.geometries = geometries
@@ -814,7 +816,7 @@ class BoundaryIntegralOperators:
 
         Returns
         -------
-        operators : tuple[dict[str, bempp.api.assembly.boundary_operator.BoundaryOperator]]
+        tuple[dict[str, bempp.api.assembly.boundary_operator.BoundaryOperator]]
             The continuous boundary integral operators. The tuple contains
             two items, one for each direction of the connector. Each item
             contains a dictionary with the necessary boundary integral
@@ -899,7 +901,7 @@ class BoundaryIntegralOperators:
 
         Returns
         -------
-        operators : tuple[dict[str, bempp.api.assembly.boundary_operator.BoundaryOperator]]
+        tuple[dict[str, bempp.api.assembly.boundary_operator.BoundaryOperator]]
             The discrete boundary integral operators. The tuple is for each direction.
         """
 
@@ -907,14 +909,18 @@ class BoundaryIntegralOperators:
             """Assemble a set of boundary integral operators."""
 
             discrete_operators = {}
-            if self.preconditioner == "none":
+            if all([prec == "none" for prec in self.preconditioners]):
                 for key, operator in continuous_operators_oneway.items():
                     discrete_operators[key] = operator.weak_form()
-            elif self.preconditioner in ("mass", "osrc", "calderon"):
+            elif all([prec in ("mass", "osrc", "calderon")
+                      for prec in self.preconditioners]):
                 for key, operator in continuous_operators_oneway.items():
                     discrete_operators[key] = operator.strong_form()
             else:
-                raise ValueError("Unknown preconditioner: " + self.preconditioner + ".")
+                raise ValueError(
+                    "Unknown preconditioner settings: " + self.preconditioners[0] +
+                    ", " + self.preconditioners[1] + "."
+                )
 
             return discrete_operators
 
@@ -969,7 +975,9 @@ class BoundaryIntegralOperators:
             range_index = 1 - source_index
 
         # Split the source vector according to the formulation at the source interface.
-        trace_vectors = self._split_vector(vector, source_index)
+        trace_vectors = _split_trace_vector(
+            vector, self.formulations[source_index], self.spaces[source_index]
+        )
 
         # Use the matvec according to the formulation of the range interface.
         range_formulation = self.formulations[range_index]
@@ -991,56 +999,6 @@ class BoundaryIntegralOperators:
             raise AssertionError("Unknown formulation: " + range_formulation)
 
         return result
-
-    def _split_vector(self, vector, local_index):
-        """
-        Split the vector according to the boundary integral formulation.
-
-        The direct single-trace formulations have the exterior Dirichlet and
-        Neumann traces as surface potentials.
-        The multitrace formulation has the exterior and interior Dirichlet and
-        Neumann traces as surface potentials.
-
-        Parameters
-        ----------
-        vector : numpy.ndarray
-            The vector to split.
-        local_index : int
-            The index of the local orientation (0,1).
-
-        Returns
-        -------
-        traces : dict[str, numpy.ndarray]
-            The vector split into trace components.
-            Possible keys are: "dirichlet-exterior", "neumann-exterior",
-            "dirichlet-interior", "neumann-interior".
-        """
-
-        formulation = self.formulations[local_index]
-        ndof = self.spaces[local_index].global_dof_count
-
-        if formulation in ("pmchwt", "muller"):
-            trace_vectors = _np.split(vector, indices_or_sections=[ndof])
-            traces = {
-                "dirichlet-exterior": trace_vectors[0],
-                "neumann-exterior": trace_vectors[1],
-            }
-        elif formulation == "multitrace":
-            trace_vectors = _np.split(
-                vector, indices_or_sections=_np.cumsum([ndof] * 3)
-            )
-            traces = {
-                "dirichlet-exterior": trace_vectors[0],
-                "neumann-exterior": trace_vectors[1],
-                "dirichlet-interior": trace_vectors[2],
-                "neumann-interior": trace_vectors[3],
-            }
-        else:
-            raise AssertionError(
-                "Unknown formulation: " + formulation
-            )
-
-        return traces
 
     def _apply_pmchwt_operators(self, operators, vectors, source_index):
         """
@@ -1439,38 +1397,36 @@ class PreconditionerOperators:
 
         Returns
         -------
-        operators : dict[str, bempp.api.assembly.boundary_operator.BoundaryOperator]
+        dict[str, bempp.api.assembly.boundary_operator.BoundaryOperator]
             The continuous preconditioner operators with their names.
         """
 
-        if self.preconditioner == "osrc" and self.formulation == "pmchwt":
-            operators = self.create_osrc_operators(dtn=True, ntd=True)
-        elif self.preconditioner == "calderon" and self.formulation == "pmchwt":
+        if self.preconditioner == "osrc":
+            operators = self.create_osrc_operators()
+        elif self.preconditioner == "calderon":
             operators = self.create_calderon_operators()
         else:
-            raise ValueError(
-                "Unknown formulation and preconditioner combination: " +
-                self.formulation + ", " + self.preconditioner + "."
-            )
+            raise AssertionError("Unknown preconditioner: " + self.preconditioner)
 
         return operators
 
-    def create_osrc_operators(self, dtn, ntd):
+    def create_osrc_operators(self):
         """
         Create the OSRC preconditioner operators for an interface node.
 
-        Parameters
-        ----------
-        dtn : bool
-            Whether to create the DtN operator.
-        ntd : bool
-            Whether to create the NtD operator.
+        For the PMCHWT formulation, create a set of DtN and NtD operators, with
+        the wavenumber of the exterior or interior medium, depending on the
+        wavenumber type set in the global parameters.
+        For the multitrace formulation, create the DtN and NtD operators with
+        the wavenumber of both the exterior and interior medium.
 
         Returns
         -------
-        operators : dict[str, bempp.api.assembly.boundary_operator.BoundaryOperator]
-            The continuous OSRC preconditioner operators with
-            their names: 'NtD' or 'DtN'.
+        dict[str, bempp.api.assembly.boundary_operator.BoundaryOperator]
+            The continuous OSRC preconditioner operators with their names:
+             - 'NtD' and 'DtN' for the PMCHWT formulation
+             - 'NtD-ext', 'NtD-int', 'DtN-ext', and 'DtN-int' for the
+                multitrace formulation
         """
 
         from .formulations import process_osrc_parameters
@@ -1479,31 +1435,61 @@ class PreconditionerOperators:
 
         osrc_params = process_osrc_parameters(self.parameters)
 
-        osrc_wavenumber_type = global_parameters.preconditioning.osrc.wavenumber
-        if osrc_wavenumber_type == "ext":
-            osrc_wavenumber = self.materials[0].compute_wavenumber(self.frequency)
-        elif osrc_wavenumber_type == "int":
-            osrc_wavenumber = self.materials[1].compute_wavenumber(self.frequency)
-        else:
-            raise ValueError(
-                "Unknown wavenumber type for OSRC preconditioner: "
-                + osrc_wavenumber_type
-                + "."
+        if self.formulation == "pmchwt":
+
+            osrc_wavenumber_type = global_parameters.preconditioning.osrc.wavenumber
+            if osrc_wavenumber_type == "ext":
+                osrc_wavenumber = self.materials[0].compute_wavenumber(self.frequency)
+            elif osrc_wavenumber_type == "int":
+                osrc_wavenumber = self.materials[1].compute_wavenumber(self.frequency)
+            else:
+                raise ValueError(
+                    "Unknown wavenumber type for OSRC preconditioner: "
+                    + osrc_wavenumber_type + "."
+                )
+
+            osrc_operators = create_osrc_operators(
+                space=self.space,
+                wavenumber=osrc_wavenumber,
+                parameters=osrc_params,
+                dtn=True,
+                ntd=True,
             )
 
-        osrc_operators = create_osrc_operators(
-            space=self.space,
-            wavenumber=osrc_wavenumber,
-            parameters=osrc_params,
-            dtn=dtn,
-            ntd=ntd,
-        )
+            operators = {
+                "DtN": osrc_operators[0],
+                "NtD": osrc_operators[1],
+            }
 
-        operators = {}
-        if dtn:
-            operators["DtN"] = osrc_operators.pop(0)
-        if ntd:
-            operators["NtD"] = osrc_operators[0]
+        elif self.formulation == "multitrace":
+
+            osrc_wavenumber_ext = self.materials[0].compute_wavenumber(self.frequency)
+            osrc_wavenumber_int = self.materials[1].compute_wavenumber(self.frequency)
+
+            osrc_operators_ext = create_osrc_operators(
+                space=self.space,
+                wavenumber=osrc_wavenumber_ext,
+                parameters=osrc_params,
+                dtn=True,
+                ntd=True,
+            )
+            osrc_operators_int = create_osrc_operators(
+                space=self.space,
+                wavenumber=osrc_wavenumber_int,
+                parameters=osrc_params,
+                dtn=True,
+                ntd=True,
+            )
+
+            operators = {
+                "DtN-ext": osrc_operators_ext[0],
+                "NtD-ext": osrc_operators_ext[1],
+                "DtN-int": osrc_operators_int[0],
+                "NtD-int": osrc_operators_int[1],
+            }
+
+        else:
+            raise AssertionError("Unknown formulation: " + self.formulation)
 
         return operators
 
@@ -1511,10 +1497,22 @@ class PreconditionerOperators:
         """
         Create the Calderón preconditioner operators for an interface node.
 
+        For the PMCHWT formulation, create a set of Calderón operators, with
+        the wavenumber of the exterior or interior medium, depending on the
+        wavenumber type set in the global parameters.
+        For the multitrace formulation, create the Calderón operators with
+        the wavenumber of both the exterior and interior medium.
+
         Returns
         -------
-        operators : dict[str, bempp.api.assembly.boundary_operator.BoundaryOperator]
-            The continuous Calderón preconditioner operators with their names.
+        dict[str, bempp.api.assembly.boundary_operator.BoundaryOperator]
+            The continuous Calderón preconditioner operators with their names:
+             - 'single_layer', 'double_layer', 'adjoint_double_layer',
+                and 'hypersingular' for the PMCHWT formulation
+             - 'single_layer-ext', 'double_layer-ext', 'adjoint_double_layer-ext',
+                'hypersingular-ext', 'single_layer-int', 'double_layer-int',
+                'adjoint_double_layer-int', and 'hypersingular-int' for the
+                multitrace formulation
         """
 
         from .formulations import process_calderon_parameters
@@ -1526,17 +1524,37 @@ class PreconditionerOperators:
                 "The continuous Calderón operators have not been created yet."
             )
 
-        if calderon_params["domain"] == "exterior":
-            operators_object = self.calderon_operators[0]
-        elif calderon_params["domain"] == "interior":
-            operators_object = self.calderon_operators[1]
-        else:
-            raise ValueError(
-                "Unknown domain for Calderón preconditioner: "
-                + calderon_params["domain"] + "."
-            )
+        operators_object_ext, operators_object_int = self.calderon_operators
+        operators_dict_ext = operators_object_ext.continuous_operators[0]
+        operators_dict_int = operators_object_int.continuous_operators[0]
 
-        operators_dict = operators_object.continuous_operators[0]
+        if self.formulation == "pmchwt":
+
+            if calderon_params["domain"] == "exterior":
+                operators_dict = operators_dict_ext
+            elif calderon_params["domain"] == "interior":
+                operators_dict = operators_dict_int
+            else:
+                raise ValueError(
+                    "Unknown domain for Calderón preconditioner: "
+                    + calderon_params["domain"] + "."
+                )
+
+        elif self.formulation == "multitrace":
+
+            operators_dict = {
+                "single_layer-ext": operators_dict_ext["single_layer"],
+                "double_layer-ext": operators_dict_ext["double_layer"],
+                "adjoint_double_layer-ext": operators_dict_ext["adjoint_double_layer"],
+                "hypersingular-ext": operators_dict_ext["hypersingular"],
+                "single_layer-int": operators_dict_int["single_layer"],
+                "double_layer-int": operators_dict_int["double_layer"],
+                "adjoint_double_layer-int": operators_dict_int["adjoint_double_layer"],
+                "hypersingular-int": operators_dict_int["hypersingular"],
+            }
+
+        else:
+            raise AssertionError("Unknown formulation: " + self.formulation)
 
         return operators_dict
 
@@ -1606,6 +1624,8 @@ class PreconditionerOperators:
         to the Dirichlet trace to calculate a Neumann trace.
         The vector is the entire vector for the interface, including first the
         Dirichlet, and then the Neumann trace.
+        For the PMCHWT formulation, a single set of Cauchy traces are present,
+        while for the multitrace formulation, two sets of Cauchy traces are present.
 
         Parameters
         ----------
@@ -1618,14 +1638,22 @@ class PreconditionerOperators:
             The product of the preconditioner with the vector.
         """
 
+        traces = _split_trace_vector(vector, self.formulation, self.space)
+
         if self.formulation == "pmchwt":
-            trace_dir, trace_neu = _np.split(
-                vector,
-                indices_or_sections=[self.space.global_dof_count],
+            result = _np.concatenate(
+                [self.discrete_operators["NtD"] * traces["neumann-exterior"],
+                 self.discrete_operators["DtN"] * traces["dirichlet-exterior"]]
             )
-            result_dir = self.discrete_operators["NtD"] * trace_neu
-            result_neu = self.discrete_operators["DtN"] * trace_dir
-            result = _np.concatenate([result_dir, result_neu])
+
+        elif self.formulation == "multitrace":
+            result = _np.concatenate(
+                [self.discrete_operators["NtD-ext"] * traces["neumann-exterior"],
+                 self.discrete_operators["DtN-ext"] * traces["dirichlet-exterior"],
+                 self.discrete_operators["NtD-int"] * traces["neumann-interior"],
+                 self.discrete_operators["DtN-int"] * traces["dirichlet-interior"]]
+            )
+
         else:
             raise ValueError("Unknown formulation: " + self.formulation + ".")
 
@@ -1641,6 +1669,8 @@ class PreconditionerOperators:
         vector also has first the Dirichlet trace, and then the Neumann trace.
         In this case, the standard Calderón system needs to applied to the input
         vector to apply the preconditioner.
+        For the PMCHWT formulation, a single set of Cauchy traces are present,
+        while for the multitrace formulation, two sets of Cauchy traces are present.
 
         Parameters
         ----------
@@ -1653,20 +1683,48 @@ class PreconditionerOperators:
             The product of the preconditioner with the vector.
         """
 
+        traces = _split_trace_vector(vector, self.formulation, self.space)
+
         if self.formulation == "pmchwt":
-            trace_dir, trace_neu = _np.split(
-                vector,
-                indices_or_sections=[self.space.global_dof_count],
+
+            op_sl = self.discrete_operators["single_layer"]
+            op_dl = self.discrete_operators["double_layer"]
+            op_ad = self.discrete_operators["adjoint_double_layer"]
+            op_hs = self.discrete_operators["hypersingular"]
+
+            vec_dir = traces["dirichlet-exterior"]
+            vec_neu = traces["neumann-exterior"]
+
+            result = _np.concatenate(
+                [-op_dl * vec_dir + op_sl * vec_neu,
+                 op_hs * vec_dir + op_ad * vec_neu]
             )
-            result_dir = (
-                -self.discrete_operators["double_layer"] * trace_dir
-                + self.discrete_operators["single_layer"] * trace_neu
+
+        elif self.formulation == "multitrace":
+
+            op_sl_ext = self.discrete_operators["single_layer-ext"]
+            op_dl_ext = self.discrete_operators["double_layer-ext"]
+            op_ad_ext = self.discrete_operators["adjoint_double_layer-ext"]
+            op_hs_ext = self.discrete_operators["hypersingular-ext"]
+
+            op_sl_int = self.discrete_operators["single_layer-int"]
+            op_dl_int = self.discrete_operators["double_layer-int"]
+            op_ad_int = self.discrete_operators["adjoint_double_layer-int"]
+            op_hs_int = self.discrete_operators["hypersingular-int"]
+
+            vec_dir_ext = traces["dirichlet-exterior"]
+            vec_neu_ext = traces["neumann-exterior"]
+
+            vec_dir_int = traces["dirichlet-interior"]
+            vec_neu_int = traces["neumann-interior"]
+
+            result = _np.concatenate(
+                [-op_dl_ext * vec_dir_ext + op_sl_ext * vec_neu_ext,
+                 op_hs_ext * vec_dir_ext + op_ad_ext * vec_neu_ext,
+                 -op_dl_int * vec_dir_int + op_sl_int * vec_neu_int,
+                 op_hs_int * vec_dir_int + op_ad_int * vec_neu_int]
             )
-            result_neu = (
-                self.discrete_operators["hypersingular"] * trace_dir
-                + self.discrete_operators["adjoint_double_layer"] * trace_neu
-            )
-            result = _np.concatenate([result_dir, result_neu])
+
         else:
             raise ValueError("Unknown formulation: " + self.formulation + ".")
 
@@ -1791,17 +1849,21 @@ class SourceProjection(_SourceInterface):
                     "Unknown preconditioner: " + self.preconditioner_name + "."
                 )
 
-            source_vector = _np.concatenate(self.trace_vectors)
+            if self.formulation in ("pmchwt", "muller"):
+                source_vector = _np.concatenate(self.trace_vectors)
+            elif self.formulation == "multitrace":
+                vec_dir, vec_neu = self.trace_vectors
+                source_vector = _np.concatenate(
+                    [vec_dir, vec_neu,
+                     _np.zeros_like(vec_dir), _np.zeros_like(vec_neu)]
+                )
+            else:
+                raise AssertionError("Unknown formulation: " + self.formulation)
 
-            if self.preconditioner_operators is None:
+            if self.preconditioner_name in ("none", "mass"):
                 self.rhs_vector = source_vector
             else:
                 self.rhs_vector = self.preconditioner_operators.matvec(source_vector)
-
-            if self.formulation == "multitrace":
-                self.rhs_vector = _np.concatenate(
-                    [self.rhs_vector, _np.zeros_like(self.rhs_vector)]
-                )
 
         else:
             raise ValueError("Unknown formulation: " + self.formulation + ".")
@@ -1858,3 +1920,56 @@ class EmptySourceProjection(_SourceInterface):
         self.rhs_vector = _np.concatenate([zero_vector] * n_spaces)
 
         return
+
+
+def _split_trace_vector(vector, formulation, space):
+    """
+    Split the vector according to the boundary integral formulation.
+
+    The direct single-trace formulations have the exterior Dirichlet and
+    Neumann traces as surface potentials.
+    The multitrace formulation has the exterior and interior Dirichlet and
+    Neumann traces as surface potentials.
+
+    Parameters
+    ----------
+    vector : numpy.ndarray
+        The vector to split.
+    formulation : str
+        The type of boundary integral formulation.
+    space : bempp.api.FunctionSpace
+        The function space of the interface.
+
+    Returns
+    -------
+    dict[str, numpy.ndarray]
+        The vector split into trace components.
+        Possible keys are: "dirichlet-exterior", "neumann-exterior",
+        "dirichlet-interior", "neumann-interior".
+    """
+
+    ndof = space.global_dof_count
+
+    if formulation in ("pmchwt", "muller"):
+        trace_vectors = _np.split(vector, indices_or_sections=[ndof])
+        traces = {
+            "dirichlet-exterior": trace_vectors[0],
+            "neumann-exterior": trace_vectors[1],
+        }
+    elif formulation == "multitrace":
+        trace_vectors = _np.split(
+            vector, indices_or_sections=_np.cumsum([ndof] * 3)
+        )
+        traces = {
+            "dirichlet-exterior": trace_vectors[0],
+            "neumann-exterior": trace_vectors[1],
+            "dirichlet-interior": trace_vectors[2],
+            "neumann-interior": trace_vectors[3],
+        }
+    else:
+        raise AssertionError(
+            "Unknown formulation: " + formulation
+        )
+
+    return traces
+

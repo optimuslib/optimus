@@ -196,15 +196,17 @@ def check_validity_nested_formulation(
         )
 
     for form, prec in zip(formulations, preconditioners):
-        if prec == "osrc" and form not in ("pmchwt",):
+        if prec == "osrc" and form not in ("pmchwt", "multitrace"):
             raise ValueError(
-                "The OSRC preconditioner only works for the PMCHWT formulation."
+                "The OSRC preconditioner only works for the PMCHWT and "
+                "multitrace formulations."
             )
 
     for form, prec in zip(formulations, preconditioners):
-        if prec == "calderon" and form not in ("pmchwt",):
+        if prec == "calderon" and form not in ("pmchwt", "multitrace"):
             raise ValueError(
-                "The Calderón preconditioner only works for the PMCHWT formulation."
+                "The Calderón preconditioner only works for the PMCHWT and "
+                "multitrace formulations."
             )
 
     return formulations, preconditioners
