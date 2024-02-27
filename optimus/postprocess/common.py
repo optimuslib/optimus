@@ -51,19 +51,19 @@ class PostProcess:
 
     def create_computational_grid(self, **kwargs):
         """
-                Create the grid on which to calculate the pressure field.
+        Create the grid on which to calculate the pressure field.
 
-        #         This function needs to be overridden by a specific postprocessing type.
-        #"""
+        This function needs to be overridden by a specific postprocessing type.
+        """
 
         raise NotImplementedError
 
     def compute_fields(self):
         """
-                Calculate the pressure field in the specified locations.
+        Calculate the pressure field in the specified locations.
 
-        #         This function needs to be overridden by a specific postprocessing type.
-        #"""
+        This function needs to be overridden by a specific postprocessing type.
+        """
 
         raise NotImplementedError
 

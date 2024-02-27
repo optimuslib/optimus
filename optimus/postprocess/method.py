@@ -98,12 +98,6 @@ class VisualisePlane(_PostProcess):
 
         from .common import array_to_imshow
 
-        if self.model.solution is None:
-            raise ValueError(
-                "The model does not contain a solution, "
-                "so no fields can be computed."
-            )
-
         self.field.compute_fields()
 
         self.l2_norm_total_field_mpa = _np.linalg.norm(self.field.total_field)

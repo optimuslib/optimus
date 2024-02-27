@@ -80,6 +80,18 @@ def check_validity_nested_formulation(
     Check if the specified formulation and preconditioner is a valid choice
     for nested acoustic models.
 
+    Available formulations:
+        - 'pmchwt'
+        - 'muller'
+        - 'multitrace'
+        - 'none' (unbounded exterior surface)
+
+    Available preconditioners:
+        - 'none'
+        - 'mass'
+        - 'osrc'
+        - 'calderon'
+
     Parameters
     ----------
     formulation : str, list[str], tuple[str]
@@ -154,14 +166,22 @@ def check_validity_nested_formulation(
     preconditioners = tuple([clean_string_names(prec) for prec in preconditioners])
 
     for form in formulations[1:]:
-        if form not in ("pmchwt", "muller"):
-            raise ValueError("The formulation must be one of: " "'pmchwt' or 'muller'.")
+        if form not in ("pmchwt", "muller", "multitrace"):
+            raise ValueError(
+                "The formulation must be one of:"
+                " - 'pmchwt'"
+                " - 'muller'"
+                " - 'multitrace'"
+            )
 
     for prec in preconditioners[1:]:
         if prec not in ("none", "mass", "osrc", "calderon"):
             raise ValueError(
                 "The preconditioner must be one of: "
-                "'none', 'mass', 'osrc', or 'calderon'."
+                " - 'none'"
+                " - 'mass'"
+                " - 'osrc'"
+                " - 'calderon'"
             )
 
     # Check the consistency of the set of preconditioner and formulation types.
@@ -212,7 +232,7 @@ def assign_representation(formulations):
     for form in formulations:
         if form == "none":
             representations.append("none")
-        elif form in ("pmchwt", "muller"):
+        elif form in ("pmchwt", "muller", "multitrace"):
             representations.append("direct")
         else:
             raise ValueError("Unknown formulation: " + form + ".")
@@ -394,5 +414,5 @@ def check_sources(frequency, subdomain_nodes):
 
 def clean_string_names(name):
     """Clean up syntax of string names."""
-    clean_name = name.lower().replace("ü", "u").replace("ó", "o")
+    clean_name = name.lower().replace("ü", "u").replace("ó", "o").replace("-", "")
     return clean_name

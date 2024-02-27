@@ -316,9 +316,12 @@ class NestedModel(_GraphModel):
                 interface_ids = connector.interfaces_ids
                 subdomain_id = connector.subdomain_id
 
-                # The type of boundary integral formulation has to be consistent
-                # with the range domain of the operator.
-                formulation_name = self.formulation[interface_ids[1]]
+                # The formulation type at both ends of the connector need to be
+                # passed on.
+                formulation_names = (
+                    self.formulation[interface_ids[0]],
+                    self.formulation[interface_ids[1]],
+                )
 
                 # Left preconditioners use the range domain of the operator.
                 preconditioner_name = self.preconditioner[interface_ids[1]]
@@ -335,7 +338,7 @@ class NestedModel(_GraphModel):
                     BoundaryIntegralOperators(
                         identifier=len(self.continuous_operators),
                         connector=connector,
-                        formulation=formulation_name,
+                        formulations=formulation_names,
                         preconditioner=preconditioner_name,
                         spaces=spaces,
                         material=self.topology.subdomain_nodes[subdomain_id].material,
@@ -528,8 +531,12 @@ class NestedModel(_GraphModel):
 
         For the moment, it only works for exterior sources.
 
-        Sets "self.source_projections" to a list of SourceProjection objects, for each
-        interface node.
+        Sets object attributes:
+         - self.source_projections: a list of SourceProjection objects, for each
+            interface node.
+         - self.rhs_discrete_system: an array of the entire right-hand-side vector.
+         - self.vector_interface_split: the indices of the vector on which to split
+            according to the size of the formulation for each interface.
         """
 
         self.source_projections = []
@@ -603,8 +610,8 @@ class NestedModel(_GraphModel):
         already have been assembled, separately for each interface node and
         connector.
 
-        Sets "self.solution_vector" to a list of solution vectors, one for
-        each interface.
+        Sets "self.solution_vector" to an array of the solution vector, where
+        its size is the aggregate of the sizes of the traces on each interface.
         """
 
         from .linalg import linear_solve
@@ -758,6 +765,10 @@ class NestedModel(_GraphModel):
                     self.solution.append(
                         _vector_to_gridfunction(vector, [space, space])
                     )
+                elif formulation == "multitrace":
+                    self.solution.append(
+                        _vector_to_gridfunction(vector, [space, space, space, space])
+                    )
                 else:
                     raise ValueError("Unknown formulation: " + formulation + ".")
 
@@ -769,7 +780,7 @@ class BoundaryIntegralOperators:
         self,
         identifier,
         connector,
-        formulation,
+        formulations,
         preconditioner,
         spaces,
         material,
@@ -786,8 +797,8 @@ class BoundaryIntegralOperators:
             The unique identifier of the boundary integral operator in the model.
         connector : optimus.geometry.graph_topology.InterfaceConnector
             The connector between two interfaces.
-        formulation : str
-            The type of boundary integral formulation.
+        formulations : tuple[str]
+            The type of boundary integral formulation at the two interfaces.
         preconditioner : str
             The type of preconditioner.
         spaces : tuple[bempp.api.FunctionSpace]
@@ -807,7 +818,7 @@ class BoundaryIntegralOperators:
 
         self.identifier = identifier
         self.connector = connector
-        self.formulation = formulation
+        self.formulations = formulations
         self.preconditioner = preconditioner
         self.spaces = spaces
         self.material = material
@@ -828,7 +839,7 @@ class BoundaryIntegralOperators:
 
         Returns
         -------
-        operators : tuple[dict[str, bempp.api.operators.boundary]]
+        operators : tuple[dict[str, bempp.api.assembly.boundary_operator.BoundaryOperator]]
             The continuous boundary integral operators. The tuple contains
             two items, one for each direction of the connector. Each item
             contains a dictionary with the necessary boundary integral
@@ -837,42 +848,68 @@ class BoundaryIntegralOperators:
 
         from .acoustics import create_boundary_integral_operators
 
-        if self.formulation in ("pmchwt", "muller"):
-            if self.connector.topology in ("self-exterior", "self-interior"):
+        if self.connector.topology in ("self-exterior", "self-interior"):
+            if self.formulations[0] != self.formulations[1]:
+                raise AssertionError(
+                    "The two interfaces of the self-connector must have the "
+                    "same formulation."
+                )
+            if self.formulations[0] in ("pmchwt", "muller", "multitrace"):
+                # The PMCHWT, Müller, and multitrace formulations need all four
+                # boundary integral operators, plus the identity operator
+                # for the self-interactions.
                 operators_start_end = create_boundary_integral_operators(
-                    self.spaces[0],
-                    self.spaces[1],
-                    self.wavenumber,
+                    space_domain=self.spaces[0],
+                    space_range=self.spaces[1],
+                    wavenumber=self.wavenumber,
                     identity=True,
                     single_layer=True,
                     double_layer=True,
                     adjoint_double_layer=True,
                     hypersingular=True,
                 )
+                # The self interactions are symmetric, so the same operators.
                 operators_end_start = operators_start_end
             else:
+                raise AssertionError("Unknown formulation: " + self.formulations[0])
+
+        elif self.connector.topology in ("sibling", "parent-child"):
+            # The formulation type relates to the range space of the operator.
+            if self.formulations[1] in ("pmchwt", "muller", "multitrace"):
+                # The PMCHWT, Müller, and multitrace formulations need all four
+                # boundary integral operators.
                 operators_start_end = create_boundary_integral_operators(
-                    self.spaces[0],
-                    self.spaces[1],
-                    self.wavenumber,
+                    space_domain=self.spaces[0],
+                    space_range=self.spaces[1],
+                    wavenumber=self.wavenumber,
                     identity=False,
                     single_layer=True,
                     double_layer=True,
                     adjoint_double_layer=True,
                     hypersingular=True,
                 )
+            else:
+                raise AssertionError("Unknown formulation: " + self.formulations[0])
+            if self.formulations[0] in ("pmchwt", "muller", "multitrace"):
+                # The PMCHWT, Müller, and multitrace formulations need all four
+                # boundary integral operators.
                 operators_end_start = create_boundary_integral_operators(
-                    self.spaces[1],
-                    self.spaces[0],
-                    self.wavenumber,
+                    space_domain=self.spaces[1],
+                    space_range=self.spaces[0],
+                    wavenumber=self.wavenumber,
                     identity=False,
                     single_layer=True,
                     double_layer=True,
                     adjoint_double_layer=True,
                     hypersingular=True,
                 )
+            else:
+                raise AssertionError("Unknown formulation: " + self.formulations[0])
+
         else:
-            raise ValueError("Unknown formulation: " + self.formulation + ".")
+            raise AssertionError(
+                "Unknown connector topology: " + self.connector.topology
+            )
 
         operators = (operators_start_end, operators_end_start)
 
@@ -887,19 +924,19 @@ class BoundaryIntegralOperators:
 
         Returns
         -------
-        discrete_operators : tuple[dict[str, bempp.api.operators.boundary]]
+        operators : tuple[dict[str, bempp.api.assembly.boundary_operator.BoundaryOperator]]
             The discrete boundary integral operators. The tuple is for each direction.
         """
 
-        def assemble(continuous_operators):
+        def assemble(continuous_operators_oneway):
             """Assemble a set of boundary integral operators."""
 
             discrete_operators = {}
             if self.preconditioner == "none":
-                for key, operator in continuous_operators.items():
+                for key, operator in continuous_operators_oneway.items():
                     discrete_operators[key] = operator.weak_form()
             elif self.preconditioner in ("mass", "osrc", "calderon"):
-                for key, operator in continuous_operators.items():
+                for key, operator in continuous_operators_oneway.items():
                     discrete_operators[key] = operator.strong_form()
             else:
                 raise ValueError("Unknown preconditioner: " + self.preconditioner + ".")
@@ -920,8 +957,12 @@ class BoundaryIntegralOperators:
         Matrix-vector product for a single one-way interface connector.
 
         The identifier indicates the source interface, on which the vector is defined.
-        The vector is the entire vector for the connector, and may include
-        multiple traces depending on the formulation.
+        The vector is the entire vector for the connector, whose size depends on
+        the number of traces in the specific boundary integral formulation.
+
+        The matvec operation depends on the boundary integral formulation
+        at the range interface, while the vector depends on the formulation
+        at the source interface.
 
         Parameters
         ----------
@@ -936,41 +977,113 @@ class BoundaryIntegralOperators:
             The product of the interface connector with the vector.
         """
 
+        if self.discrete_operators is None:
+            _ = self.assemble_boundary_integral_operators()
+
         interface_ids = self.connector.interfaces_ids
 
+        # The local index is the position of the source interface in the connector:
+        #  - 0: the source interface is the start interface of the connector
+        #  - 1: the source interface is the end interface of the connector
         if interface_id not in interface_ids:
             raise AssertionError(
                 "The interface " + str(interface_id) + " is not part of the connector."
             )
         else:
-            index = interface_ids.index(interface_id)
+            source_index = interface_ids.index(interface_id)
+            range_index = 1 - source_index
 
-        if self.discrete_operators is None:
-            _ = self.assemble_boundary_integral_operators()
+        # Split the source vector according to the formulation at the source interface.
+        trace_vectors = self._split_vector(vector, source_index)
 
-        if self.formulation == "pmchwt":
-            result = self._apply_pmchwt_operators(index, vector)
-        elif self.formulation == "muller":
-            result = self._apply_muller_operators(index, vector)
+        # Use the matvec according to the formulation of the range interface.
+        range_formulation = self.formulations[range_index]
+        # The boundary operators map from the source to range, so take the source index.
+        boundary_operators = self.discrete_operators[source_index]
+        if range_formulation == "pmchwt":
+            result = self._apply_pmchwt_operators(
+                boundary_operators, trace_vectors, source_index
+            )
+        elif range_formulation == "muller":
+            result = self._apply_muller_operators(
+                boundary_operators, trace_vectors, source_index
+            )
+        elif range_formulation == "multitrace":
+            result = self._apply_multitrace_operators(
+                boundary_operators, trace_vectors, source_index
+            )
         else:
-            raise ValueError("Unknown formulation: " + self.formulation + ".")
+            raise AssertionError("Unknown formulation: " + range_formulation)
 
         return result
 
-    def _apply_pmchwt_operators(self, index, vector):
+    def _split_vector(self, vector, local_index):
         """
-        Apply the PMCHWT operators to a vector to perform a local matvec.
+        Split the vector according to the boundary integral formulation.
 
-        The index indicates the source/domain interface of the connector, on which
-        the vector is defined. The vector is the entire vector for the connector,
-        which includes the Dirichlet and Neumann traces.
+        The direct single-trace formulations have the exterior Dirichlet and
+        Neumann traces as surface potentials.
+        The multitrace formulation has the exterior and interior Dirichlet and
+        Neumann traces as surface potentials.
 
         Parameters
         ----------
-        index : int
-            The index of the pair of discrete operators to use: either 0 or 1.
         vector : numpy.ndarray
-            The vector to multiply.
+            The vector to split.
+        local_index : int
+            The index of the local orientation (0,1).
+
+        Returns
+        -------
+        traces : dict[str, numpy.ndarray]
+            The vector split into trace components.
+            Possible keys are: "dirichlet-exterior", "neumann-exterior",
+            "dirichlet-interior", "neumann-interior".
+        """
+
+        formulation = self.formulations[local_index]
+        ndof = self.spaces[local_index].global_dof_count
+
+        if formulation in ("pmchwt", "muller"):
+            trace_vectors = _np.split(vector, indices_or_sections=[ndof])
+            traces = {
+                "dirichlet-exterior": trace_vectors[0],
+                "neumann-exterior": trace_vectors[1],
+            }
+        elif formulation == "multitrace":
+            trace_vectors = _np.split(
+                vector, indices_or_sections=_np.cumsum([ndof] * 3)
+            )
+            traces = {
+                "dirichlet-exterior": trace_vectors[0],
+                "neumann-exterior": trace_vectors[1],
+                "dirichlet-interior": trace_vectors[2],
+                "neumann-interior": trace_vectors[3],
+            }
+        else:
+            raise AssertionError(
+                "Unknown formulation: " + formulation
+            )
+
+        return traces
+
+    def _apply_pmchwt_operators(self, operators, vectors, source_index):
+        """
+        Apply the PMCHWT operators to a vector to perform a local matvec.
+
+        The operators have to map from the source to range interface and provided
+        in a dictionary with the names of the operators.
+        The vectors are on the source interface and are provided in a dictionary
+        with the names of the traces.
+
+        Parameters
+        ----------
+        operators : dict[str, bempp.api.assembly.boundary_operator.BoundaryOperator]
+            The boundary integral operators that map from the source to range interface.
+        vectors : dict[str, numpy.ndarray]
+            The trace vectors to multiply.
+        source_index : int
+            The index of the source interface in the connector, either 0 or 1.
 
         Returns
         -------
@@ -978,13 +1091,12 @@ class BoundaryIntegralOperators:
             The product of the boundary integral operators with the vector.
         """
 
-        operators = self.discrete_operators[index]
-        connector_topology = self.connector.topology
-
-        trace_vectors = _np.split(
-            vector,
-            indices_or_sections=[self.spaces[index].global_dof_count],
+        trace_vectors = (
+            vectors["dirichlet-exterior"],
+            vectors["neumann-exterior"],
         )
+
+        connector_topology = self.connector.topology
 
         if connector_topology in ("self-exterior", "sibling"):
             matvec_vectors = self._apply_calderon(operators, trace_vectors)
@@ -992,35 +1104,37 @@ class BoundaryIntegralOperators:
         elif connector_topology == "self-interior":
             rho_ext = self.densities[0]
             rho_int = self.material.density
-            scaled_vector = [
+            scaled_vector = (
                 trace_vectors[0],
                 (rho_int / rho_ext) * trace_vectors[1],
-            ]
+            )
             calderon_vectors = self._apply_calderon(operators, scaled_vector)
-            matvec_vectors = [
+            matvec_vectors = (
                 calderon_vectors[0],
                 (rho_ext / rho_int) * calderon_vectors[1],
-            ]
+            )
 
         elif connector_topology == "parent-child":
-            if index == 0:
+            if source_index == 0:
+                # from parent to child
                 rho_ext = self.densities[0]
                 rho_int = self.material.density
-                scaled_vector = [
+                scaled_vector = (
                     -trace_vectors[0],
                     -(rho_int / rho_ext) * trace_vectors[1],
-                ]
+                )
                 matvec_vectors = self._apply_calderon(operators, scaled_vector)
-            elif index == 1:
+            elif source_index == 1:
+                # from child to parent
                 rho_ext = self.densities[0]
                 rho_int = self.material.density
                 calderon_vectors = self._apply_calderon(operators, trace_vectors)
-                matvec_vectors = [
+                matvec_vectors = (
                     -calderon_vectors[0],
                     -(rho_ext / rho_int) * calderon_vectors[1],
-                ]
+                )
             else:
-                raise AssertionError("Index must be 0 or 1, not: " + str(index) + ".")
+                raise AssertionError("Index must be 0 or 1, not: " + str(source_index))
 
         else:
             raise AssertionError(
@@ -1031,20 +1145,23 @@ class BoundaryIntegralOperators:
 
         return result
 
-    def _apply_muller_operators(self, index, vector):
+    def _apply_muller_operators(self, operators, vectors, source_index):
         """
         Apply the Müller operators to a vector to perform a local matvec.
 
-        The index indicates the source/domain interface of the connector, on which
-        the vector is defined. The vector is the entire vector for the connector,
-        which includes the Dirichlet and Neumann traces.
+        The operators have to map from the source to range interface and provided
+        in a dictionary with the names of the operators.
+        The vectors are on the source interface and are provided in a dictionary
+        with the names of the traces.
 
         Parameters
         ----------
-        index : int
-            The index of the pair of discrete operators to use: either 0 or 1.
-        vector : numpy.ndarray
-            The vector to multiply.
+        operators : dict[str, bempp.api.assembly.boundary_operator.BoundaryOperator]
+            The boundary integral operators that map from the source to range interface.
+        vectors : dict[str, numpy.ndarray]
+            The trace vectors to multiply.
+        source_index : int
+            The index of the source interface in the connector, either 0 or 1.
 
         Returns
         -------
@@ -1052,57 +1169,172 @@ class BoundaryIntegralOperators:
             The product of the boundary integral operators with the vector.
         """
 
-        operators = self.discrete_operators[index]
-        connector_topology = self.connector.topology
-
-        trace_vectors = _np.split(
-            vector,
-            indices_or_sections=[self.spaces[index].global_dof_count],
+        trace_vectors = (
+            vectors["dirichlet-exterior"],
+            vectors["neumann-exterior"],
         )
+
+        connector_topology = self.connector.topology
 
         if connector_topology == "self-exterior":
             identity_vectors = self._apply_identity(operators, trace_vectors)
             calderon_vectors = self._apply_calderon(operators, trace_vectors)
-            matvec_vectors = [
+            matvec_vectors = (
                 identity_vectors[0] + calderon_vectors[0],
                 identity_vectors[1] + calderon_vectors[1],
-            ]
+            )
 
         elif connector_topology == "self-interior":
             rho_ext = self.densities[0]
             rho_int = self.material.density
-            scaled_vector = [
+            scaled_vector = (
                 trace_vectors[0],
                 (rho_int / rho_ext) * trace_vectors[1],
-            ]
+            )
             calderon_vectors = self._apply_calderon(operators, scaled_vector)
-            matvec_vectors = [
+            matvec_vectors = (
                 -calderon_vectors[0],
                 -(rho_ext / rho_int) * calderon_vectors[1],
-            ]
+            )
 
         elif connector_topology == "sibling":
             matvec_vectors = self._apply_calderon(operators, trace_vectors)
 
         elif connector_topology == "parent-child":
-            if index == 0:
+            if source_index == 0:
+                # from parent to child
                 rho_ext = self.densities[0]
                 rho_int = self.material.density
-                scaled_vector = [
+                scaled_vector = (
                     -trace_vectors[0],
                     -(rho_int / rho_ext) * trace_vectors[1],
-                ]
+                )
                 matvec_vectors = self._apply_calderon(operators, scaled_vector)
-            elif index == 1:
+            elif source_index == 1:
+                # from child to parent
                 rho_ext = self.densities[0]
                 rho_int = self.material.density
                 calderon_vectors = self._apply_calderon(operators, trace_vectors)
-                matvec_vectors = [
+                matvec_vectors = (
                     calderon_vectors[0],
                     (rho_ext / rho_int) * calderon_vectors[1],
-                ]
+                )
             else:
-                raise AssertionError("Index must be 0 or 1, not: " + str(index) + ".")
+                raise AssertionError("Index must be 0 or 1, not: " + str(source_index))
+
+        else:
+            raise AssertionError(
+                "Unknown topology of interface connector: " + connector_topology
+            )
+
+        result = _np.concatenate(matvec_vectors)
+
+        return result
+
+    def _apply_multitrace_operators(self, operators, vectors, source_index):
+        """
+        Apply the multitrace operators to a vector to perform a local matvec.
+
+        The operators have to map from the source to range interface and provided
+        in a dictionary with the names of the operators.
+        The vectors are on the source interface and are provided in a dictionary
+        with the names of the traces.
+
+        Parameters
+        ----------
+        operators : dict[str, bempp.api.assembly.boundary_operator.BoundaryOperator]
+            The boundary integral operators that map from the source to range interface.
+        vectors : dict[str, numpy.ndarray]
+            The trace vectors to multiply.
+        source_index : int
+            The index of the source interface in the connector, either 0 or 1.
+
+        Returns
+        -------
+        result : numpy.ndarray
+            The product of the boundary integral operators with the vector.
+        """
+
+        connector_topology = self.connector.topology
+
+        trace_dir_ext = vectors["dirichlet-exterior"]
+        trace_neu_ext = vectors["neumann-exterior"]
+        if "dirichlet-interior" in vectors:
+            trace_dir_int = vectors["dirichlet-interior"]
+        else:
+            trace_dir_int = trace_dir_ext
+        if "neumann-interior" in vectors:
+            trace_neu_int = vectors["neumann-interior"]
+        else:
+            if connector_topology in ("self-exterior", "sibling") or \
+                    (connector_topology == "parent-child" and source_index == 1):
+                rho_int_source = self.densities[source_index]
+                rho_ext_source = self.material.density
+            elif connector_topology == "self-interior" or \
+                    (connector_topology == "parent-child" and source_index == 0):
+                rho_int_source = self.material.density
+                rho_ext_source = self.densities[source_index]
+            else:
+                raise AssertionError("Unknown topology: " + connector_topology)
+            trace_neu_int = (rho_int_source / rho_ext_source) * trace_neu_ext
+
+        trace_vectors_ext = (trace_dir_ext, trace_neu_ext)
+        trace_vectors_int = (trace_dir_int, trace_neu_int)
+
+        if connector_topology == "self-exterior":
+            rho_ext = self.material.density
+            rho_int = self.densities[source_index]
+            calderon_vectors = self._apply_calderon(operators, trace_vectors_ext)
+            identity_vectors = self._apply_identity(operators, trace_vectors_int)
+            matvec_vectors = (
+                0.5 * identity_vectors[0] + calderon_vectors[0],
+                (0.5 * rho_ext / rho_int) * identity_vectors[1] + calderon_vectors[1],
+                _np.zeros_like(calderon_vectors[0]),
+                _np.zeros_like(calderon_vectors[1]),
+            )
+
+        elif connector_topology == "self-interior":
+            rho_ext = self.densities[source_index]
+            rho_int = self.material.density
+            identity_vectors = self._apply_identity(operators, trace_vectors_ext)
+            calderon_vectors = self._apply_calderon(operators, trace_vectors_int)
+            matvec_vectors = (
+                _np.zeros_like(calderon_vectors[0]),
+                _np.zeros_like(calderon_vectors[1]),
+                0.5 * identity_vectors[0] - calderon_vectors[0],
+                (0.5 * rho_int / rho_ext) * identity_vectors[1] - calderon_vectors[1],
+            )
+
+        elif connector_topology == "sibling":
+            calderon_vectors = self._apply_calderon(operators, trace_vectors_ext)
+            matvec_vectors = (
+                calderon_vectors[0],
+                calderon_vectors[1],
+                _np.zeros_like(calderon_vectors[0]),
+                _np.zeros_like(calderon_vectors[1]),
+            )
+
+        elif connector_topology == "parent-child":
+            if source_index == 0:
+                # from parent to child
+                calderon_vectors = self._apply_calderon(operators, trace_vectors_int)
+                matvec_vectors = (
+                    -calderon_vectors[0],
+                    -calderon_vectors[1],
+                    _np.zeros_like(calderon_vectors[0]),
+                    _np.zeros_like(calderon_vectors[1]),
+                )
+            elif source_index == 1:
+                # from child to parent
+                calderon_vectors = self._apply_calderon(operators, trace_vectors_ext)
+                matvec_vectors = (
+                    _np.zeros_like(calderon_vectors[0]),
+                    _np.zeros_like(calderon_vectors[1]),
+                    calderon_vectors[0],
+                    calderon_vectors[1],
+                )
+            else:
+                raise AssertionError("Index must be 0 or 1, not: " + str(source_index))
 
         else:
             raise AssertionError(
@@ -1114,56 +1346,61 @@ class BoundaryIntegralOperators:
         return result
 
     @staticmethod
-    def _apply_identity(operators, vector):
+    def _apply_identity(operators, vectors):
         """
-        Apply the identity operator to a vector.
-
-        Parameters
-        ----------
-        operators : dict[str, bempp.api.operators.boundary.sparse]
-            The dictionary with discrete boundary integral operators.
-        vector : list[numpy.ndarray]
-            The two parts of the vector to multiply: Dirichlet and Neumann traces.
-
-        Returns
-        -------
-        result : list[numpy.ndarray]
-            The two parts of the result vector: Dirichlet and Neumann traces.
-        """
-
-        dirichlet_matvec = operators["identity"] * vector[0]
-        neumann_matvec = operators["identity"] * vector[1]
-
-        return [dirichlet_matvec, neumann_matvec]
-
-    @staticmethod
-    def _apply_calderon(operators, vector):
-        """
-        Apply the Calderón operator to a vector.
+        Apply the discrete identity operator to a vector consisting of the
+        Dirichlet and Neumann spaces.
 
         Parameters
         ----------
         operators : dict[str, bempp.api.assembly.boundary_operator.BoundaryOperator]
-            The dictionary with discrete boundary integral operators.
-        vector : list[numpy.ndarray]
+            The dictionary with discrete boundary integral operators. It must
+            include the identity operator as "identity", defined on a single space.
+        vectors : tuple[numpy.ndarray]
             The two parts of the vector to multiply: Dirichlet and Neumann traces.
 
         Returns
         -------
-        result : list[numpy.ndarray]
+        result : tuple[numpy.ndarray]
+            The two parts of the result vector: Dirichlet and Neumann traces.
+        """
+
+        dirichlet_matvec = operators["identity"] * vectors[0]
+        neumann_matvec = operators["identity"] * vectors[1]
+
+        return dirichlet_matvec, neumann_matvec
+
+    @staticmethod
+    def _apply_calderon(operators, vectors):
+        """
+        Apply the Calderón operator to a vector consisting of the
+        Dirichlet and Neumann spaces.
+
+        Parameters
+        ----------
+        operators : dict[str, bempp.api.assembly.boundary_operator.BoundaryOperator]
+            The dictionary with discrete boundary integral operators. It must include
+            four operators, labelled as "single_layer", "double_layer",
+            "adjoint_double_layer", and "hypersingular".
+        vectors : tuple[numpy.ndarray]
+            The two parts of the vector to multiply: Dirichlet and Neumann traces.
+
+        Returns
+        -------
+        result : tuple[numpy.ndarray]
             The two parts of the result vector: Dirichlet and Neumann traces.
         """
 
         dirichlet_matvec = (
-            -operators["double_layer"] * vector[0]
-            + operators["single_layer"] * vector[1]
+            -operators["double_layer"] * vectors[0]
+            + operators["single_layer"] * vectors[1]
         )
         neumann_matvec = (
-            operators["hypersingular"] * vector[0]
-            + operators["adjoint_double_layer"] * vector[1]
+            operators["hypersingular"] * vectors[0]
+            + operators["adjoint_double_layer"] * vectors[1]
         )
 
-        return [dirichlet_matvec, neumann_matvec]
+        return dirichlet_matvec, neumann_matvec
 
 
 class PreconditionerOperators:
@@ -1555,7 +1792,7 @@ class SourceProjection(_SourceInterface):
         preconditioned formulation. Its type is "numpy.ndarray".
         """
 
-        if self.formulation in ("pmchwt", "muller"):
+        if self.formulation in ("pmchwt", "muller", "multitrace"):
             trace_dirichlet, trace_neumann = self.source.calc_surface_traces(
                 medium=self.material,
                 space_dirichlet=self.space,
@@ -1589,6 +1826,11 @@ class SourceProjection(_SourceInterface):
                 self.rhs_vector = source_vector
             else:
                 self.rhs_vector = self.preconditioner_operators.matvec(source_vector)
+
+            if self.formulation == "multitrace":
+                self.rhs_vector = _np.concatenate(
+                    [self.rhs_vector, _np.zeros_like(self.rhs_vector)]
+                )
 
         else:
             raise ValueError("Unknown formulation: " + self.formulation + ".")
@@ -1633,13 +1875,15 @@ class EmptySourceProjection(_SourceInterface):
         boundary integral formulation.
         """
 
+        zero_vector = _np.zeros(self.space.global_dof_count, dtype=_np.complex128)
+
         if self.formulation in ("pmchwt", "muller"):
-            self.trace_vectors = (
-                _np.zeros(self.space.global_dof_count, dtype=_np.complex128),
-                _np.zeros(self.space.global_dof_count, dtype=_np.complex128),
-            )
-            self.rhs_vector = _np.concatenate(self.trace_vectors)
+            n_spaces = 2
+        elif self.formulation == "multitrace":
+            n_spaces = 4
         else:
             raise ValueError("Unknown formulation: " + self.formulation + ".")
+
+        self.rhs_vector = _np.concatenate([zero_vector] * n_spaces)
 
         return
