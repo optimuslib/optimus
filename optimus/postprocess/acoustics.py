@@ -134,6 +134,11 @@ class ExteriorField(Field):
             Display the logs.
         """
 
+        from ..model.common import ExteriorModel
+
+        if not isinstance(model, ExteriorModel):
+            raise AssertionError("The model is not an exterior model.")
+
         super().__init__(model, verbose)
 
         return
@@ -160,7 +165,7 @@ class ExteriorField(Field):
 
         return domain_grids
 
-    # noinspection DuplicatedCode
+    # noinspection DuplicatedCode, PyUnresolvedReferences
     def compute_fields(self):
         """
         Calculate the acoustic field in the visualisation points.
@@ -174,10 +179,12 @@ class ExteriorField(Field):
 
         from ..utils.generic import chunker
         from optimus import global_parameters
-        from ..model.common import ExteriorModel
 
-        if not isinstance(self.model, ExteriorModel):
-            raise AssertionError("The model is not an analytical model.")
+        if self.model.solution is None:
+            raise ValueError(
+                "The model does not contain a solution, so no fields can be computed. "
+                "Please solve the model first."
+            )
 
         global_parameters.bem.update_hmat_parameters("potential")
 
@@ -341,6 +348,11 @@ class AnalyticalField(Field):
             Display the logs.
         """
 
+        from ..model.acoustics import Analytical
+
+        if not isinstance(model, Analytical):
+            raise AssertionError("The model is not an analytical model.")
+
         super().__init__(model, verbose)
 
         return
@@ -365,7 +377,7 @@ class AnalyticalField(Field):
 
         return domain_grids
 
-    # noinspection DuplicatedCode
+    # noinspection DuplicatedCode, PyUnresolvedReferences
     def compute_fields(self):
         """
         Calculate the scattered and total pressure fields for visualisation
@@ -382,12 +394,14 @@ class AnalyticalField(Field):
             in the exterior domain.
         """
 
-        # noinspection PyUnresolvedReferences
         from scipy.special import sph_jn, sph_yn, eval_legendre
-        from ..model.acoustics import Analytical
 
-        if not isinstance(self.model, Analytical):
-            raise AssertionError("The model is not an analytical model.")
+        if (self.model.scattered_coefficients is None or
+                self.model.interior_coefficients is None):
+            raise ValueError(
+                "The model does not contain a solution, so no fields can be computed. "
+                "Please solve the model first."
+            )
 
         total_field = _np.full(self.points.shape[1], _np.nan, dtype=complex)
         scattered_field = _np.full(self.points.shape[1], _np.nan, dtype=complex)
@@ -493,12 +507,12 @@ class NestedField(Field):
             Display the logs.
         """
 
-        super().__init__(model, verbose)
-
         from ..model.nested import NestedModel
 
-        if not isinstance(self.model, NestedModel):
+        if not isinstance(model, NestedModel):
             raise AssertionError("The model is not a nested model.")
+
+        super().__init__(model, verbose)
 
         self.graph = self.model.topology
 
@@ -614,6 +628,12 @@ class NestedField(Field):
         """
 
         from optimus import global_parameters
+
+        if self.model.solution is None:
+            raise ValueError(
+                "The model does not contain a solution, so no fields can be computed. "
+                "Please solve the model first."
+            )
 
         global_parameters.bem.update_hmat_parameters("potential")
 
