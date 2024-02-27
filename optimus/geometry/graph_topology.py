@@ -1265,8 +1265,9 @@ class Edge(_GraphComponent):
         """
         Create an edge in the graph topology.
 
-        An edge represents the connection between one interface and one subdomain.
-        They represent potential integral operators in the BEM.
+        An edge represents the connection between one interface and one
+        adjacent subdomain. They represent potential integral operators
+        in the BEM.
 
         Parameters
         ----------
@@ -1365,9 +1366,9 @@ class InterfaceConnector(_GraphComponent):
         """
         Create an interface connector in the graph topology.
 
-        An interface connector is an interaction between two adjacent interface,
-        which share the same propagating subdomain.
-        They represent potential integral operators in the BEM.
+        An interface connector is an interaction between two material interfaces
+        that share the same propagating subdomain.
+        They represent boundary integral operators in the BEM.
 
         Parameters
         ----------

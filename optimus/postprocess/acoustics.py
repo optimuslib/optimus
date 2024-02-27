@@ -382,6 +382,7 @@ class AnalyticalField(Field):
             in the exterior domain.
         """
 
+        # noinspection PyUnresolvedReferences
         from scipy.special import sph_jn, sph_yn, eval_legendre
         from ..model.acoustics import Analytical
 
@@ -630,8 +631,11 @@ class NestedField(Field):
         For each edge in the graph topology, determine the representation
         formula corresponding to the boundary integral formulation and
         assemble the potential operators.
+        An 'edge' in the graph topology is a connection between a material
+        interface and a propagation subdomain.
 
-        Sets "self.potential_operators" to a list of PotentialIntegralOperators.
+        Sets "self.potential_operators" to a list of PotentialIntegralOperators, one
+        for each edge object.
         """
 
         self.potential_operators = []
@@ -643,21 +647,25 @@ class NestedField(Field):
 
                 if edge.orientation == "interface_interior_to_subdomain":
                     opposite_subdomain_id = interface_node.child_subdomain_id
-                else:
+                elif edge.orientation == "interface_exterior_to_subdomain":
                     opposite_subdomain_id = interface_node.parent_subdomain_id
+                else:
+                    raise AssertionError(
+                        "Unknown edge orientation: " + edge.orientation
+                    )
                 opposite_subdomain = self.graph.subdomain_nodes[opposite_subdomain_id]
 
                 self.potential_operators.append(
                     PotentialIntegralOperators(
-                        len(self.potential_operators),
-                        edge,
-                        "direct",
-                        "pmchwt",
-                        self.model.solution[edge.interface_id],
-                        self.points_subdomain[edge.subdomain_id],
-                        subdomain_node.material,
-                        opposite_subdomain.material.density,
-                        self.model.frequency,
+                        identifier=len(self.potential_operators),
+                        edge=edge,
+                        representation=self.model.representation[edge.interface_id],
+                        formulation=self.model.formulation[edge.interface_id],
+                        surface_potentials=self.model.solution[edge.interface_id],
+                        points=self.points_subdomain[edge.subdomain_id],
+                        material=subdomain_node.material,
+                        density=opposite_subdomain.material.density,
+                        frequency=self.model.frequency,
                     )
                 )
             else:
@@ -673,7 +681,7 @@ class NestedField(Field):
         so that the corresponding field component inside each subdomain is
         calculated.
 
-        The fields will be stored inside the list of PotentialIntegralOperators.
+        The fields will be stored inside the stored PotentialIntegralOperators.
         """
 
         for operators in self.potential_operators:
@@ -697,17 +705,19 @@ class NestedField(Field):
 
         self.fields_interface = []
         for interface in self.graph.interface_nodes:
-            formulation = self.model.formulation[interface.identifier]
-            if formulation not in ("none", "pmchwt", "muller"):
-                raise NotImplementedError(
-                    "Unknown formulation for boundary points: " + formulation
-                )
             if self.index_boundary[interface.identifier] is not None:
+                formulation = self.model.formulation[interface.identifier]
+                if formulation in ("pmchwt", "muller", "multitrace"):
+                    dirichlet_potential = self.model.solution[interface.identifier][0]
+                else:
+                    raise AssertionError(
+                        "Unknown formulation for boundary points: " + formulation
+                    )
                 self.fields_interface.append(
                     compute_pressure_boundary(
                         interface.geometry.grid,
                         self.points_boundary[interface.identifier],
-                        self.model.solution[interface.identifier][0].coefficients,
+                        dirichlet_potential.coefficients,
                     )
                 )
             else:
@@ -730,12 +740,12 @@ class NestedField(Field):
         the total field in the interior and the scattered field in the exterior.
 
         Sets the attributes:
-            self.incident_field: the incident field in the visualisation points.
-            self.scattered_field: the scattered field in the visualisation points.
-            self.total_field: the total field in the visualisation points.
+         - self.incident_field: the incident field in the visualisation points.
+         - self.scattered_field: the scattered field in the visualisation points.
+         - self.total_field: the total field in the visualisation points.
         """
 
-        # The attribute self.points_subdomain is an (3,N) array, also if N=0.
+        # The attribute self.points_subdomain is a (3,N) array, also if N=0.
         interior_fields = [
             _np.zeros(points.shape[1], dtype=complex)
             for points in self.points_subdomain
@@ -824,7 +834,8 @@ class PotentialIntegralOperators:
         frequency,
     ):
         """
-        Create the potential integral operators for an active edge.
+        Create the potential integral operators for an active edge in the graph
+        topology for nested BEM.
 
         Parameters
         ----------
@@ -853,63 +864,27 @@ class PotentialIntegralOperators:
         self.identifier = identifier
 
         self.edge = edge
-        self.representation, self.formulation = self._check_representation_formulation(
-            representation, formulation
-        )
+        self.representation = representation
+        self.formulation = formulation
         self.points = points
         self.material = material
-        self.densities = self._check_density(density)
+        self.densities = self._process_densities(density)
         self.frequency = frequency
 
         self.wavenumber = self.material.compute_wavenumber(self.frequency)
 
-        self.surface_potentials = self.process_surface_potentials(surface_potentials)
+        self.surface_potentials, self.spaces = self.process_surface_potentials(
+            surface_potentials
+        )
         self.potential_operators = self.create_potential_operators()
 
         self.field = None
 
         return
 
-    @staticmethod
-    def _check_representation_formulation(representation, formulation):
+    def _process_densities(self, density):
         """
-        Check validity of the representation and boundary integral formulation.
-
-        Parameters
-        ----------
-        representation : str
-            The type of boundary integral representation.
-        formulation : str
-            The type of boundary integral formulation.
-
-        Returns
-        -------
-        representation : str
-            The type of boundary integral representation.
-        formulation : str
-            The type of boundary integral formulation.
-        """
-
-        if not isinstance(representation, str):
-            raise TypeError("Representation should be a string.")
-        else:
-            representation = representation.lower()
-        if not isinstance(formulation, str):
-            raise TypeError("Formulation should be a string.")
-        else:
-            formulation = formulation.lower()
-
-        if representation not in ("direct",):
-            raise ValueError("Representation should be 'direct'.")
-
-        if formulation not in ("pmchwt",):
-            raise ValueError("Formulation should be 'pmchwt'.")
-
-        return representation, formulation
-
-    def _check_density(self, density):
-        """
-        Calculate the densities of the exterior and interior media.
+        Process the densities of the exterior and interior media.
 
         Parameters
         ----------
@@ -947,7 +922,9 @@ class PotentialIntegralOperators:
         the formulation, each interface can have multiple potentials.
         Check the input and store the surface potentials.
 
-        For the PMCHWT formulation, the Dirichlet and Neumann potentials are present.
+        The PMCHWT and Müller formulation have the exterior Dirichlet and Neumann
+        traces of the field as solution potentials.
+        The multi-trace formulation has all four traces of the field as solution.
 
         Parameters
         ----------
@@ -961,33 +938,60 @@ class PotentialIntegralOperators:
         """
 
         if not isinstance(surface_potentials, (list, tuple)):
-            raise TypeError("Surface potentials should be a list or tuple.")
+            raise AssertionError("Surface potentials should be a list or tuple.")
 
         for potential in surface_potentials:
             if not isinstance(potential, _bempp.GridFunction):
-                raise TypeError("Surface potentials should be GridFunctions.")
+                raise AssertionError("Surface potentials should be GridFunctions.")
 
-        if self.formulation == "pmchwt":
+        if self.formulation in ("pmchwt", "muller"):
             if len(surface_potentials) != 2:
-                raise ValueError("PMCHWT formulation requires two surface potentials.")
+                raise AssertionError(
+                    "The PMCHWT and Müller formulations require two surface potentials."
+                )
             else:
-                surface_potentials = {
+                surface_potentials_dict = {
                     "dirichlet": surface_potentials[0],
                     "neumann": surface_potentials[1],
                 }
-        else:
-            raise ValueError("Formulation not recognised.")
+                function_spaces = {
+                    "dirichlet": surface_potentials[0].space,
+                    "neumann": surface_potentials[1].space,
+                }
 
-        return surface_potentials
+        elif self.formulation == "multitrace":
+            if len(surface_potentials) != 4:
+                raise AssertionError(
+                    "The multi-trace formulation requires four surface potentials."
+                )
+            else:
+                surface_potentials_dict = {
+                    "dirichlet-exterior": surface_potentials[0],
+                    "neumann-exterior": surface_potentials[1],
+                    "dirichlet-interior": surface_potentials[2],
+                    "neumann-interior": surface_potentials[3],
+                }
+                function_spaces = {
+                    "dirichlet": surface_potentials[0].space,
+                    "neumann": surface_potentials[1].space,
+                }
+
+        else:
+            raise AssertionError("Unknown formulation: " + self.formulation)
+
+        return surface_potentials_dict, function_spaces
 
     def compute_field_trace(self, trace_type):
         """
         Compute the trace of the field at the interface, given the surface potential.
 
-        For the PMCHWT formulation, the Dirichlet potential is also the Dirichlet
-        trace of the total field, while the Neumann potential is the exterior Neumann
-        trace of the total field. The interior Neumann trace of the total field
-        can be computed with the interface conditions.
+        The traces of the field depend on the specific formulation:
+         - For the PMCHWT and Müller formulations, the Dirichlet potential is the
+            Dirichlet trace of the total field, while the Neumann potential is the
+            exterior Neumann trace of the total field. The interior Neumann trace
+            of the total field can be computed by a scaling of the density ratio.
+         - For the multi-trace formulation, the solution potentials are the traces
+            of the total field.
 
         Parameters
         ----------
@@ -1004,18 +1008,7 @@ class PotentialIntegralOperators:
             The trace of the field.
         """
 
-        if trace_type not in (
-            "interior_dirichlet",
-            "exterior_dirichlet",
-            "interior_neumann",
-            "exterior_neumann",
-        ):
-            raise ValueError(
-                "Trace type should be 'interior_dirichlet', 'exterior_dirichlet', "
-                "'interior_neumann' or 'exterior_neumann'."
-            )
-
-        if self.formulation == "pmchwt":
+        if self.formulation in ("pmchwt", "muller"):
             if trace_type == "exterior_dirichlet":
                 field_trace = self.surface_potentials["dirichlet"]
             elif trace_type == "interior_dirichlet":
@@ -1027,9 +1020,20 @@ class PotentialIntegralOperators:
                 rho_ext = self.densities["exterior"]
                 field_trace = (rho_int / rho_ext) * self.surface_potentials["neumann"]
             else:
-                raise AssertionError
+                raise AssertionError("Unknown trace type: " + trace_type)
+        elif self.formulation == "multitrace":
+            if trace_type == "exterior_dirichlet":
+                field_trace = self.surface_potentials["dirichlet-exterior"]
+            elif trace_type == "interior_dirichlet":
+                field_trace = self.surface_potentials["dirichlet-interior"]
+            elif trace_type == "exterior_neumann":
+                field_trace = self.surface_potentials["neumann-exterior"]
+            elif trace_type == "interior_neumann":
+                field_trace = self.surface_potentials["neumann-interior"]
+            else:
+                raise AssertionError("Unknown trace type: " + trace_type)
         else:
-            raise NotImplementedError
+            raise AssertionError("Unknown formulation: " + self.formulation)
 
         return field_trace
 
@@ -1052,12 +1056,12 @@ class PotentialIntegralOperators:
         if self.edge.is_active() and self.points.shape[1] > 0:
             if self.representation == "direct":
                 sl_pot = _bempp.operators.potential.helmholtz.single_layer(
-                    self.surface_potentials["neumann"].space,
+                    self.spaces["neumann"],
                     self.points,
                     self.wavenumber,
                 )
                 dl_pot = _bempp.operators.potential.helmholtz.double_layer(
-                    self.surface_potentials["dirichlet"].space,
+                    self.spaces["dirichlet"],
                     self.points,
                     self.wavenumber,
                 )
@@ -1066,7 +1070,7 @@ class PotentialIntegralOperators:
                     "double_layer": dl_pot,
                 }
             else:
-                raise NotImplementedError
+                raise AssertionError("Unknown representation: " + self.representation)
         else:
             potential_operators = None
 
@@ -1104,13 +1108,14 @@ class PotentialIntegralOperators:
                 # BEMPP generates an (1,N) array, but we want an (N,) array
                 field = field.ravel()
             else:
-                raise NotImplementedError
+                raise AssertionError("Unknown representation: " + self.representation)
 
         self.field = field
 
         return
 
 
+# noinspection PyUnresolvedReferences
 def compute_pressure_boundary(grid, boundary_points, dirichlet_solution):
     """
     Calculate pressure for points near or at the boundary of a domain. When the solid
