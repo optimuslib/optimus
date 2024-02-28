@@ -604,6 +604,232 @@ class Analytical(_Model):
         self.interior_coefficients = ((jn_ext + coef_sca * h1n_ext) / jn_int) * weights
 
 
+class AnalyticalTwoSpheres(_Model):
+    def __init__(
+        self,
+        source,
+        geometry,
+        material_exterior,
+        material_interior,
+        label="analytical",
+    ):
+        """
+        Create a model based on the Analytical formulation
+        for the scattering of a plane wave on a homogenous
+        sphere.
+
+        Parameters
+        ----------
+        source : optimus.source.common.Source
+            The Optimus representation of a source field.
+        geometry : optimus.geometry.common.Geometry
+            The geometry in Optimus representation that includes the grid of
+            the scatterer.
+        material_exterior : optimus.material.common.Material
+            The material for the unbounded exterior region.
+        material_interior : optimus.material.common.Material
+            The material for the bounded scatterer.
+        label : str
+            The label of the model.
+        """
+        super().__init__(label)
+        self.formulation = "analytical"
+
+        self.source = self._setup_source(source)
+        self.frequency = self.source.frequency
+
+        self.geometry = self._setup_geometry(geometry)
+        self.material_exterior = material_exterior
+        self.material_interior = self._setup_material_interior(material_interior)
+
+        self.scattered_coefficients = None
+        self.interior_coefficients = None
+
+    def _setup_source(self, source):
+        """
+        Checks for the source being a plane wave field.
+
+        Parameters
+        ----------
+        source : optimus.source.common.Source
+            The Optimus representation of a source field.
+
+        Returns
+        -------
+        source : optimus.source.common.Source
+            The Optimus representation of a source field.
+        """
+        from ..source.planewave import PlaneWave
+
+        if not isinstance(source, PlaneWave):
+            raise NotImplementedError("Analytical model supports a planewave only.")
+
+        return source
+
+    def _setup_geometry(self, geometry):
+        """
+        Check if geometry is set to a single sphere.
+
+        Parameters
+        ----------
+        geometry : optimus.geometry.common.Geometry
+            The geometry in Optimus representation that includes the grid of
+            the scatterer.
+
+        Returns
+        -------
+        geometry : optimus.geometry.common.Geometry
+            The spherical geometry
+        """
+
+        if isinstance(geometry, (list, tuple)):
+            if len(geometry) > 2:
+                raise NotImplementedError(
+                    "AnalyticalTwoSpheres model takes exactly two subdomains."
+                )
+        else:
+            raise NotImplementedError(
+                "For a single subdomain, use the Analytical class."
+            )
+
+        for count in range(len(geometry)):
+            if geometry[count].shape != "sphere":
+                raise NotImplementedError(
+                    "AnalyticalTwoSpheres model is available only for spheres."
+                    + " Not for "
+                    + geometry[count].shape
+                )
+
+        if geometry[0].origin != geometry[1].origin:
+            raise NotImplementedError(
+                "AnalyticalTwoSpheres model requires spheres to be concentric."
+            )
+
+        if geometry[0].radius < geometry[1].radius:
+            raise NotImplementedError(
+                "AnalyticalTwoSpheres model requires first sphere to have larger\
+                    radius than second sphere."
+            )
+
+        return geometry
+
+    def _setup_material_interior(self, material):
+        """
+        Check for single material.
+
+        Parameters
+        ----------
+        material : optimus.material.common.Material
+            The material for the bounded scatterer.
+
+        Returns
+        -------
+        material : optimus.material.common.Material
+            The material for the bounded scatterer.
+        """
+
+        if isinstance(material, (list, tuple)):
+            if len(material) > 2:
+                raise NotImplementedError(
+                    "AnalyticalTwoSphere model does not support more than 2 subdomains."
+                )
+        else:
+            raise NotImplementedError(
+                "AnalyticalTwoSphere model must have exactly 2 subdomains."
+            )
+
+        return material
+
+    def solve(self, n_iter=100):
+        """
+        Compute analytical coefficients for scattering of plane wave by two concentric
+        spheres based on the formulation derived by McNew J, Lavarello R, O’Brien Jr WD.
+        Sound scattering from two concentric fluid spheres. The Journal of the
+        Acoustical Society of America. 2009 Jan;125(1):1-4.
+
+        Parameters
+        ----------
+        n_iter : int
+            number of coefficients terms to be computed
+        """
+        from scipy.special import sph_jn, sph_yn
+
+        self.scattered_coefficients = _np.full(n_iter, _np.nan, dtype=_np.complex128)
+
+        k_ext = self.material_exterior.compute_wavenumber(self.source.frequency)
+
+        weights = _np.array([(2 * n + 1) * 1j**n for n in range(n_iter + 1)])
+
+        k_int = []
+        for material in self.material_interior:
+            k_int.append(material.compute_wavenumber(self.source.frequency))
+
+        density_wavenumber_ratio = []
+        for material in [self.material_exterior] + self.material_interior:
+            density_wavenumber_ratio.append(
+                material.density / material.compute_wavenumber(self.source.frequency)
+            )
+
+        Z = tuple(
+            [
+                2 * _np.pi * self.source.frequency * rho_k_ratio
+                for rho_k_ratio in density_wavenumber_ratio
+            ]
+        )
+
+        r = []
+        for geometry in self.geometry:
+            r.append(geometry.radius)
+
+        #
+        # Compute spherical Bessel function for the exterior and interior domains
+        # hn = jn - i*yn, denotes the Hankel function of second kind.
+        #
+        jn_k0r1, d_jn_k0r1 = sph_jn(n_iter, k_ext * r[0])
+        jn_k1r1, d_jn_k1r1 = sph_jn(n_iter, k_int[0] * r[0])
+        jn_k1r2, d_jn_k1r2 = sph_jn(n_iter, k_int[0] * r[1])
+        jn_k2r2, d_jn_k2r2 = sph_jn(n_iter, k_int[1] * r[1])
+
+        yn_k0r1, d_yn_k0r1 = sph_yn(n_iter, k_ext * r[0])
+        yn_k1r1, d_yn_k1r1 = sph_yn(n_iter, k_int[0] * r[0])
+        yn_k1r2, d_yn_k1r2 = sph_yn(n_iter, k_int[0] * r[1])
+
+        h1n_k0r1, d_h1n_k0r1 = (jn_k0r1 + 1j * yn_k0r1, d_jn_k0r1 + 1j * d_yn_k0r1)
+        h1n_k1r1, d_h1n_k1r1 = (jn_k1r1 + 1j * yn_k1r1, d_jn_k1r1 + 1j * d_yn_k1r1)
+        h1n_k1r2, d_h1n_k1r2 = (jn_k1r2 + 1j * yn_k1r2, d_jn_k1r2 + 1j * d_yn_k1r2)
+
+        H = _np.zeros((4, 4), dtype=_np.complex128)
+        b = _np.zeros((4), dtype=_np.complex128)
+
+        solution_coefficients = _np.zeros((4, n_iter + 1), _np.complex128)
+
+        # Obtain the coefficients for each harmonic through matrix inversion
+        for i in range(n_iter + 1):
+            H[0, 0] = d_h1n_k0r1[i] / Z[0]
+            H[0, 1] = -d_h1n_k1r1[i] / Z[1]
+            H[0, 2] = -d_jn_k1r1[i] / Z[1]
+
+            H[1, 0] = -h1n_k0r1[i]
+            H[1, 1] = h1n_k1r1[i]
+            H[1, 2] = jn_k1r1[i]
+
+            H[2, 1] = d_h1n_k1r2[i] / Z[1]
+            H[2, 2] = d_jn_k1r2[i] / Z[1]
+            H[2, 3] = -d_jn_k2r2[i] / Z[2]
+
+            H[3, 1] = h1n_k1r2[i]
+            H[3, 2] = jn_k1r2[i]
+            H[3, 3] = -jn_k2r2[i]
+
+            b[0] = -weights[i] * d_jn_k0r1[i] / Z[0]
+            b[1] = weights[i] * jn_k0r1[i]
+
+            solution_coefficients[:, i] = _np.linalg.solve(H, b)
+
+        self.scattered_coefficients = solution_coefficients[0, :]
+        self.interior_coefficients = solution_coefficients[1::]
+
+
 def create_boundary_integral_operators(
     space_domain,
     space_range,
