@@ -407,10 +407,9 @@ class Pmchwt(_ExteriorModel):
 
         from .linalg import linear_solve
 
-        self.solution_vector, self.iteration_count = linear_solve(
+        self.solution_vector, self.iteration_count, _, _, _ = linear_solve(
             self.lhs_discrete_system,
             self.rhs_discrete_system,
-            return_iteration_count=True,
         )
 
         return

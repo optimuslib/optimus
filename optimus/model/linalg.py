@@ -23,16 +23,19 @@ def linear_solve(
 
     Returns
     -------
-    solution : numpy.ndarray
-        The solution vector.
-    linear_solve_it_count : int
-        The number of iterations.
-    linear_solve_residual_error : list
-        The error at each iterations.
-    total_time : int
-        The total time for solver (in seconds).
-    time_per_it : int
-        The average time per iterations for GMRES.
+    tuple[numpy.ndarray, int, list[float], int, int]
+        The solution vector, the number of iterations, the error at each iterations,
+        the total time for solver (in seconds), the average time per iterations.
+            solution : numpy.ndarray
+                The solution vector.
+            linear_solve_it_count : int
+                The number of iterations.
+            linear_solve_residual_error : list
+                The error at each iterations.
+            total_time : int
+                The total time for solver (in seconds).
+            time_per_it : int
+                The average time per iterations for GMRES.
     """
 
     if optimus.global_parameters.linalg.linsolver == "gmres":
