@@ -19,8 +19,13 @@ class PostProcess:
 
         from ..model.common import ExteriorModel
         from ..model.nested import NestedModel
-        from ..model.acoustics import Analytical
-        from .acoustics import ExteriorField, AnalyticalField, NestedField
+        from ..model.acoustics import Analytical, AnalyticalTwoSpheres
+        from .acoustics import (
+            ExteriorField,
+            AnalyticalField,
+            AnalyticalFieldTwoSpheres,
+            NestedField,
+        )
 
         self.verbose = verbose
         self.model = model
@@ -36,6 +41,12 @@ class PostProcess:
         elif isinstance(model, Analytical):
             self.field = AnalyticalField(model, verbose)
             self.domains_grids = [model.geometry.grid]
+
+        elif isinstance(model, AnalyticalTwoSpheres):
+            self.field = AnalyticalFieldTwoSpheres(model, verbose)
+            self.domains_grids = [
+                model.geometry[n_sub].grid for n_sub in range(len(model.geometry))
+            ]
 
         elif isinstance(model, NestedModel):
             self.field = NestedField(model, verbose)
