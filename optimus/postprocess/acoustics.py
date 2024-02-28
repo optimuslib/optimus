@@ -538,6 +538,40 @@ class AnalyticalFieldTwoSpheres(Field):
 
         return domain_grids
 
+    def segmentation(self, points):
+        """
+        Perform segmentation of the field points into interior, exterior and
+        boundary points for each of the two nested spheres.
+
+        Parameters
+        ----------
+        points: numpy.ndarray
+            The field points. The size of the array should be (3,N).
+        """
+
+        from ..utils.conversions import convert_to_3n_array
+        from .topology import find_int_ext_points
+
+        self.points = convert_to_3n_array(points)
+
+        (
+            self.points_interior,
+            self.points_exterior,
+            self.points_boundary,
+            self.index_interior,
+            self.index_exterior,
+            self.index_boundary,
+        ) = find_int_ext_points(self._domain_grids, self.points, self.verbose)
+
+        # Remove the points that are inside the inner sphere and its boundary from
+        # the outer sphere.
+        ii = self.index_interior[0] != self.index_interior[1]
+        self.index_interior[0] = ii != self.index_boundary[1]
+
+        self.create_regions()
+
+        return
+
     def compute_fields(self):
         """
         Calculate the scattered and total pressure fields for visualisation
