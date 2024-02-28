@@ -396,8 +396,10 @@ class AnalyticalField(Field):
 
         from scipy.special import sph_jn, sph_yn, eval_legendre
 
-        if (self.model.scattered_coefficients is None or
-                self.model.interior_coefficients is None):
+        if (
+            self.model.scattered_coefficients is None
+            or self.model.interior_coefficients is None
+        ):
             raise ValueError(
                 "The model does not contain a solution, so no fields can be computed. "
                 "Please solve the model first."
@@ -486,6 +488,246 @@ class AnalyticalField(Field):
             )
 
             total_field[ib] = _np.dot(self.model.interior_coefficients, jn.T * legendre)
+
+        self.total_field = total_field
+        self.scattered_field = scattered_field
+        self.incident_field = incident_exterior_field
+
+        return
+
+
+class AnalyticalFieldTwoSpheres(Field):
+    def __init__(self, model, verbose=False):
+        """
+        Class for field visualisation for analytical acoustic models.
+
+        The analytical model is based on spherical harmonics for two concentric
+        penetrable spheres.
+
+        Parameters
+        ----------
+        model: optimus.model.acoustics.AnalyticalTwoSpheres
+            The boundary element model.
+        verbose: boolean
+            Display the logs.
+        """
+
+        super().__init__(model, verbose)
+
+        return
+
+    @staticmethod
+    def _get_domain_grids(model):
+        """
+        Retrieve the grids of the domains from the model.
+
+        Parameters
+        ----------
+        model: optimus.model.acoustics.AnalyticalTwoSpheres
+            The boundary element model.
+
+        Returns
+        -------
+        domain_grids: list[bempp.api.Grid]
+            The grids of the subdomains.
+        """
+
+        domain_grids = []
+        for i in range(len(model.geometry)):
+            domain_grids.append(model.geometry[i].grid)
+
+        return domain_grids
+
+    def compute_fields(self):
+        """
+        Calculate the scattered and total pressure fields for visualisation
+        in the analytical model.
+
+        Returns
+        -------
+        total_field : numpy.ndarray
+            An array of size (1,N) with complex values of the total pressure field.
+        scattered_field : numpy.ndarray
+            An array of size (1,N) with complex values of the scatterd pressure field.
+        incident_exterior_field : numpy.ndarray
+            An array of size (1,N) with complex values of the incident pressure field
+            in the exterior domain.
+        """
+
+        from scipy.special import sph_jn, sph_yn, eval_legendre
+        from ..model.acoustics import AnalyticalTwoSpheres
+
+        if not isinstance(self.model, AnalyticalTwoSpheres):
+            raise AssertionError("The model is not a two-sphere analytical model.")
+
+        total_field = _np.full(self.points.shape[1], _np.nan, dtype=complex)
+        scattered_field = _np.full(self.points.shape[1], _np.nan, dtype=complex)
+        incident_exterior_field = _np.full(self.points.shape[1], _np.nan, dtype=complex)
+
+        frequency = self.model.source.frequency
+        k_ext = self.model.material_exterior.compute_wavenumber(frequency)
+
+        k_int = []
+        for material in self.model.material_interior:
+            k_int.append(material.compute_wavenumber(frequency))
+
+        n_iter = self.model.interior_coefficients.shape[1]
+
+        for subdomain_no in range(len(self.model.geometry)):
+            if subdomain_no == 1:
+                pi = self.points_interior[subdomain_no]
+                ii = self.index_interior[subdomain_no]
+            else:
+                ii = self.index_interior[0] != self.index_interior[1]
+                ii = ii != self.index_boundary[1]
+                pi = self.points[:, ii]
+            if ii.any():
+                radial_space = _np.linalg.norm(pi, axis=0)
+                directional_space = _np.dot(self.model.source.direction_vector, pi)
+                directional_space /= radial_space
+
+                legendre = _np.array(
+                    [eval_legendre(n, directional_space) for n in range(n_iter)]
+                )
+
+                if subdomain_no == 0:
+                    jn, djn = _np.array(
+                        list(
+                            zip(
+                                *[
+                                    sph_jn(n_iter - 1, k_int[0] * r)
+                                    for r in radial_space
+                                ]
+                            )
+                        )
+                    )
+                    yn, dyn = _np.array(
+                        list(
+                            zip(
+                                *[
+                                    sph_yn(n_iter - 1, k_int[0] * r)
+                                    for r in radial_space
+                                ]
+                            )
+                        )
+                    )
+                    h1n, dh1n = jn.T + 1j * yn.T, djn.T + 1j * dyn.T
+                    incident_exterior_field[ii] = _np.dot(
+                        self.model.interior_coefficients[0, :].T, h1n * legendre
+                    )
+                    scattered_field[ii] = _np.dot(
+                        self.model.interior_coefficients[1, :].T, jn.T * legendre
+                    )
+                    total_field[ii] = incident_exterior_field[ii] + scattered_field[ii]
+
+                elif subdomain_no == 1:
+                    jn, djn = _np.array(
+                        list(
+                            zip(
+                                *[
+                                    sph_jn(n_iter - 1, k_int[1] * r)
+                                    for r in radial_space
+                                ]
+                            )
+                        )
+                    )
+                    total_field[ii] = _np.dot(
+                        self.model.interior_coefficients[2, :].T, jn.T * legendre
+                    )
+
+        #
+        # Exterior
+        #
+        pe = self.points_exterior
+        ie = self.index_exterior
+        if ie.any():
+            radial_space = _np.linalg.norm(pe, axis=0)
+            directional_space = _np.dot(self.model.source.direction_vector, pe)
+            directional_space /= radial_space
+
+            jn, djn = _np.array(
+                list(zip(*[sph_jn(n_iter - 1, k_ext * r) for r in radial_space]))
+            )
+            yn, dyn = _np.array(
+                list(zip(*[sph_yn(n_iter - 1, k_ext * r) for r in radial_space]))
+            )
+            h1n, dh1n = jn.T + 1j * yn.T, djn.T + 1j * dyn.T
+
+            legendre = _np.array(
+                [eval_legendre(n, directional_space) for n in range(n_iter)]
+            )
+
+            scattered_field[ie] = _np.dot(
+                self.model.scattered_coefficients, h1n * legendre
+            )
+
+            incident_exterior_field[ie] = _np.dot(
+                _np.array([(2 * n + 1) * 1j**n for n in range(n_iter)]),
+                jn.T * legendre,
+            )
+
+            total_field[ie] = scattered_field[ie] + incident_exterior_field[ie]
+
+        #
+        # Boundary
+        #
+        for subdomain_no in range(len(self.model.geometry)):
+            ib = self.index_boundary[subdomain_no]
+            pb = self.points_boundary[subdomain_no]
+            if ib.any():
+                radial_space = _np.linalg.norm(pb, axis=0)
+                directional_space = _np.dot(self.model.source.direction_vector, pb)
+                directional_space /= radial_space
+
+                legendre = _np.array(
+                    [eval_legendre(n, directional_space) for n in range(n_iter)]
+                )
+
+                if subdomain_no == 0:
+                    jn, djn = _np.array(
+                        list(
+                            zip(
+                                *[
+                                    sph_jn(n_iter - 1, k_int[0] * r)
+                                    for r in radial_space
+                                ]
+                            )
+                        )
+                    )
+                    yn, dyn = _np.array(
+                        list(
+                            zip(
+                                *[
+                                    sph_yn(n_iter - 1, k_int[0] * r)
+                                    for r in radial_space
+                                ]
+                            )
+                        )
+                    )
+                    h1n, dh1n = jn.T + 1j * yn.T, djn.T + 1j * dyn.T
+
+                    incident_exterior_field[ib] = _np.dot(
+                        self.model.interior_coefficients[0, :].T, h1n * legendre
+                    )
+                    scattered_field[ib] = _np.dot(
+                        self.model.interior_coefficients[1, :].T, jn.T * legendre
+                    )
+                    total_field[ib] = incident_exterior_field[ib] + scattered_field[ib]
+
+                elif subdomain_no == 1:
+                    jn, djn = _np.array(
+                        list(
+                            zip(
+                                *[
+                                    sph_jn(n_iter - 1, k_int[1] * r)
+                                    for r in radial_space
+                                ]
+                            )
+                        )
+                    )
+                    total_field[ib] = _np.dot(
+                        self.model.interior_coefficients[2, :].T, jn.T * legendre
+                    )
 
         self.total_field = total_field
         self.scattered_field = scattered_field
