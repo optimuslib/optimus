@@ -531,6 +531,11 @@ class Analytical(_Model):
                 + self.geometry.shape
             )
 
+        if geometry.origin != (0, 0, 0):
+            raise NotImplementedError(
+                "Analytical model only supports a sphere centred at (0, 0, 0)."
+            )
+
         return geometry
 
     def _setup_material_interior(self, material):
@@ -698,6 +703,11 @@ class AnalyticalTwoSpheres(_Model):
                     + " Not for "
                     + geometry[count].shape
                 )
+
+        if geometry[0].origin != (0, 0, 0) or geometry[1].origin != (0, 0, 0):
+            raise NotImplementedError(
+                "Analytical model only supports a spheres centred at (0, 0, 0)."
+            )
 
         if geometry[0].origin != geometry[1].origin:
             raise NotImplementedError(
