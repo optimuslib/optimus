@@ -74,7 +74,7 @@ def check_validity_exterior_formulation(
 
 
 def check_validity_nested_formulation(
-    formulation, preconditioner, n_interfaces
+    formulation, preconditioner, parameters, n_interfaces
 ):
     """
     Check if the specified formulation and preconditioner is a valid choice
@@ -98,6 +98,8 @@ def check_validity_nested_formulation(
         The type of formulation, possibly different for each interface.
     preconditioner : str, list[str], tuple[str]
         The type of operator preconditioner, possibly different for each interface.
+    parameters : dict, list[dict], tuple[dict], None
+        The parameters for the preconditioned formulations.
     n_interfaces : int
         The number of interfaces in the nested geometry, including the unbounded
         one at infinity.
@@ -108,6 +110,8 @@ def check_validity_nested_formulation(
         The type of formulation for each interface.
     preconditioners : list[str]
         The type of operator preconditioner for each interface.
+    parameters_list : list[dict]
+        The parameters of the preconditioned formulation for each interface.
     """
 
     if isinstance(formulation, str):
@@ -130,6 +134,18 @@ def check_validity_nested_formulation(
     else:
         raise ValueError("The preconditioner must be a string, list or tuple.")
 
+    if parameters is None:
+        parameters_list = [{}] * (n_interfaces - 1)
+    elif isinstance(parameters, dict):
+        parameters_list = [parameters] * (n_interfaces - 1)
+    elif isinstance(parameters, (list, tuple)):
+        parameters_list = list(parameters)
+        for param in parameters:
+            if not isinstance(param, dict):
+                raise ValueError("The parameters must be a dictionary.")
+    else:
+        raise ValueError("The parameters must be a dictionary, list or tuple.")
+
     # If necessary, prepend the default formulation and preconditioner for the
     # unbounded exterior surface, on which no integral equation is defined.
 
@@ -139,6 +155,9 @@ def check_validity_nested_formulation(
     if len(preconditioners) == n_interfaces - 1:
         preconditioners = ["none"] + preconditioners
 
+    if len(parameters_list) == n_interfaces - 1:
+        parameters_list = [{}] + parameters_list
+
     if len(formulations) != n_interfaces:
         raise ValueError(
             "The number of formulations must be equal to the number of interfaces."
@@ -147,6 +166,11 @@ def check_validity_nested_formulation(
     if len(preconditioners) != n_interfaces:
         raise ValueError(
             "The number of preconditioners must be equal to the number of interfaces."
+        )
+
+    if len(parameters_list) != n_interfaces:
+        raise ValueError(
+            "The number of parameters must be equal to the number of interfaces."
         )
 
     # The unbounded exterior surface has no boundary integral equation.
@@ -209,7 +233,7 @@ def check_validity_nested_formulation(
                 "multitrace formulations."
             )
 
-    return formulations, preconditioners
+    return formulations, preconditioners, parameters_list
 
 
 def assign_representation(formulations):

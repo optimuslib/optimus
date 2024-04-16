@@ -63,8 +63,9 @@ def create_nested_model(
         The type of formulation, possibly different for each interface.
     preconditioner : str, list[str]
         The type of operator preconditioner, possibly different for each interface.
-    parameters : dict, None
-        The parameters for the formulation and preconditioner.
+    parameters : dict, list[dict], None
+        The parameters for the formulation and preconditioner, possibly
+        different for each interface.
     label : str
         The label of the model.
 
@@ -106,11 +107,11 @@ class NestedModel(_GraphModel):
             The graph topology representing the geometry.
         frequency : float
             The frequency of the harmonic wave propagation model.
-        formulation : list[str]
+        formulation : str, list[str]
             The type of formulation for each interface.
-        preconditioner : list[str]
+        preconditioner : str, list[str]
             The type of operator preconditioner for each interface.
-        parameters : dict, None
+        parameters : dict, list[str], None
             The parameters for the formulation and preconditioner.
         label : str
             The label of the model.
@@ -125,13 +126,15 @@ class NestedModel(_GraphModel):
         super().__init__(topology, label)
 
         self.frequency = check_sources(frequency, topology.subdomain_nodes)
-        self.formulation, self.preconditioner = check_validity_nested_formulation(
-            formulation,
-            preconditioner,
-            topology.number_interface_nodes(),
+        self.formulation, self.preconditioner, self.parameters = (
+            check_validity_nested_formulation(
+                formulation,
+                preconditioner,
+                parameters,
+                topology.number_interface_nodes(),
+            )
         )
         self.representation = assign_representation(self.formulation)
-        self.parameters = parameters
 
         self.spaces = None
         self.continuous_preconditioners = None
@@ -285,7 +288,7 @@ class NestedModel(_GraphModel):
                                 ].material,
                             ),
                             frequency=self.frequency,
-                            parameters=self.parameters,
+                            parameters=self.parameters[interface_id],
                             calderon_operators=calderon_operators,
                         )
                     )
