@@ -161,18 +161,20 @@ class NestedModel(_GraphModel):
         ----------
         timing : bool
             Store the computation time of the solution process.
+        verbosity : bool
+            Print information about the solution process.
         """
         from optimus import global_parameters
         import time
 
         if global_parameters.verbosity:
             verbosity = True
-
+            
         global_parameters.bem.update_hmat_parameters("boundary")
 
-        self._create_function_spaces()
+        self._create_function_spaces() 
 
-        self._create_continuous_operators()
+        self._create_continuous_operators() 
 
         self._create_continuous_preconditioners()
 
@@ -228,14 +230,23 @@ class NestedModel(_GraphModel):
         """
 
         from bempp.api import function_space
-
-        self.spaces = []
-        for interface in self.topology.interface_nodes:
+        if self.spaces is None:
+            self.spaces = []
+        for i in range(len(self.spaces)):
+            interface = self.topology.interface_nodes[i]
+            if interface.is_active() and interface.bounded:
+                if interface.modified_geometry:
+                    self.spaces[i] = function_space(interface.geometry.grid, "P", 1)
+                    interface.modified_geometry = False
+            else:
+                self.spaces[i] = None
+        for j in range(len(self.spaces), len(self.topology.interface_nodes)):
+            interface = self.topology.interface_nodes[j]
             if interface.is_active() and interface.bounded:
                 self.spaces.append(function_space(interface.geometry.grid, "P", 1))
+                interface.modified_geometry = False
             else:
                 self.spaces.append(None)
-
         return
 
     def _create_continuous_preconditioners(self):
@@ -301,6 +312,65 @@ class NestedModel(_GraphModel):
 
         return
 
+    def calc_boundary_integral_operators(self, interface_connector, operator_id):
+        """
+        Calculate boundary integral operators for nested domains.
+        
+        For the interface connector given, specify parameters  
+        
+        Parameters
+        ----------
+        interface_connector : optimus.geometry.graph_topology.InterfaceConnector
+            The interface connector.
+        operator_id : int
+            The identifier of the operator.
+        
+        Returns
+        ----------
+        boundary_operators : tuple[dict[str, bempp.api.assembly.boundary_operator.BoundaryOperator]]
+            The continuous boundary integral operators. The tuple contains
+            two items, one for each direction of the connector. Each item
+            contains a dictionary with the necessary boundary integral
+            operators for the interface connector.
+        """
+
+        interface_ids = interface_connector.interfaces_ids
+        subdomain_id = interface_connector.subdomain_id
+
+        # The formulation and preconditioning type at both ends of the
+        # connector need to be passed on.
+        formulation_names = (
+            self.formulation[interface_ids[0]],
+            self.formulation[interface_ids[1]],
+        )
+        preconditioner_names = (
+            self.preconditioner[interface_ids[0]],
+            self.preconditioner[interface_ids[1]],
+        )
+
+        spaces = (
+            self.spaces[interface_ids[0]],
+            self.spaces[interface_ids[1]],
+        )
+        
+        geometries = (
+            self.topology.interface_nodes[interface_ids[0]].geometry,
+            self.topology.interface_nodes[interface_ids[1]].geometry,
+        )
+
+        boundary_operators = BoundaryIntegralOperators(
+                identifier=operator_id,
+                connector=interface_connector,
+                formulations=formulation_names,
+                preconditioners=preconditioner_names,
+                spaces=spaces,
+                material=self.topology.subdomain_nodes[subdomain_id].material,
+                geometries=geometries,
+                frequency=self.frequency,
+                densities=self._get_outside_densities(interface_connector),
+            )
+        return boundary_operators
+    
     def _create_continuous_operators(self):
         """
         Create the continuous boundary integral operators for nested domains.
@@ -309,53 +379,31 @@ class NestedModel(_GraphModel):
         operators and store all of them in a list that correspond to the same
         interface connector. Each element in the list is a special object for
         boundary integral operators.
+        If the material in the topology changed, the operators will be updated.
+        If the topology changed, the new operators will be added to the list.
 
         Sets "self.continuous_operators" to a list of BoundaryIntegralOperators.
         """
-
-        self.continuous_operators = []
-        for connector in self.topology.interface_connectors:
+        
+        if self.continuous_operators is None:
+            self.continuous_operators = []
+        for i in range(len(self.continuous_operators)):
+            connector = self.topology.interface_connectors[i]
             if connector.is_active():
-                interface_ids = connector.interfaces_ids
-                subdomain_id = connector.subdomain_id
-
-                # The formulation and preconditioning type at both ends of the
-                # connector need to be passed on.
-                formulation_names = (
-                    self.formulation[interface_ids[0]],
-                    self.formulation[interface_ids[1]],
-                )
-                preconditioner_names = (
-                    self.preconditioner[interface_ids[0]],
-                    self.preconditioner[interface_ids[1]],
-                )
-
-                spaces = (
-                    self.spaces[interface_ids[0]],
-                    self.spaces[interface_ids[1]],
-                )
-                geometries = (
-                    self.topology.interface_nodes[interface_ids[0]].geometry,
-                    self.topology.interface_nodes[interface_ids[1]].geometry,
-                )
-
-                self.continuous_operators.append(
-                    BoundaryIntegralOperators(
-                        identifier=len(self.continuous_operators),
-                        connector=connector,
-                        formulations=formulation_names,
-                        preconditioners=preconditioner_names,
-                        spaces=spaces,
-                        material=self.topology.subdomain_nodes[subdomain_id].material,
-                        geometries=geometries,
-                        frequency=self.frequency,
-                        densities=self._get_outside_densities(connector),
-                    )
-                )
-
+                if connector.modified_material:                            
+                    operators = self.calc_boundary_integral_operators(connector, i)
+                    self.continuous_operators[i] = operators
+                    connector.modified_material = False
+            else:
+                self.continuous_operators[i] = None
+        for j in range(len(self.continuous_operators), len(self.topology.interface_connectors)):
+            connector = self.topology.interface_connectors[j]
+            if connector.is_active():
+                operators = self.calc_boundary_integral_operators(connector, j)
+                self.continuous_operators.append(operators)
+                connector.modified_material = False
             else:
                 self.continuous_operators.append(None)
-
         return
 
     def _get_outside_densities(self, connector):
