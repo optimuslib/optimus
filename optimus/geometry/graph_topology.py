@@ -716,6 +716,10 @@ class Graph:
             )
 
         subdomain_node.update_material(material)
+        
+        for connector in self.interface_connectors:
+            if connector.subdomain_id == subdomain_id:
+                connector.modified_material = True
 
         return
 
@@ -732,7 +736,7 @@ class Graph:
         verbose : bool
             Display information.
         """
-
+        
         if interface_id < 0 or interface_id >= len(self.interface_nodes):
             raise ValueError(
                 "The interface "
@@ -744,7 +748,10 @@ class Graph:
             raise ValueError(
                 "The interface " + str(interface_id) + " is not active in the topology."
             )
-
+        if not interface_node.bounded:
+            raise ValueError(
+                "The interface " + str(interface_id) + " is the exterior interface."
+            )
         if verbose:
             print(
                 "Change geometry of interface "
@@ -1159,6 +1166,7 @@ class InterfaceNode(_GraphNode):
         self.child_interfaces_ids = child_interfaces
 
         self.geometry = geometry
+        self.modified_geometry = True
 
         return
 
@@ -1231,6 +1239,7 @@ class InterfaceNode(_GraphNode):
         """
 
         self.geometry = geometry
+        self.modified_geometry = True
 
         return
 
@@ -1392,8 +1401,10 @@ class InterfaceConnector(_GraphComponent):
             topology, interface_nodes
         )
         self.subdomain_id = subdomain_node
+        self.modified_material = True
 
         return
+    
 
     @staticmethod
     def check_topology(topology, interface_nodes):
