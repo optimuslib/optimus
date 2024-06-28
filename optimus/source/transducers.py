@@ -156,11 +156,9 @@ class _Transducer:
         """
 
         if self.source.number_of_point_sources_per_wavelength == 0:
-
             locations_inside_transducer = _np.zeros((3, 1))
 
         else:
-
             wavelength = 2 * _np.pi / self.wavenumber.real
             distance_between_points = (
                 wavelength / self.source.number_of_point_sources_per_wavelength
@@ -310,7 +308,6 @@ class _Transducer:
             )
 
         if self.verbose:
-
             if self.source.inner_radius is None:
                 radius_section = self.source.radius_of_curvature - _np.sqrt(
                     self.source.radius_of_curvature**2 - self.source.outer_radius**2
@@ -333,13 +330,14 @@ class _Transducer:
         return locations_inside_transducer, surface_area_weighting
 
     def define_source_points_in_reference_array(self):
-        """Define the source points for a reference spherical section
-        array transducer, that is, the source points on a spherical
+        """Define the source points for a reference spherical section or planar
+        array transducer. For a spherical array, the source points on a spherical
         section bowl whose apex is in contact with the z=0 plane,
-        at the global origin and whose axis is the Cartesian x-axis.
+        at the global origin and whose axis is the Cartesian x-axis. For a planar array,
+        the source points lie in the xy Cartesian plane.
         The array is defined by the location of the element centroids
-        and the radius of the elements. The resolution of the points is determined by the specified
-        number of point sources per wavelength which must be strictly
+        and the radius of the elements. The resolution of the points is determined by
+        the specified number of point sources per wavelength which must be strictly
         positive. The surface area weighting is uniform.
 
         Returns
@@ -361,7 +359,6 @@ class _Transducer:
         source_locations_array = _np.empty((3, n_points_array), dtype="float")
 
         for element_number in range(self.source.number_of_elements):
-
             source_locations_directed = _rotate(
                 locations_inside_transducer,
                 self.source.element_normals[:, element_number],
@@ -375,7 +372,8 @@ class _Transducer:
             )
             source_locations_array[:, indices] = source_locations_transformed
 
-        source_locations_array[2, :] += self.source.radius_of_curvature
+        if self.source.array_type is "spherical":
+            source_locations_array[2, :] += self.source.radius_of_curvature
 
         return source_locations_array, surface_area_weighting
 
@@ -568,7 +566,7 @@ def init_worker_pool_shared(
     pressure_shape,
     gradient_real_buffer,
     gradient_imag_buffer,
-    gradient_shape
+    gradient_shape,
 ):
     """Function to initialize the worker pool in the case of using the shared memory
     version of Multiprocessing. All information about the arrays (inputs and outputs) shared
@@ -675,7 +673,6 @@ def calc_field_from_point_sources(
     )
 
     if parallelisation_method.lower() == "numba":
-
         if verbose:
             print("Parallelisation library is: numba")
 
@@ -700,7 +697,6 @@ def calc_field_from_point_sources(
         "mp",
         "multi-processing",
     ]:
-
         if verbose:
             print("Parallelisation library is: multiprocessing")
 
@@ -726,7 +722,6 @@ def calc_field_from_point_sources(
         )
 
         if source_parallelisation:
-
             if verbose:
                 print(
                     "Parallelisation of incident field calculation "
@@ -752,7 +747,6 @@ def calc_field_from_point_sources(
             )
 
         else:
-
             if verbose:
                 print(
                     "Parallelisation of incident field calculation "
@@ -796,7 +790,6 @@ def calc_field_from_point_sources(
         "mps",
         "multi-processing-shared",
     ]:
-
         if verbose:
             print("Parallelisation library is: multiprocessing (shared)")
 
@@ -826,12 +819,8 @@ def calc_field_from_point_sources(
         locations_observation_buffer = _mp.RawArray(
             "d", locations_observation_shape[0] * locations_observation_shape[1]
         )
-        source_weights_real_buffer = _mp.RawArray(
-            "d", source_weights_shape[0]
-        )
-        source_weights_imag_buffer = _mp.RawArray(
-            "d", source_weights_shape[0]
-        )
+        source_weights_real_buffer = _mp.RawArray("d", source_weights_shape[0])
+        source_weights_imag_buffer = _mp.RawArray("d", source_weights_shape[0])
         locations_source_np = _np.frombuffer(
             locations_source_buffer, dtype=_np.float64
         ).reshape(locations_source_shape)
@@ -903,7 +892,6 @@ def calc_field_from_point_sources(
         )
 
         if source_parallelisation:
-
             if verbose:
                 print(
                     "Parallelisation of incident field calculation "
@@ -926,7 +914,6 @@ def calc_field_from_point_sources(
             )
 
         else:
-
             if verbose:
                 print(
                     "Parallelisation of incident field calculation "
@@ -1112,11 +1099,10 @@ def calc_field_from_point_sources_mp_source_para(
     pressure = _np.empty(number_of_observation_locations, dtype=_np.complex)
     gradient = _np.empty((3, number_of_observation_locations), dtype=_np.complex)
 
-    i1, i2 = chunks_index_source[parallelisation_index:parallelisation_index + 2]
+    i1, i2 = chunks_index_source[parallelisation_index : parallelisation_index + 2]
 
     for i in range(len(chunks_index_field) - 1):
-
-        j1, j2 = chunks_index_field[i:i + 2]
+        j1, j2 = chunks_index_field[i : i + 2]
 
         (pressure[j1:j2], gradient[:, j1:j2],) = calc_field_from_point_sources_numpy(
             locations_source[:, i1:i2],
@@ -1176,23 +1162,21 @@ def calc_field_from_point_sources_mp_source_para_shared(
     source_weights_imag_np = _np.frombuffer(
         workers_dict["source_weights_imag_buffer"], dtype=_np.float64
     ).reshape(workers_dict["source_weights_shape"])
-    source_weights_np = _np.empty(workers_dict["source_weights_shape"], dtype=_np.complex128)
+    source_weights_np = _np.empty(
+        workers_dict["source_weights_shape"], dtype=_np.complex128
+    )
     source_weights_np.real = source_weights_real_np
     source_weights_np.imag = source_weights_imag_np
 
     pressure = _np.empty(number_of_observation_locations, dtype=_np.complex)
     gradient = _np.empty((3, number_of_observation_locations), dtype=_np.complex)
 
-    i1, i2 = chunks_index_source[parallelisation_index:parallelisation_index + 2]
+    i1, i2 = chunks_index_source[parallelisation_index : parallelisation_index + 2]
 
     for i in range(len(chunks_index_field) - 1):
+        j1, j2 = chunks_index_field[i : i + 2]
 
-        j1, j2 = chunks_index_field[i:i + 2]
-
-        (
-            pressure[j1:j2],
-            gradient[:, j1:j2],
-        ) = calc_field_from_point_sources_numpy(
+        (pressure[j1:j2], gradient[:, j1:j2],) = calc_field_from_point_sources_numpy(
             locations_source_np[:, i1:i2],
             locations_observation_np[:, j1:j2],
             frequency,
@@ -1271,7 +1255,7 @@ def calc_field_from_point_sources_mp_field_para(
         pressure field in the observation points.
     """
 
-    j1, j2 = chunks_index_field[parallelisation_index:parallelisation_index + 2]
+    j1, j2 = chunks_index_field[parallelisation_index : parallelisation_index + 2]
 
     pressure_tmp = _np.ndarray(
         shape=(j2 - j1, len(chunks_index_source) - 1), dtype=_np.complex
@@ -1281,7 +1265,7 @@ def calc_field_from_point_sources_mp_field_para(
     )
 
     for i in range(len(chunks_index_source) - 1):
-        i1, i2 = chunks_index_source[i:i + 2]
+        i1, i2 = chunks_index_source[i : i + 2]
 
         (
             pressure_tmp[:, i],
@@ -1344,11 +1328,13 @@ def calc_field_from_point_sources_mp_field_para_shared(
     source_weights_imag_np = _np.frombuffer(
         workers_dict["source_weights_imag_buffer"], dtype=_np.float64
     ).reshape(workers_dict["source_weights_shape"])
-    source_weights_np = _np.empty(workers_dict["source_weights_shape"], dtype=_np.complex128)
+    source_weights_np = _np.empty(
+        workers_dict["source_weights_shape"], dtype=_np.complex128
+    )
     source_weights_np.real = source_weights_real_np
     source_weights_np.imag = source_weights_imag_np
 
-    j1, j2 = chunks_index_field[parallelisation_index:parallelisation_index + 2]
+    j1, j2 = chunks_index_field[parallelisation_index : parallelisation_index + 2]
 
     pressure_tmp = _np.ndarray(
         shape=(j2 - j1, len(chunks_index_source) - 1), dtype=_np.complex
@@ -1358,7 +1344,7 @@ def calc_field_from_point_sources_mp_field_para_shared(
     )
 
     for i in range(len(chunks_index_source) - 1):
-        i1, i2 = chunks_index_source[i:i + 2]
+        i1, i2 = chunks_index_source[i : i + 2]
 
         (
             pressure_tmp[:, i],
