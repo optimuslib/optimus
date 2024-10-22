@@ -171,7 +171,6 @@ def plot_regions(postprocess_obj, display_edges=False, file_name=None):
 
 def surface_plot(
     quantity,
-    interpolation,
     axes_lims,
     axes_labels,
     colormap,
@@ -179,6 +178,7 @@ def surface_plot(
     colorbar_label,
     colorbar_ticks=None,
     colorbar_ticklabels=None,
+    interpolation="bilinear",
     domains_edges=None,
     file_name=None,
 ):
@@ -189,8 +189,6 @@ def surface_plot(
     ----------
     quantity : np.ndarray
         The quantity to be plotted.
-    interpolation : string
-        The interpolation method for the imshow plot.
     axes_lims : list float, tuple float
         List of minima and maxima of h-axis and v-axis of the 2D contour plot,
         in the form of (h_axis_min, h_axis_max, v_axis_min, v_axis_max).
@@ -206,6 +204,8 @@ def surface_plot(
         The tick locationss for the colorbar.
     colorbar_ticklabels : list[str], None
         The tick labels for the colorbar.
+    interpolation : string
+        The interpolation method for the imshow plot.
     domains_edges : list[numpy.ndarray], None
         If the intersection points of the domains and the visualisation plane is
         passed as a list, they are overlaid to the field plot.
