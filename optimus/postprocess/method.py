@@ -170,7 +170,7 @@ class VisualiseCloudPoints(_PostProcess):
 
         plot = k3d.plot()
         plot += k3d.factory.points(
-            self.points, attribute=abs(self.field.total_field), point_size=size
+            self.points.T, attribute=abs(self.field.total_field), point_size=size
         )
 
         plot.display()
