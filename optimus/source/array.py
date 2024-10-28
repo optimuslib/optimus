@@ -21,8 +21,10 @@ def create_array(
     location=(0, 0, 0),
     centroid_locations=None,
     centroid_locations_filename=None,
+    array_type="spherical",
 ):
-    """Create an array source consisting of circular piston elements distributed on a spherical section bowl.
+    """Create an array source consisting of circular piston elements distributed on a
+    spherical section bowl or on a plane.
 
     Parameters
     ----------
@@ -31,7 +33,8 @@ def create_array(
     element_radius : float
         The radius of elements which lie on the spherical section bowl.
     velocity : complex, numpy.ndarray complex
-        Array of size (N,) with complex values for the normal velocities of the array elements. If one value is specified, this will be repeated for all array elements. Default : 1 m/s
+        Array of size (N,) with complex values for the normal velocities of the array elements.
+        If one value is specified, this will be repeated for all array elements. Default : 1 m/s
     source_axis : tuple float
         The direction vector of the axis of the bowl. Default: positive x direction
     number_of_point_sources_per_wavelength : integer
@@ -39,9 +42,16 @@ def create_array(
     location : tuple float
         The location of the centroid of the bowl. Default: global origin
     centroid_locations : numpy.ndarray
-        An array of size (3, N) with the locations of the centroids of the piston elements. These must be specified in a local coordinate sytem where the axis of the transducer is the Cartesian positive z-axis and the focus of the transducer is (0,0,0).
+        An array of size (3, N) with the locations of the centroids of the piston elements.
+        For a spherical type array, these must be specified in a local coordinate sytem where
+        the axis of the transducer is the Cartesian positive z-axis and the focus of the transducer
+        is (0,0,0).
+        For a planar array, the locations of the centroids of the piston elements must be specified
+        in the z=0 plane, whereby the axis of the transducer is the Cartesian positive z-axis.
     centroid_locations_filename : str
         Path and filename containing the centroid locations data. The file extension has to be ".dat".
+    array_type : str
+        Type of array considered. Can be either planar or spherical.
     """
 
     return _Array(
@@ -53,6 +63,7 @@ def create_array(
         location,
         centroid_locations,
         centroid_locations_filename,
+        array_type,
     )
 
 
@@ -67,6 +78,7 @@ class _Array(_Source):
         location,
         centroid_locations,
         centroid_locations_filename,
+        array_type,
     ):
         super().__init__("array", frequency)
 
@@ -94,11 +106,15 @@ class _Array(_Source):
             velocity, shape=(self.number_of_elements,), label="velocity"
         )
 
+        self.array_type = array_type
+
         self.radius_of_curvature = self._calc_radius_of_curvature(
-            self.centroid_locations
+            self.centroid_locations, self.array_type
         )
 
-        self.element_normals = -_normalize_vector(self.centroid_locations)
+        self.element_normals = self._calc_element_normals(
+            self.centroid_locations, array_type
+        )
 
     def _calc_centroid_locations(self, centroid_locations, centroid_locations_filename):
         """Calculates centroid locations.
@@ -132,9 +148,36 @@ class _Array(_Source):
                 raise ValueError(
                     "The centroid locations filename must have a dat extension."
                 )
+
         return centroid_locations
 
-    def _calc_radius_of_curvature(self, centroid_locations):
+    def _calc_element_normals(self, centroid_locations, array_type):
+        """Calculates the array element normals from centroid locations depending on the
+        array type.
+
+        Parameters
+        ----------
+        centroid_locations : numpy.ndarray
+            An array of size (3, N) with the locations of the centroids of the piston elements.
+        array_type : str
+            The type of array. Can be spherical or planar.
+        Returns
+        -------
+        element_normals : numpy.ndarray
+            An array of size (3, N) with the locations of the centroids of the piston elements.
+        """
+
+        if array_type is "spherical":
+            element_normals = -_normalize_vector(self.centroid_locations)
+        elif array_type is "planar":
+            element_normals = _np.zeros((3, centroid_locations.shape[1]), dtype="float")
+            element_normals[2, :] = _np.ones(centroid_locations.shape[1], dtype="float")
+        else:
+            raise NotImplementedError
+
+        return element_normals
+
+    def _calc_radius_of_curvature(self, centroid_locations, array_type):
         """Calculates the radius of curvature of the array transducer from centroid
         locations.
 
@@ -149,17 +192,27 @@ class _Array(_Source):
             The radius of curvature of the array.
         """
 
-        centroid_locations_l2_norm = _np.linalg.norm(centroid_locations, axis=0)
-        centroid_locations_l2_norm_std = _np.std(centroid_locations_l2_norm)
-        radius_of_curvature_from_centroid_locations = _np.mean(
-            centroid_locations_l2_norm
-        )
-
-        radius_of_curvature_tol = 1e-6
-        if centroid_locations_l2_norm_std > radius_of_curvature_tol:
-            raise ValueError(
-                "Array element centroid locations do not appear to lie on a sphere."
+        if array_type is "spherical":
+            centroid_locations_l2_norm = _np.linalg.norm(centroid_locations, axis=0)
+            centroid_locations_l2_norm_std = _np.std(centroid_locations_l2_norm)
+            radius_of_curvature_from_centroid_locations = _np.mean(
+                centroid_locations_l2_norm
             )
+
+            radius_of_curvature_tol = 1e-6
+            if centroid_locations_l2_norm_std > radius_of_curvature_tol:
+                raise ValueError(
+                    "Array element centroid locations do not appear to lie on a sphere."
+                )
+        elif array_type is "planar":
+            radius_of_curvature_from_centroid_locations = None
+
+            z_coordinate_tol = 1e-6
+            centroid_z_locations_std = _np.std(centroid_locations[2, :])
+            if centroid_z_locations_std > z_coordinate_tol:
+                raise ValueError(
+                    "Array element centroid locations do not appear to lie in the xy plane."
+                )
 
         return radius_of_curvature_from_centroid_locations
 

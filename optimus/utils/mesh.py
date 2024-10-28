@@ -206,6 +206,98 @@ def translate_mesh(geometry, translation_vector):
     return _Geometry(new_grid, label=geometry.label + "_translated")
 
 
+def rotate_mesh(geometry, rotation_angles):
+    """
+    Rotate the entire geometry by the rotation angles.
+
+    The connectivity of the mesh remains intact.
+
+    Parameters
+    ----------
+    geometry: optimus.geometry.common.Geometry
+        The geometry to rotate.
+    rotation_angles : list[float]
+        The three rotation angles (x, y, z).
+
+    Returns
+    -------
+    geometry: optimus.geometry.common.Geometry
+        A new, rotated geometry.
+    """
+
+    if len(rotation_angles) != 3:
+        raise ValueError(
+            "The input angles must be a list of three floats, "
+            "the three rotation angles (x,y,z)"
+        )
+
+    alpha, beta, gamma = rotation_angles
+    rotation_matrix_x = _np.array(
+        [
+            [1, 0, 0],
+            [0, _np.cos(alpha), -_np.sin(alpha)],
+            [0, _np.sin(alpha), _np.cos(alpha)],
+        ]
+    )
+    rotation_matrix_y = _np.array(
+        [
+            [_np.cos(beta), 0, _np.sin(beta)],
+            [0, 1, 0],
+            [-_np.sin(beta), 0, _np.cos(beta)],
+        ]
+    )
+    rotation_matrix_z = _np.array(
+        [
+            [_np.cos(gamma), -_np.sin(gamma), 0],
+            [_np.sin(gamma), _np.cos(gamma), 0],
+            [0, 0, 1],
+        ]
+    )
+
+    old_vertices = geometry.grid.leaf_view.vertices
+    new_vertices = (
+        rotation_matrix_z @ rotation_matrix_y @ rotation_matrix_x @ old_vertices
+    )
+
+    new_grid = _bempp.grid.grid_from_element_data(
+        new_vertices,
+        geometry.grid.leaf_view.elements,
+        geometry.grid.leaf_view.domain_indices,
+    )
+    return _Geometry(new_grid, label=geometry.label + "_rotated")
+
+
+def rotate_mesh_around_center(geometry, rotation_angles):
+    """
+    Rotate the entire geometry by the rotation angles around its center.
+
+    The connectivity of the mesh remains intact.
+
+    Parameters
+    ----------
+    geometry: optimus.geometry.common.Geometry
+        The geometry to rotate.
+    rotation_angles : list[float]
+        The three rotation angles (x, y, z).
+
+    Returns
+    -------
+    geometry: optimus.geometry.common.Geometry
+        A new, rotated geometry.
+    """
+    origin = [
+        (geometry.grid.bounding_box[0][0] + geometry.grid.bounding_box[1][0]) / 2,
+        (geometry.grid.bounding_box[0][1] + geometry.grid.bounding_box[1][1]) / 2,
+        (geometry.grid.bounding_box[0][2] + geometry.grid.bounding_box[1][2]) / 2,
+    ]
+    first_translation = translate_mesh(geometry, [-x for x in origin])
+    rotation = rotate_mesh(first_translation, rotation_angles)
+    new_geometry = translate_mesh(rotation, origin)
+    new_geometry.label = new_geometry.label[:-29] + "rotated_around_center"
+
+    return new_geometry
+
+
 def msh_from_string(geo_string):
     """Create a mesh from a string."""
 

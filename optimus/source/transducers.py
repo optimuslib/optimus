@@ -58,7 +58,9 @@ def transducer_field(
 
 class _Transducer:
     def __init__(self, source, medium, field_locations, normals, verbose):
-        """Functionality to create different types of transducer sources and calculate the pressure field emitted from them."""
+        """Functionality to create different types of transducer sources and calculate the pressure
+        field emitted from them.
+        """
 
         self.source = source
         self.field_locations = field_locations
@@ -328,13 +330,14 @@ class _Transducer:
         return locations_inside_transducer, surface_area_weighting
 
     def define_source_points_in_reference_array(self):
-        """Define the source points for a reference spherical section
-        array transducer, that is, the source points on a spherical
+        """Define the source points for a reference spherical section or planar
+        array transducer. For a spherical array, the source points on a spherical
         section bowl whose apex is in contact with the z=0 plane,
-        at the global origin and whose axis is the Cartesian x-axis.
+        at the global origin and whose axis is the Cartesian x-axis. For a planar array,
+        the source points lie in the xy Cartesian plane.
         The array is defined by the location of the element centroids
-        and the radius of the elements. The resolution of the points is determined by the specified
-        number of point sources per wavelength which must be strictly
+        and the radius of the elements. The resolution of the points is determined by
+        the specified number of point sources per wavelength which must be strictly
         positive. The surface area weighting is uniform.
 
         Returns
@@ -369,7 +372,8 @@ class _Transducer:
             )
             source_locations_array[:, indices] = source_locations_transformed
 
-        source_locations_array[2, :] += self.source.radius_of_curvature
+        if self.source.array_type is "spherical":
+            source_locations_array[2, :] += self.source.radius_of_curvature
 
         return source_locations_array, surface_area_weighting
 
@@ -549,6 +553,74 @@ def calc_greens_functions_in_observation_points_numba(
     )
 
 
+def init_worker_pool_shared(
+    locations_source_buffer,
+    locations_source_shape,
+    locations_observation_buffer,
+    locations_observation_shape,
+    source_weights_real_buffer,
+    source_weights_imag_buffer,
+    source_weights_shape,
+    pressure_real_buffer,
+    pressure_imag_buffer,
+    pressure_shape,
+    gradient_real_buffer,
+    gradient_imag_buffer,
+    gradient_shape,
+):
+    """Function to initialize the worker pool in the case of using the shared memory
+    version of Multiprocessing. All information about the arrays (inputs and outputs) shared
+    between workers is stored in a global dictionary called workers_dict.
+
+    Parameters
+    ----------
+    locations_source_buffer : multiprocessing.RawArray
+        Buffer to the source locations for the pressure field calculation.
+    locations_source_shape : tuple
+        Shape of the source locations array.
+    locations_observation_buffer : multiprocessing.RawArray
+        Buffer to the observation locations for the pressure field calculation.
+    locations_observation_shape : tuple
+        Shape of the observation locations array.
+    source_weights_real_buffer : multiprocessing.RawArray
+        Buffer to the source weights real part for the pressure field calculation.
+    source_weights_imag_buffer : multiprocessing.RawArray
+        Buffer to the source weights imaginary part for the pressure field calculation.
+    source_weights_shape : tuple
+        Shape of the source weights array.
+    pressure_real_buffer : multiprocessing.Array
+        Buffer to the real part of the calculated pressure field in the observation points.
+    pressure_imag_buffer : multiprocessing.Array
+        Buffer to the imaginary part of the calculated pressure field in the observation points.
+    pressure_shape : tuple
+        Shape of the calculated pressure field array.
+    gradient_real_buffer : multiprocessing.Array
+        Buffer to the real part of the calculated gradient of the pressure field in the
+        observation points.
+    gradient_imag_buffer : multiprocessing.Array
+        Buffer to the imaginary part of the calculated gradient of the pressure field in the
+        observation points.
+    gradient_shape : tuple
+        Shape of the calculated gradient of the pressure field array.
+    """
+    global workers_dict
+
+    workers_dict["locations_source_buffer"] = locations_source_buffer
+    workers_dict["locations_source_shape"] = locations_source_shape
+    workers_dict["locations_observation_buffer"] = locations_observation_buffer
+    workers_dict["locations_observation_shape"] = locations_observation_shape
+    workers_dict["source_weights_real_buffer"] = source_weights_real_buffer
+    workers_dict["source_weights_imag_buffer"] = source_weights_imag_buffer
+    workers_dict["source_weights_shape"] = source_weights_shape
+
+    workers_dict["pressure_real_buffer"] = pressure_real_buffer
+    workers_dict["pressure_imag_buffer"] = pressure_imag_buffer
+    workers_dict["pressure_shape"] = pressure_shape
+    workers_dict["gradient_real_buffer"] = gradient_real_buffer
+    workers_dict["gradient_imag_buffer"] = gradient_imag_buffer
+    workers_dict["gradient_shape"] = gradient_shape
+
+
 def calc_field_from_point_sources(
     locations_source,
     locations_observation,
@@ -712,6 +784,176 @@ def calc_field_from_point_sources(
             pressure = _np.hstack(result_as_array[..., 0])
             gradient = _np.hstack(result_as_array[..., 1])
 
+    elif parallelisation_method.lower() in [
+        "multiprocessing_shared",
+        "multiprocessingshared",
+        "mps",
+        "multi-processing-shared",
+    ]:
+        if verbose:
+            print("Parallelisation library is: multiprocessing (shared)")
+
+        (
+            chunks_index_source,
+            chunks_index_field,
+            number_of_source_chunks,
+            number_of_field_chunks,
+        ) = chunk_size_index(
+            locations_source,
+            locations_observation,
+        )
+
+        number_of_workers = global_parameters.incident_field_parallelisation.cpu_count
+
+        # Shared Memory initialization:
+        global workers_dict
+        workers_dict = {}
+
+        # Input arrays:
+        locations_source_shape = locations_source.shape
+        locations_observation_shape = locations_observation.shape
+        source_weights_shape = source_weights.shape
+        locations_source_buffer = _mp.RawArray(
+            "d", locations_source_shape[0] * locations_source_shape[1]
+        )
+        locations_observation_buffer = _mp.RawArray(
+            "d", locations_observation_shape[0] * locations_observation_shape[1]
+        )
+        source_weights_real_buffer = _mp.RawArray("d", source_weights_shape[0])
+        source_weights_imag_buffer = _mp.RawArray("d", source_weights_shape[0])
+        locations_source_np = _np.frombuffer(
+            locations_source_buffer, dtype=_np.float64
+        ).reshape(locations_source_shape)
+        locations_observation_np = _np.frombuffer(
+            locations_observation_buffer, dtype=_np.float64
+        ).reshape(locations_observation_shape)
+        source_weights_real_np = _np.frombuffer(
+            source_weights_real_buffer, dtype=_np.float64
+        ).reshape(source_weights_shape)
+        source_weights_imag_np = _np.frombuffer(
+            source_weights_imag_buffer, dtype=_np.float64
+        ).reshape(source_weights_shape)
+        _np.copyto(locations_source_np, locations_source, casting="no")
+        _np.copyto(locations_observation_np, locations_observation, casting="no")
+        _np.copyto(source_weights_real_np, source_weights.real, casting="no")
+        _np.copyto(source_weights_imag_np, source_weights.imag, casting="no")
+
+        # Output arrays:
+        pressure = _np.zeros(locations_observation.shape[1], dtype=_np.complex)
+        gradient = _np.zeros((3, locations_observation.shape[1]), dtype=_np.complex)
+        pressure_shape = pressure.shape
+        gradient_shape = gradient.shape
+        pressure_real_buffer = _mp.Array("d", pressure_shape[0])
+        pressure_imag_buffer = _mp.Array("d", pressure_shape[0])
+        gradient_real_buffer = _mp.Array("d", gradient_shape[0] * gradient_shape[1])
+        gradient_imag_buffer = _mp.Array("d", gradient_shape[0] * gradient_shape[1])
+        pressure_real_np = _np.frombuffer(
+            pressure_real_buffer.get_obj(), dtype=_np.float64
+        ).reshape(pressure_shape)
+        pressure_imag_np = _np.frombuffer(
+            pressure_imag_buffer.get_obj(), dtype=_np.float64
+        ).reshape(pressure_shape)
+        gradient_real_np = _np.frombuffer(
+            gradient_real_buffer.get_obj(), dtype=_np.float64
+        ).reshape(gradient_shape)
+        gradient_imag_np = _np.frombuffer(
+            gradient_imag_buffer.get_obj(), dtype=_np.float64
+        ).reshape(gradient_shape)
+        _np.copyto(pressure_real_np, pressure.real, casting="no")
+        _np.copyto(pressure_imag_np, pressure.imag, casting="no")
+        _np.copyto(gradient_real_np, gradient.real, casting="no")
+        _np.copyto(gradient_imag_np, gradient.imag, casting="no")
+
+        number_of_observation_locations = locations_observation.shape[1]
+        number_of_source_locations = locations_source.shape[1]
+
+        pool = _mp.Pool(
+            number_of_workers,
+            initializer=init_worker_pool_shared,
+            initargs=(
+                locations_source_buffer,
+                locations_source_shape,
+                locations_observation_buffer,
+                locations_observation_shape,
+                source_weights_real_buffer,
+                source_weights_imag_buffer,
+                source_weights_shape,
+                pressure_real_buffer,
+                pressure_imag_buffer,
+                pressure_shape,
+                gradient_real_buffer,
+                gradient_imag_buffer,
+                gradient_shape,
+            ),
+        )
+
+        source_parallelisation = (
+            number_of_source_locations > number_of_observation_locations
+        )
+
+        if source_parallelisation:
+            if verbose:
+                print(
+                    "Parallelisation of incident field calculation "
+                    "over source locations"
+                )
+
+            number_of_parallel_jobs = _np.arange(0, number_of_source_chunks - 1)
+
+            pool.starmap(
+                calc_field_from_point_sources_mp_source_para_shared,
+                zip(
+                    number_of_parallel_jobs,
+                    repeat(frequency),
+                    repeat(density),
+                    repeat(wavenumber),
+                    repeat(chunks_index_source),
+                    repeat(chunks_index_field),
+                    repeat(number_of_observation_locations),
+                ),
+            )
+
+        else:
+            if verbose:
+                print(
+                    "Parallelisation of incident field calculation "
+                    "over observer locations"
+                )
+
+            number_of_parallel_jobs = _np.arange(0, number_of_field_chunks - 1)
+
+            pool.starmap(
+                calc_field_from_point_sources_mp_field_para_shared,
+                zip(
+                    number_of_parallel_jobs,
+                    repeat(frequency),
+                    repeat(density),
+                    repeat(wavenumber),
+                    repeat(chunks_index_source),
+                    repeat(chunks_index_field),
+                ),
+            )
+
+        pool.close()
+
+        pressure_real_np = _np.frombuffer(
+            pressure_real_buffer.get_obj(), dtype=_np.float64
+        ).reshape(pressure_shape)
+        pressure_imag_np = _np.frombuffer(
+            pressure_imag_buffer.get_obj(), dtype=_np.float64
+        ).reshape(pressure_shape)
+        gradient_real_np = _np.frombuffer(
+            gradient_real_buffer.get_obj(), dtype=_np.float64
+        ).reshape(gradient_shape)
+        gradient_imag_np = _np.frombuffer(
+            gradient_imag_buffer.get_obj(), dtype=_np.float64
+        ).reshape(gradient_shape)
+
+        pressure.real = pressure_real_np
+        pressure.imag = pressure_imag_np
+        gradient.real = gradient_real_np
+        gradient.imag = gradient_imag_np
+
     else:
         raise NotImplementedError
 
@@ -874,6 +1116,97 @@ def calc_field_from_point_sources_mp_source_para(
     return pressure, gradient
 
 
+def calc_field_from_point_sources_mp_source_para_shared(
+    parallelisation_index,
+    frequency,
+    density,
+    wavenumber,
+    chunks_index_source,
+    chunks_index_field,
+    number_of_observation_locations,
+):
+    """Computes the pressure and normal pressure gradient at field locations for
+    selected source and field positions based on output from chunk_size_index. Used to
+    calculate the incident field using multiprocessing with shared memory and when parallelising
+    over source locations.
+
+    Parameters
+    ----------
+    parallelisation_index : integer
+        Index corresponding to the parallel job.
+    frequency : float
+        The frequency of the wave field.
+    density : float
+        The density of the propagating medium.
+    wavenumber : complex
+        The wavenumber of the wave field.
+    chunks_index_source : numpy.ndarray
+        An array of integers containing the indices to infer the source location chunks.
+    chunks_index_field : numpy.ndarray
+        An array of integers containing the indices to infer the field location chunks.
+    number_of_observation_locations : integer
+        The total number of observation points.
+    """
+
+    # Shared Memory:
+    global workers_dict
+    locations_source_np = _np.frombuffer(
+        workers_dict["locations_source_buffer"], dtype=_np.float64
+    ).reshape(workers_dict["locations_source_shape"])
+    locations_observation_np = _np.frombuffer(
+        workers_dict["locations_observation_buffer"], dtype=_np.float64
+    ).reshape(workers_dict["locations_observation_shape"])
+    source_weights_real_np = _np.frombuffer(
+        workers_dict["source_weights_real_buffer"], dtype=_np.float64
+    ).reshape(workers_dict["source_weights_shape"])
+    source_weights_imag_np = _np.frombuffer(
+        workers_dict["source_weights_imag_buffer"], dtype=_np.float64
+    ).reshape(workers_dict["source_weights_shape"])
+    source_weights_np = _np.empty(
+        workers_dict["source_weights_shape"], dtype=_np.complex128
+    )
+    source_weights_np.real = source_weights_real_np
+    source_weights_np.imag = source_weights_imag_np
+
+    pressure = _np.empty(number_of_observation_locations, dtype=_np.complex)
+    gradient = _np.empty((3, number_of_observation_locations), dtype=_np.complex)
+
+    i1, i2 = chunks_index_source[parallelisation_index : parallelisation_index + 2]
+
+    for i in range(len(chunks_index_field) - 1):
+        j1, j2 = chunks_index_field[i : i + 2]
+
+        (pressure[j1:j2], gradient[:, j1:j2],) = calc_field_from_point_sources_numpy(
+            locations_source_np[:, i1:i2],
+            locations_observation_np[:, j1:j2],
+            frequency,
+            density,
+            wavenumber,
+            source_weights_np[i1:i2],
+        )
+
+    with workers_dict["pressure_real_buffer"].get_lock():
+        pressure_real_np = _np.frombuffer(
+            workers_dict["pressure_real_buffer"].get_obj(), dtype=_np.float64
+        ).reshape(workers_dict["pressure_shape"])
+        pressure_real_np[:] = pressure_real_np + pressure.real
+    with workers_dict["pressure_imag_buffer"].get_lock():
+        pressure_imag_np = _np.frombuffer(
+            workers_dict["pressure_imag_buffer"].get_obj(), dtype=_np.float64
+        ).reshape(workers_dict["pressure_shape"])
+        pressure_imag_np[:] = pressure_imag_np + pressure.imag
+    with workers_dict["gradient_real_buffer"].get_lock():
+        gradient_real_np = _np.frombuffer(
+            workers_dict["gradient_real_buffer"].get_obj(), dtype=_np.float64
+        ).reshape(workers_dict["gradient_shape"])
+        gradient_real_np[:] = gradient_real_np + gradient.real
+    with workers_dict["gradient_imag_buffer"].get_lock():
+        gradient_imag_np = _np.frombuffer(
+            workers_dict["gradient_imag_buffer"].get_obj(), dtype=_np.float64
+        ).reshape(workers_dict["gradient_shape"])
+        gradient_imag_np[:] = gradient_imag_np + gradient.imag
+
+
 def calc_field_from_point_sources_mp_field_para(
     parallelisation_index,
     locations_source,
@@ -950,6 +1283,100 @@ def calc_field_from_point_sources_mp_field_para(
     gradient = gradient_tmp.sum(axis=2, dtype=_np.complex)
 
     return pressure, gradient
+
+
+def calc_field_from_point_sources_mp_field_para_shared(
+    parallelisation_index,
+    frequency,
+    density,
+    wavenumber,
+    chunks_index_source,
+    chunks_index_field,
+):
+    """Computes the pressure and normal pressure gradient at field locations for
+    selected source and field positions based on output from chunk_size_index. Used to
+    calculate the incident field using multiprocessing with shared memory and when parallelising
+    over field locations.
+
+    Parameters
+    ----------
+    parallelisation_index : integer
+        Index corresponding to the parallel job.
+    frequency : float
+        The frequency of the wave field.
+    density : float
+        The density of the propagating medium.
+    wavenumber : complex
+        The wavenumber of the wave field.
+    chunks_index_source : numpy.ndarray
+        An array of integers containing the indices to infer the source location chunks.
+    chunks_index_field : numpy.ndarray
+        An array of integers containing the indices to infer the field location chunks.
+    """
+
+    # Shared Memory:
+    global workers_dict
+    locations_source_np = _np.frombuffer(
+        workers_dict["locations_source_buffer"], dtype=_np.float64
+    ).reshape(workers_dict["locations_source_shape"])
+    locations_observation_np = _np.frombuffer(
+        workers_dict["locations_observation_buffer"], dtype=_np.float64
+    ).reshape(workers_dict["locations_observation_shape"])
+    source_weights_real_np = _np.frombuffer(
+        workers_dict["source_weights_real_buffer"], dtype=_np.float64
+    ).reshape(workers_dict["source_weights_shape"])
+    source_weights_imag_np = _np.frombuffer(
+        workers_dict["source_weights_imag_buffer"], dtype=_np.float64
+    ).reshape(workers_dict["source_weights_shape"])
+    source_weights_np = _np.empty(
+        workers_dict["source_weights_shape"], dtype=_np.complex128
+    )
+    source_weights_np.real = source_weights_real_np
+    source_weights_np.imag = source_weights_imag_np
+
+    j1, j2 = chunks_index_field[parallelisation_index : parallelisation_index + 2]
+
+    pressure_tmp = _np.ndarray(
+        shape=(j2 - j1, len(chunks_index_source) - 1), dtype=_np.complex
+    )
+    gradient_tmp = _np.ndarray(
+        shape=(3, j2 - j1, len(chunks_index_source) - 1), dtype=_np.complex
+    )
+
+    for i in range(len(chunks_index_source) - 1):
+        i1, i2 = chunks_index_source[i : i + 2]
+
+        (
+            pressure_tmp[:, i],
+            gradient_tmp[:, :, i],
+        ) = calc_field_from_point_sources_numpy(
+            locations_source_np[:, i1:i2],
+            locations_observation_np[:, j1:j2],
+            frequency,
+            density,
+            wavenumber,
+            source_weights_np[i1:i2],
+        )
+
+    pressure = pressure_tmp.sum(axis=1, dtype=_np.complex)
+    gradient = gradient_tmp.sum(axis=2, dtype=_np.complex)
+
+    pressure_real_np = _np.frombuffer(
+        workers_dict["pressure_real_buffer"].get_obj(), dtype=_np.float64
+    ).reshape(workers_dict["pressure_shape"])
+    pressure_real_np[j1:j2] = pressure_real_np[j1:j2] + pressure.real
+    pressure_imag_np = _np.frombuffer(
+        workers_dict["pressure_imag_buffer"].get_obj(), dtype=_np.float64
+    ).reshape(workers_dict["pressure_shape"])
+    pressure_imag_np[j1:j2] = pressure_imag_np[j1:j2] + pressure.imag
+    gradient_real_np = _np.frombuffer(
+        workers_dict["gradient_real_buffer"].get_obj(), dtype=_np.float64
+    ).reshape(workers_dict["gradient_shape"])
+    gradient_real_np[:, j1:j2] = gradient_real_np[:, j1:j2] + gradient.real
+    gradient_imag_np = _np.frombuffer(
+        workers_dict["gradient_imag_buffer"].get_obj(), dtype=_np.float64
+    ).reshape(workers_dict["gradient_shape"])
+    gradient_imag_np[:, j1:j2] = gradient_imag_np[:, j1:j2] + gradient.imag
 
 
 def chunk_size_index(locations_source, locations_observation):
