@@ -9,12 +9,12 @@ def load_material(name):
 
     Parameters
     ----------
-    name : str, tuple str
+    name : str, tuple[str], list[str]
         The name(s) of the material(s)
 
     Returns
     -------
-    material : optimus.Material
+    material : optimus.material.common.Material
         An (list of) optimus material object(s)
     """
 

@@ -110,6 +110,7 @@ class Source:
 
             def dirichlet_fun(x, n, domain_index, result):
                 result[0] = self.pressure_field(medium, x)
+                return
 
             trace_dirichlet = _bempp.GridFunction(space_dirichlet, fun=dirichlet_fun)
         else:
@@ -124,6 +125,7 @@ class Source:
 
             def neumann_fun(x, n, domain_index, result):
                 result[0] = self.normal_pressure_gradient(medium, x, n)
+                return
 
             trace_neumann = _bempp.GridFunction(space_neumann, fun=neumann_fun)
         else:
@@ -185,7 +187,6 @@ class Source:
             normals_neumann = None
 
         if dirichlet_trace and neumann_trace:
-
             if _np.all(points_dirichlet == points_neumann):
                 (field_val, gradient_val,) = self.pressure_field_and_normal_gradient(
                     medium, points_dirichlet, normals_neumann
@@ -204,7 +205,6 @@ class Source:
             return trace_dirichlet, trace_neumann
 
         elif dirichlet_trace:
-
             field_val = self.pressure_field(medium, points_dirichlet)
             trace_dirichlet = _bempp.GridFunction(
                 space_dirichlet, coefficients=field_val
@@ -212,7 +212,6 @@ class Source:
             return trace_dirichlet
 
         elif neumann_trace:
-
             gradient_val = self.normal_pressure_gradient(
                 medium, points_neumann, normals_neumann
             )

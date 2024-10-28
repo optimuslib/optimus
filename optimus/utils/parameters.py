@@ -82,12 +82,16 @@ class PreconditioningParameters:
         """Initialize the default parameters for the preconditioners."""
 
         self.osrc = OsrcParameters()
+        self.calderon = CalderonParameters()
 
     def print(self, prefix=""):
         """Print all parameters."""
 
         print(prefix + "OSRC preconditioner.")
         self.osrc.print(prefix=prefix + " ")
+
+        print(prefix + "Calderón preconditioner.")
+        self.calderon.print(prefix=prefix + " ")
 
 
 class OsrcParameters:
@@ -106,6 +110,18 @@ class OsrcParameters:
         print(prefix + "Branch cut angle for Padé series:", self.theta)
         print(prefix + "Wavenumber:", self.wavenumber)
         print(prefix + "Damped wavenumber:", self.damped_wavenumber)
+
+
+class CalderonParameters:
+    def __init__(self):
+        """Initialize the default parameters for the Calderón preconditioner."""
+
+        self.domain = "exterior"
+
+    def print(self, prefix=""):
+        """Print all parameters."""
+
+        print(prefix + "Domain for operators:", self.domain)
 
 
 class PostProcessingParameters:

@@ -62,7 +62,6 @@ class _Piston(_Source):
         location,
         velocity,
     ):
-
         super().__init__("piston", frequency)
 
         source_axis_vector = _convert_to_array(

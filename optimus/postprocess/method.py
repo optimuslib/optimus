@@ -1,21 +1,41 @@
+"""Postprocess methods."""
 from .common import PostProcess as _PostProcess
 import numpy as _np
 
 
 class VisualisePlane(_PostProcess):
     def __init__(self, model, verbose=False):
-        """Create a PostProcess optimus object where the visualisation grid is
-        a 2D plane.
+        """
+        Create a PostProcess object to visualise to field on a 2D planar grid.
 
         Parameters
         ----------
-        model : optimus.Model
+        model : optimus.model.common.Model
             An optimus model object that includes the solution fields on the boundaries.
         verbose : boolean
             Display the log information.
-
         """
+
         super().__init__(model, verbose)
+
+        # Parameters of the 2D planar visualisation grid
+        self.resolution = None
+        self.plane_axes = None
+        self.plane_offset = None
+        self.bounding_box = None
+
+        # Points of the 2D planar visualisation grid
+        self.points = None
+        self.plane = None
+        self.domains_edges = None
+
+        # Fields in the 2D planar visualisation grid
+        self.total_field_imshow = None
+        self.scattered_field_imshow = None
+        self.incident_field_imshow = None
+        self.l2_norm_total_field_mpa = None
+
+        return
 
     def create_computational_grid(
         self,
@@ -24,7 +44,8 @@ class VisualisePlane(_PostProcess):
         plane_offset=0.0,
         bounding_box=None,
     ):
-        """Create a planar grid to compute the pressure fields.
+        """
+        Create a planar grid for visualisation of the pressure fields.
 
         Parameters
         ----------
@@ -37,11 +58,12 @@ class VisualisePlane(_PostProcess):
         plane_offset : float
             Offset of the visualisation plane defined along the third axis.
             Default: 0.
-        bounding_box : list[float], tuple[float]
+        bounding_box : None, list[float], tuple[float]
             Bounding box specifying the visualisation section along
             the plane's axes: [axis1_min, axis1_max, axis2_min, axis2_max]
+            If not specified, the bounding box is calculated from the geometry.
         """
-        from .common import calculate_bounding_box, find_int_ext_points, domain_edge
+        from .topology import calculate_bounding_box, domain_edge
         from ..utils.mesh import create_grid_points
 
         self.resolution = resolution
@@ -61,52 +83,36 @@ class VisualisePlane(_PostProcess):
             mode="numpy",
         )
 
-        (
-            self.points_interior,
-            self.points_exterior,
-            self.points_boundary,
-            self.index_interior,
-            self.index_exterior,
-            self.index_boundary,
-        ) = find_int_ext_points(self.domains_grids, self.points, self.verbose)
+        self.field.segmentation(self.points)
 
         self.domains_edges = domain_edge(
-            self.model,
+            self.domains_grids,
             self.plane_axes,
             self.plane_offset,
         )
 
+        return
+
     def compute_fields(self):
         """Calculate the scattered and total pressure fields in the planar grid."""
 
-        from .common import compute_pressure_fields, array_to_imshow
+        from .common import array_to_imshow
 
-        (
-            self.total_field,
-            self.scattered_field,
-            self.incident_field,
-        ) = compute_pressure_fields(
-            self.model,
-            self.points,
-            self.points_exterior,
-            self.index_exterior,
-            self.points_interior,
-            self.index_interior,
-            self.points_boundary,
-            self.index_boundary,
-            self.verbose,
-        )
+        self.field.compute_fields()
 
-        self.l2_norm_total_field_mpa = _np.linalg.norm(self.total_field)
+        self.l2_norm_total_field_mpa = _np.linalg.norm(self.field.total_field)
+
         self.scattered_field_imshow = array_to_imshow(
-            self.scattered_field.reshape(self.resolution)
+            self.field.scattered_field.reshape(self.resolution)
         )
         self.total_field_imshow = array_to_imshow(
-            self.total_field.reshape(self.resolution)
+            self.field.total_field.reshape(self.resolution)
         )
         self.incident_field_imshow = array_to_imshow(
-            self.incident_field.reshape(self.resolution)
+            self.field.incident_field.reshape(self.resolution)
         )
+
+        return
 
 
 class VisualiseCloudPoints(_PostProcess):
@@ -124,6 +130,10 @@ class VisualiseCloudPoints(_PostProcess):
         """
         super().__init__(model, verbose)
 
+        self.points = None
+        self.l2_norm_total_field_mpa = None
+        return
+
     def create_computational_grid(self, points):
         """Create a point cloud to compute the pressure fields.
 
@@ -134,42 +144,19 @@ class VisualiseCloudPoints(_PostProcess):
 
         """
 
-        from .common import find_int_ext_points
         from ..utils.conversions import convert_to_3n_array
 
         self.points = convert_to_3n_array(points, "visualisation points")
 
-        (
-            self.points_interior,
-            self.points_exterior,
-            self.points_boundary,
-            self.index_interior,
-            self.index_exterior,
-            self.index_boundary,
-        ) = find_int_ext_points(self.domains_grids, self.points, self.verbose)
+        self.field.segmentation(self.points)
 
     def compute_fields(self):
         """Calculate the scattered and total pressure fields in the postprocess grid."""
 
-        from .common import compute_pressure_fields
+        self.field.compute_fields()
 
-        (
-            self.total_field,
-            self.scattered_field,
-            self.incident_field,
-        ) = compute_pressure_fields(
-            self.model,
-            self.points,
-            self.points_exterior,
-            self.index_exterior,
-            self.points_interior,
-            self.index_interior,
-            self.points_boundary,
-            self.index_boundary,
-            self.verbose,
-        )
-
-        self.l2_norm_total_field_mpa = _np.linalg.norm(self.total_field)
+        self.l2_norm_total_field_mpa = _np.linalg.norm(self.field.total_field)
+        return
 
     def display_field(self, size=0.2):
         """Display the magnitude of the field in the cloud points.
@@ -183,26 +170,53 @@ class VisualiseCloudPoints(_PostProcess):
 
         plot = k3d.plot()
         plot += k3d.factory.points(
-            self.points, attribute=abs(self.total_field), point_size=size
+            self.points.T, attribute=abs(self.field.total_field), point_size=size
         )
 
         plot.display()
+        return
 
 
 class VisualisePlaneAndBoundary(_PostProcess):
     def __init__(self, model, verbose=False):
-        """Create a PostProcess optimus object where the visualisation grid is
-        a union of a plane and surface meshes of the domains.
+        """
+        Create a PostProcess object to visualise to field in a union of
+        a plane and surface meshes of the domains with Gmsh.
 
         Parameters
         ----------
-        model : optimus.Model
+        model : optimus.model.common.ExteriorModel
             An optimus model object that includes the solution fields on the boundaries.
         verbose : boolean
             Display the log information.
-
         """
+
         super().__init__(model, verbose)
+
+        # Parameters of the 2D planar visualisation grid
+        self.resolution = None
+        self.plane_axes = None
+        self.plane_offset = None
+        self.bounding_box = None
+
+        # Points of the 2D planar visualisation grid
+        self.points = None
+        self.plane = None
+        self.points_interior = None
+        self.points_exterior = None
+        self.points_boundary = None
+        self.index_interior = None
+        self.index_exterior = None
+        self.index_boundary = None
+        self.domains_edges = None
+
+        # Fields in the 2D planar visualisation grid
+        self.total_field = None
+        self.scattered_field = None
+        self.incident_field = None
+        self.l2_norm_total_field_mpa = None
+
+        return
 
     def create_computational_grid(
         self,
@@ -227,10 +241,9 @@ class VisualisePlaneAndBoundary(_PostProcess):
         bounding_box : list[float], tuple[float]
             Bounding box specifying the visualisation section along
             the plane's axes: [axis1_min, axis1_max, axis2_min, axis2_max]
-
         """
 
-        from .common import calculate_bounding_box, find_int_ext_points
+        from .topology import calculate_bounding_box
         from ..utils.mesh import create_grid_points
 
         self.resolution = resolution
@@ -250,17 +263,13 @@ class VisualisePlaneAndBoundary(_PostProcess):
             mode="gmsh",
         )
 
-        (
-            self.points_interior,
-            self.points_exterior,
-            self.points_boundary,
-            self.index_interior,
-            self.index_exterior,
-            self.index_boundary,
-        ) = find_int_ext_points(self.domains_grids, self.points, self.verbose)
+        self.field.segmentation(self.points)
+
+        return
 
     def compute_fields(self, file_name="planar_and_surface"):
-        """Calculate the scattered and total pressure fields in the planar grid created.
+        """
+        Calculate the scattered and total pressure fields in the planar grid created.
         Export the field values to gmsh files.
 
         Parameters
@@ -268,26 +277,17 @@ class VisualisePlaneAndBoundary(_PostProcess):
         file_name : str
             The name for the output file. The results are saved as GMSH files.
             GMSH should be used for visualisation.
-
         """
-        from .common import compute_pressure_fields
+
         import bempp.api as _bempp
 
-        (
-            self.total_field,
-            self.scattered_field,
-            self.incident_field,
-        ) = compute_pressure_fields(
-            self.model,
-            self.points,
-            self.points_exterior,
-            self.index_exterior,
-            self.points_interior,
-            self.index_interior,
-            self.points_boundary,
-            self.index_boundary,
-            self.verbose,
-        )
+        if self.model.solution is None:
+            raise ValueError(
+                "The model does not contain a solution, "
+                "so no fields can be computed."
+            )
+
+        self.field.compute_fields()
 
         self.l2_norm_total_field_mpa = _np.linalg.norm(self.total_field)
 
@@ -314,14 +314,18 @@ class VisualisePlaneAndBoundary(_PostProcess):
                 ]
             ),
         )
+        # noinspection PyArgumentList
         _bempp.export(
             file_name=file_name + "_ptot_complex.msh",
             grid_function=plot3d_ptot_all,
         )
+        # noinspection PyArgumentList
         _bempp.export(
             file_name=file_name + "_ptot_abs.msh",
             grid_function=plot3d_ptot_abs_all,
         )
+
+        return
 
 
 class VisualiseTimeDomain(_PostProcess):
@@ -373,7 +377,7 @@ class VisualiseTimeDomain(_PostProcess):
         """Display a time visualisation of the harmonic field."""
 
         from matplotlib import pylab as plt
-        from matplotlib import animation, rc
+        from matplotlib import animation
         from IPython.display import HTML
         from IPython.display import display
 
@@ -495,10 +499,10 @@ class Visualise3DField(_PostProcess):
                 cont += 12
 
         td_plane = k3d.mesh(vertices, index, color_map=matplotlib_color_maps.viridis)
-        td_plane.attribute = abs((postprocess_plane.total_field))
+        td_plane.attribute = abs((postprocess_plane.field.total_field))
         td_plane.color_range = [
-            min(abs(postprocess_plane.total_field)),
-            max(abs(postprocess_plane.total_field)),
+            min(abs(postprocess_plane.field.total_field)),
+            max(abs(postprocess_plane.field.total_field)),
         ]
 
         self.k3d_planes.append(td_plane)
@@ -507,7 +511,6 @@ class Visualise3DField(_PostProcess):
         """Calculate the total pressure field in the planar grid created."""
 
         total_field_dirichlet = self.model.solution[0]
-        total_field_neumann = self.model.solution[1]
 
         self.mesh3d.attribute = abs(total_field_dirichlet.coefficients)
         maximum = max(abs(total_field_dirichlet.coefficients))

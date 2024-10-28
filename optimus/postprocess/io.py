@@ -34,6 +34,7 @@ def export_to_file(
 
     postprocess_copy = _copy.deepcopy(post_process)
     delattr(postprocess_copy, "model")
+    delattr(postprocess_copy.field, "model")
 
     if file_format.lower() == "mat":
         import scipy.io as _sio

@@ -74,7 +74,6 @@ class _Bowl(_Source):
         velocity,
         inner_radius,
     ):
-
         super().__init__("bowl", frequency)
 
         source_axis_vector = _convert_to_array(
