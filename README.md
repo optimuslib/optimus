@@ -16,6 +16,8 @@ docker pull optimuslib/optimus:latest
 ```
 
 
+Downloading and installing the OptimUS' Docker image takes several minutes and requires a stable internet connection. This step can be skipped next time you use the Docker image and is only necessary to update with a new release.
+
 To start the container on your machine, run:
 
 
