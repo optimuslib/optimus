@@ -14,7 +14,10 @@ from .transducers import transducer_field as _transducer_field
 
 def create_array(
     frequency,
-    element_radius,
+    element_radius=None,
+    element_width=None,
+    element_height=None,
+    element_shape="circular",
     velocity=1.0,
     source_axis=(1, 0, 0),
     number_of_point_sources_per_wavelength=6,
@@ -57,6 +60,9 @@ def create_array(
     return _Array(
         frequency,
         element_radius,
+        element_width,
+        element_height,
+        element_shape,
         velocity,
         source_axis,
         number_of_point_sources_per_wavelength,
@@ -72,6 +78,9 @@ class _Array(_Source):
         self,
         frequency,
         element_radius,
+        element_width,
+        element_height,
+        element_shape,
         velocity,
         source_axis,
         number_of_point_sources_per_wavelength,
@@ -94,7 +103,18 @@ class _Array(_Source):
 
         self.location = _convert_to_array(location, shape=(3,), label="array location")
 
-        self.element_radius = _convert_to_positive_float(element_radius)
+        self.element_shape = element_shape
+
+        if element_shape is "circular":
+            self.element_radius = _convert_to_positive_float(element_radius)
+            self.element_width = None
+            self.element_height = None
+        elif element_shape is "rectangular":
+            self.element_radius = None
+            self.element_width = _convert_to_positive_float(element_width)
+            self.element_height = _convert_to_positive_float(element_height)
+        else:
+            raise NotImplementedError
 
         self.centroid_locations = self._calc_centroid_locations(
             centroid_locations, centroid_locations_filename
