@@ -92,7 +92,12 @@ class _Transducer:
             (
                 source_locations_inside_transducer,
                 surface_area_weighting,
-            ) = self.define_source_points_in_reference_piston(self.source.radius)
+            ) = self.define_source_points_in_reference_piston(
+                self.source.radius,
+                self.source.width,
+                self.source.height,
+                self.source.shape,
+            )
         elif self.source.type == "bowl":
             (
                 source_locations_inside_transducer,
@@ -131,7 +136,7 @@ class _Transducer:
 
         return source_locations, source_weights
 
-    def define_source_points_in_reference_piston(self, radius):
+    def define_source_points_in_reference_piston(self, radius, width, height, shape):
         """Define the source points for a reference piston element,
         that is, the source points on a rectangular grid, located
         in the plane z=0, centered at the origin, and inside a
@@ -144,7 +149,13 @@ class _Transducer:
         Parameters
         ----------
         radius : float
-            The radius of piston.
+            The radius of circular piston.
+        width : float
+            The width of rectangular piston.
+        height : float
+            The height of rectangular piston.
+        shape : str
+            The shape of the piston (circular or rectangular).
 
         Returns
         -------
@@ -163,31 +174,62 @@ class _Transducer:
             distance_between_points = (
                 wavelength / self.source.number_of_point_sources_per_wavelength
             )
-            n_points_per_diameter = 2 * radius / distance_between_points
-            n_point_sources = int(_np.ceil(n_points_per_diameter))
+            if shape is "circular":
+                n_points_per_diameter = 2 * radius / distance_between_points
+                n_point_sources = int(_np.ceil(n_points_per_diameter))
 
-            if self.verbose:
-                print(
-                    "Number of point sources across element diameter:",
+                coords = _np.linspace(
+                    -radius,
+                    radius,
                     n_point_sources,
                 )
+                if self.verbose:
+                    print(
+                        "Number of point sources across element diameter:",
+                        n_point_sources,
+                    )
 
-            coords = _np.linspace(
-                -radius,
-                radius,
-                n_point_sources,
-            )
-
-            source_vector = _np.vstack(
-                (
-                    _np.repeat(coords, n_point_sources),
-                    _np.tile(coords, n_point_sources),
-                    _np.zeros(n_point_sources**2),
+                source_vector = _np.vstack(
+                    (
+                        _np.repeat(coords, n_point_sources),
+                        _np.tile(coords, n_point_sources),
+                        _np.zeros(n_point_sources**2),
+                    )
                 )
-            )
-            distance = _np.linalg.norm(source_vector[:2, :], axis=0)
-            inside = distance <= radius
-            locations_inside_transducer = source_vector[:, inside]
+
+                distance = _np.linalg.norm(source_vector[:2, :], axis=0)
+                inside = distance <= radius
+                locations_inside_transducer = source_vector[:, inside]
+
+                piston_surface_area = _np.pi * radius**2
+
+            elif shape is "rectangular":
+                n_points_per_width = width / distance_between_points
+                n_points_per_height = height / distance_between_points
+                n_point_sources_per_width = int(_np.ceil(n_points_per_width))
+                n_point_sources_per_height = int(_np.ceil(n_points_per_height))
+
+                plot_grid = _np.mgrid[
+                    -width / 2 : width / 2 : n_point_sources_per_width * 1j,
+                    -height / 2 : height / 2 : n_point_sources_per_height * 1j,
+                ]
+
+                if self.verbose:
+                    print(
+                        "Number of point sources across element width:",
+                        n_point_sources_per_width,
+                        "Number of point sources across element height:",
+                        n_point_sources_per_height,
+                    )
+                locations_inside_transducer = _np.vstack(
+                    (
+                        plot_grid[0].ravel(),
+                        plot_grid[1].ravel(),
+                        _np.zeros(plot_grid[0].size),
+                    )
+                )
+
+                piston_surface_area = width * height
 
         n_sources = locations_inside_transducer.shape[1]
 
@@ -197,7 +239,7 @@ class _Transducer:
                 + " 0: increase number_of_point_sources_per_wavelength"
             )
 
-        surface_area_weighting = _np.pi * radius**2 / n_sources
+        surface_area_weighting = piston_surface_area / n_sources
 
         return locations_inside_transducer, surface_area_weighting
 
@@ -352,8 +394,12 @@ class _Transducer:
         (
             locations_inside_transducer,
             surface_area_weighting,
-        ) = self.define_source_points_in_reference_piston(self.source.element_radius)
-
+        ) = self.define_source_points_in_reference_piston(
+            self.source.element_radius,
+            self.source.element_width,
+            self.source.element_height,
+            self.source.element_shape,
+        )
         n_points_piston = locations_inside_transducer.shape[1]
         n_points_array = n_points_piston * self.source.number_of_elements
         source_locations_array = _np.empty((3, n_points_array), dtype="float")
@@ -1104,7 +1150,10 @@ def calc_field_from_point_sources_mp_source_para(
     for i in range(len(chunks_index_field) - 1):
         j1, j2 = chunks_index_field[i : i + 2]
 
-        (pressure[j1:j2], gradient[:, j1:j2],) = calc_field_from_point_sources_numpy(
+        (
+            pressure[j1:j2],
+            gradient[:, j1:j2],
+        ) = calc_field_from_point_sources_numpy(
             locations_source[:, i1:i2],
             locations_observation[:, j1:j2],
             frequency,
@@ -1176,7 +1225,10 @@ def calc_field_from_point_sources_mp_source_para_shared(
     for i in range(len(chunks_index_field) - 1):
         j1, j2 = chunks_index_field[i : i + 2]
 
-        (pressure[j1:j2], gradient[:, j1:j2],) = calc_field_from_point_sources_numpy(
+        (
+            pressure[j1:j2],
+            gradient[:, j1:j2],
+        ) = calc_field_from_point_sources_numpy(
             locations_source_np[:, i1:i2],
             locations_observation_np[:, j1:j2],
             frequency,
