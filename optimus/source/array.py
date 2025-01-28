@@ -14,7 +14,10 @@ from .transducers import transducer_field as _transducer_field
 
 def create_array(
     frequency,
-    element_radius,
+    element_radius=None,
+    element_width=None,
+    element_height=None,
+    element_shape="circular",
     velocity=1.0,
     source_axis=(1, 0, 0),
     number_of_point_sources_per_wavelength=6,
@@ -31,7 +34,13 @@ def create_array(
     frequency : float
         The frequency of the acoustic field.
     element_radius : float
-        The radius of elements which lie on the spherical section bowl.
+        The radius of elements which lie on the array transducer (circular piston case).
+    element_width : float
+        The width of elements which lie on the array transducer (rectangular piston case).
+    element_height : float
+        The height of elements which lie on the array transducer (rectangular piston case).
+    element_shape : str
+        The shape of the array elements. Can be circular or rectangular. Default : "circular".
     velocity : complex, numpy.ndarray complex
         Array of size (N,) with complex values for the normal velocities of the array elements.
         If one value is specified, this will be repeated for all array elements. Default : 1 m/s
@@ -51,12 +60,15 @@ def create_array(
     centroid_locations_filename : str
         Path and filename containing the centroid locations data. The file extension has to be ".dat".
     array_type : str
-        Type of array considered. Can be either planar or spherical.
+        Type of array considered. Can be either planar or spherical. Default : "spherical"
     """
 
     return _Array(
         frequency,
         element_radius,
+        element_width,
+        element_height,
+        element_shape,
         velocity,
         source_axis,
         number_of_point_sources_per_wavelength,
@@ -72,6 +84,9 @@ class _Array(_Source):
         self,
         frequency,
         element_radius,
+        element_width,
+        element_height,
+        element_shape,
         velocity,
         source_axis,
         number_of_point_sources_per_wavelength,
@@ -94,7 +109,18 @@ class _Array(_Source):
 
         self.location = _convert_to_array(location, shape=(3,), label="array location")
 
-        self.element_radius = _convert_to_positive_float(element_radius)
+        self.element_shape = element_shape
+
+        if element_shape is "circular":
+            self.element_radius = _convert_to_positive_float(element_radius)
+            self.element_width = None
+            self.element_height = None
+        elif element_shape is "rectangular":
+            self.element_radius = None
+            self.element_width = _convert_to_positive_float(element_width)
+            self.element_height = _convert_to_positive_float(element_height)
+        else:
+            raise NotImplementedError
 
         self.centroid_locations = self._calc_centroid_locations(
             centroid_locations, centroid_locations_filename

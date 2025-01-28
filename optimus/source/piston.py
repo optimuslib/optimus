@@ -13,11 +13,14 @@ from .transducers import transducer_field as _transducer_field
 
 def create_piston(
     frequency,
-    radius,
     source_axis=(1, 0, 0),
     number_of_point_sources_per_wavelength=6,
     location=(0, 0, 0),
     velocity=1.0,
+    shape="circular",
+    radius=None,
+    width=None,
+    height=None,
 ):
     """Create a plane circular piston source.
 
@@ -25,8 +28,6 @@ def create_piston(
     ----------
     frequency : float
         The frequency of the acoustic field.
-    radius : float
-        The radius of the piston.
     source_axis : tuple[float]
         The direction vector of the axis of the piston.
         Default: positive x direction
@@ -40,15 +41,26 @@ def create_piston(
     velocity : complex
         Normal velocity of the piston.
         Default : 1 m/s
+    shape : str
+        Shape of the piston. Can be circular or rectangular.
+    radius : float
+        The radius of the piston for a circular shape.
+    width : float
+        The width of the piston for a rectangular shape.
+    height : float
+        The height of the piston for a rectangular shape.
     """
 
     return _Piston(
         frequency,
-        radius,
         source_axis,
         number_of_point_sources_per_wavelength,
         location,
         velocity,
+        shape,
+        radius,
+        width,
+        height,
     )
 
 
@@ -56,11 +68,14 @@ class _Piston(_Source):
     def __init__(
         self,
         frequency,
-        radius,
         source_axis,
         number_of_point_sources_per_wavelength,
         location,
         velocity,
+        shape,
+        radius,
+        width,
+        height,
     ):
         super().__init__("piston", frequency)
 
@@ -76,7 +91,18 @@ class _Piston(_Source):
 
         self.location = _convert_to_array(location, shape=(3,), label="piston location")
 
-        self.radius = _convert_to_positive_float(radius, label="piston radius")
+        self.shape = shape
+
+        if self.shape is "circular":
+            self.radius = _convert_to_positive_float(radius, label="piston radius")
+            self.width = None
+            self.height = None
+        elif self.shape is "rectangular":
+            self.radius = None
+            self.width = _convert_to_positive_float(width, label="piston width")
+            self.height = _convert_to_positive_float(height, label="piston height")
+        else:
+            raise NotImplementedError
 
         self.velocity = _np.atleast_1d(complex(velocity))
 
