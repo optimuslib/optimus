@@ -34,7 +34,13 @@ def create_array(
     frequency : float
         The frequency of the acoustic field.
     element_radius : float
-        The radius of elements which lie on the spherical section bowl.
+        The radius of elements which lie on the array transducer (circular piston case).
+    element_width : float
+        The width of elements which lie on the array transducer (rectangular piston case).
+    element_height : float
+        The height of elements which lie on the array transducer (rectangular piston case).
+    element_shape : str
+        The shape of the array elements. Can be circular or rectangular. Default : "circular".
     velocity : complex, numpy.ndarray complex
         Array of size (N,) with complex values for the normal velocities of the array elements.
         If one value is specified, this will be repeated for all array elements. Default : 1 m/s
@@ -54,7 +60,7 @@ def create_array(
     centroid_locations_filename : str
         Path and filename containing the centroid locations data. The file extension has to be ".dat".
     array_type : str
-        Type of array considered. Can be either planar or spherical.
+        Type of array considered. Can be either planar or spherical. Default : "spherical"
     """
 
     return _Array(
