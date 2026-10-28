@@ -24,6 +24,8 @@ def create_array(
     location=(0, 0, 0),
     centroid_locations=None,
     centroid_locations_filename=None,
+    normals=None,
+    normals_filename=None,
     array_type="spherical",
 ):
     """Create an array source consisting of circular piston elements distributed on a
@@ -60,7 +62,7 @@ def create_array(
     centroid_locations_filename : str
         Path and filename containing the centroid locations data. The file extension has to be ".dat".
     array_type : str
-        Type of array considered. Can be either planar or spherical. Default : "spherical"
+        Type of array considered. Can be either planar, spherical or generic. Default : "spherical"
     """
 
     return _Array(
@@ -75,6 +77,8 @@ def create_array(
         location,
         centroid_locations,
         centroid_locations_filename,
+        normals,
+        normals_filename,
         array_type,
     )
 
@@ -93,6 +97,8 @@ class _Array(_Source):
         location,
         centroid_locations,
         centroid_locations_filename,
+        normals,
+        normals_filename,
         array_type,
     ):
         super().__init__("array", frequency)
@@ -139,7 +145,7 @@ class _Array(_Source):
         )
 
         self.element_normals = self._calc_element_normals(
-            self.centroid_locations, array_type
+            self.centroid_locations, normals, normals_filename, array_type
         )
 
     def _calc_centroid_locations(self, centroid_locations, centroid_locations_filename):
@@ -177,7 +183,9 @@ class _Array(_Source):
 
         return centroid_locations
 
-    def _calc_element_normals(self, centroid_locations, array_type):
+    def _calc_element_normals(
+        self, centroid_locations, normals, normals_filename, array_type
+    ):
         """Calculates the array element normals from centroid locations depending on the
         array type.
 
@@ -185,19 +193,49 @@ class _Array(_Source):
         ----------
         centroid_locations : numpy.ndarray
             An array of size (3, N) with the locations of the centroids of the piston elements.
+        normals : numpy.ndarray
+            An array of size (3, N) with the coordinates of the element normal vectors.
+            For use only in the case of a generic type array.
+        normals_locations_filename : str
+            Path and filename containing the normal vector data. For use only in the case of a
+            generic type array. The file extension has to be ".dat".
         array_type : str
             The type of array. Can be spherical or planar.
         Returns
         -------
         element_normals : numpy.ndarray
-            An array of size (3, N) with the locations of the centroids of the piston elements.
+            An array of size (3, N) with the coordinates of the element normal vectors.
         """
 
         if array_type is "spherical":
+            if normals or normals_filename is not None:
+                raise UserWarning(
+                    "The normals on a spherical type array are implicitly defined. Entries" \
+                    "relating to normals or normal_filename are not permitted."
+                )
             element_normals = -_normalize_vector(self.centroid_locations)
         elif array_type is "planar":
+            if normals or normals_filename is not None:
+                raise UserWarning(
+                    "The normals on a planar type array are implicitly defined. Entries relating" \
+                    " to normals or normal_filename are not permitted."
+                )
             element_normals = _np.zeros((3, centroid_locations.shape[1]), dtype="float")
             element_normals[2, :] = _np.ones(centroid_locations.shape[1], dtype="float")
+        elif array_type is "generic":
+            if normals is not None and normals_filename is not None:
+                raise ValueError(
+                    "Specify either the normals or the normals " + "filename."
+                )
+            elif normals is not None and normals_filename is None:
+                element_normals = _convert_to_3n_array(normals, label="normals")
+            elif normals is None and normals_filename is not None:
+                if normals_filename.endswith(".dat"):
+                    element_normals = _np.loadtxt(normals_filename)
+                else:
+                    raise ValueError(
+                        "The centroid locations filename must have a dat extension."
+                    )
         else:
             raise NotImplementedError
 
@@ -239,6 +277,9 @@ class _Array(_Source):
                 raise ValueError(
                     "Array element centroid locations do not appear to lie in the xy plane."
                 )
+
+        else:
+            radius_of_curvature_from_centroid_locations = None
 
         return radius_of_curvature_from_centroid_locations
 
