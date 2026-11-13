@@ -499,7 +499,7 @@ class _Transducer:
         self.normal_pressure_gradient = normal_pressure_gradient
 
 
-@_njit(parallel=True)
+@_njit(parallel=True, fastmath=True)
 def calc_greens_functions_in_observation_points_numba(
     locations_source, locations_observation, wavenumber, source_weights
 ):
@@ -531,72 +531,49 @@ def calc_greens_functions_in_observation_points_numba(
         of all source locations. When normals is None, gradient related quantities
         are not evaluated.
     """
-    greens_function_in_observation_points_scaled = _np.zeros_like(
-        locations_observation[0], dtype=_np.complex128
-    )
-    greens_gradient_in_observation_points_scaled = _np.zeros_like(
-        locations_observation, dtype=_np.complex128
-    )
-    for i in _prange(locations_observation.shape[1]):
-        temp_greens_function_in_observation_points_scaled = 0.0
-        temp_greens_gradient_in_observation_points_scaled = _np.zeros(
-            3, dtype=_np.complex128
-        )
-        differences_between_all_points = _np.zeros(3, dtype=_np.float64)
-        for j in range(locations_source.shape[1]):
-            differences_between_all_points[0] = (
-                locations_source[0, j] - locations_observation[0, i]
-            )
-            differences_between_all_points[1] = (
-                locations_source[1, j] - locations_observation[1, i]
-            )
-            differences_between_all_points[2] = (
-                locations_source[2, j] - locations_observation[2, i]
-            )
 
-            distances_between_all_points = _np.linalg.norm(
-                differences_between_all_points
-            )
+    n_obs = locations_observation.shape[1]
+    n_src = locations_source.shape[1]
+    
+    greens_function = _np.zeros(n_obs, dtype=_np.complex128)
+    greens_gradient = _np.zeros((3, n_obs), dtype=_np.complex128)
+    
+    ik = 1j * wavenumber
+    func_factor = 1.0 / (2.0 * _np.pi)
+    grad_factor = -1j * func_factor
 
-            greens_function_scaled = (
-                _np.exp(1j * wavenumber * distances_between_all_points)
-                / distances_between_all_points
-            )
-            temp_greens_function_in_observation_points_scaled += (
-                greens_function_scaled * source_weights[j]
-            )
+    for i in _prange(n_obs):
+        obs_x = locations_observation[0, i]
+        obs_y = locations_observation[1, i]
+        obs_z = locations_observation[2, i]
+        
+        temp_gf = 0.0j
+        temp_grad_x = 0.0j
+        temp_grad_y = 0.0j
+        temp_grad_z = 0.0j
+        
+        for j in range(n_src):
+            diff_x = locations_source[0, j] - obs_x
+            diff_y = locations_source[1, j] - obs_y
+            diff_z = locations_source[2, j] - obs_z
+            dist = _np.sqrt(diff_x**2 + diff_y**2 + diff_z**2)
+            inv_dist = 1.0 / dist
+            inv_dist_sq = inv_dist * inv_dist
 
-            greens_gradient_amplitude_scaled = _np.divide(
-                greens_function_scaled
-                * (wavenumber * distances_between_all_points + 1j),
-                distances_between_all_points**2,
-            )
-            greens_gradient_scaled = (
-                differences_between_all_points * greens_gradient_amplitude_scaled
-            )
-            temp_greens_gradient_in_observation_points_scaled += (
-                greens_gradient_scaled * source_weights[j]
-            )
+            weighted_gf = _np.exp(ik * dist) * inv_dist * source_weights[j]
+            temp_gf += weighted_gf
 
-        greens_function_in_observation_points_scaled[
-            i
-        ] = temp_greens_function_in_observation_points_scaled
+            grad_amp = weighted_gf * (wavenumber * dist + 1j) * inv_dist_sq
+            temp_grad_x += diff_x * grad_amp
+            temp_grad_y += diff_y * grad_amp
+            temp_grad_z += diff_z * grad_amp
 
-        greens_gradient_in_observation_points_scaled[
-            :, i
-        ] = temp_greens_gradient_in_observation_points_scaled
+        greens_function[i] = temp_gf * func_factor
+        greens_gradient[0, i] = temp_grad_x * grad_factor
+        greens_gradient[1, i] = temp_grad_y * grad_factor
+        greens_gradient[2, i] = temp_grad_z * grad_factor
 
-    greens_function_in_observation_points = (
-        greens_function_in_observation_points_scaled / (2 * _np.pi)
-    )
-
-    greens_gradient_in_observation_points = (
-        -1j / (2 * _np.pi)
-    ) * greens_gradient_in_observation_points_scaled
-    return (
-        greens_function_in_observation_points,
-        greens_gradient_in_observation_points,
-    )
+    return greens_function, greens_gradient
 
 
 def init_worker_pool_shared(
